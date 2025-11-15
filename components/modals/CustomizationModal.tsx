@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AgentData, CustomizationSettings } from '../../types.ts';
 import { supabase } from '../../supabaseClient';
+import { initialAgentData } from '../../constants';
 
 interface CustomizationModalProps {
     isOpen: boolean;
@@ -13,8 +14,8 @@ interface CustomizationModalProps {
 type AvatarField = 'avatarHealthy' | 'avatarHurt' | 'avatarDisturbed' | 'avatarInsane';
 
 export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, onClose, agent, onUpdateAgent }) => {
-    const [settings, setSettings] = useState<CustomizationSettings>(agent.customization);
-    const [color, setColor] = useState(agent.character.pathwayColor);
+    const [settings, setSettings] = useState<CustomizationSettings>(agent?.customization || initialAgentData.customization);
+    const [color, setColor] = useState(agent?.character?.pathwayColor || initialAgentData.character.pathwayColor);
     const [previewUrls, setPreviewUrls] = useState<Record<AvatarField, string>>({
         avatarHealthy: '',
         avatarHurt: '',
@@ -43,8 +44,8 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
 
     useEffect(() => {
         if (isOpen) {
-            setSettings(agent.customization || { useOpenDyslexicFont: false, avatarHealthy: '', avatarHurt: '', avatarDisturbed: '', avatarInsane: '' });
-            setColor(agent.character.pathwayColor);
+            setSettings(agent?.customization || initialAgentData.customization);
+            setColor(agent?.character?.pathwayColor || initialAgentData.character.pathwayColor);
 
             // Generate signed URLs for existing avatars
             const generatePreviews = async () => {
@@ -91,7 +92,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
                 URL.revokeObjectURL(url);
             }
         });
-        onUpdateAgent({ customization: settings, character: { ...agent.character, pathwayColor: color } });
+        onUpdateAgent({ customization: settings, character: { ...(agent?.character || {}), pathwayColor: color } });
         onClose();
     };
 

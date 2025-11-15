@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { AgentData, Attack, LearnedParticle, Attributes } from '../../types.ts';
+import { AgentData, Attack, Attributes, LearnedParticle } from '../../types.ts';
 import { magicData } from '../../data/magic-data.tsx';
+import { FUNCOES, OBJETOS, CARACTERISTICAS, COMPLEMENTOS, CRIADORES, MagicParticle } from '../../data/magic-particles';
 
 interface CreateMagicAttackModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAddAttack: (attack: Attack) => void;
     agent: AgentData;
+    learnedParticles?: LearnedParticle[];
 }
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ isOpen, onClose, onAddAttack, agent }) => {
+export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ isOpen, onClose, onAddAttack, agent, learnedParticles = [] }) => {
     const [selectedFuncao, setSelectedFuncao] = useState<LearnedParticle | null>(null);
     const [selectedObjeto, setSelectedObjeto] = useState<LearnedParticle | null>(null);
     const [selectedCaracteristica, setSelectedCaracteristica] = useState<LearnedParticle | null>(null);
+    const [selectedComplement, setSelectedComplement] = useState<MagicParticle | null>(null);
+    const [selectedCreator, setSelectedCreator] = useState<MagicParticle | null>(null);
     
     // New state for demigod attribute selection
     const [selectedRelevantAttribute, setSelectedRelevantAttribute] = useState<keyof Attributes>('espiritualidade');
@@ -29,14 +33,38 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
         }
     }, [isOpen]);
 
+    // Debug: log learnedParticles when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            try {
+                console.group('CreateMagicAttackModal learnedParticles');
+                console.log('learnedParticles (raw):', learnedParticles);
+                console.log('learnedFunctions:', learnedParticles.filter(p => p.type === 'Função'));
+                console.log('learnedObjects:', learnedParticles.filter(p => p.type === 'Objeto'));
+                console.log('learnedCharacteristics:', learnedParticles.filter(p => p.type === 'Característica'));
+                console.groupEnd();
+            } catch (err) {
+                console.error('Error logging learnedParticles', err);
+            }
+        }
+    }, [isOpen, learnedParticles]);
+
     if (!isOpen) return null;
 
-    const { character, attributes, learnedParticles = [] } = agent;
+    const { character, attributes } = agent;
     const isDemigod = character.sequence <= 4;
 
-    const funcoes = learnedParticles.filter(p => p.type === 'Função');
-    const objetos = learnedParticles.filter(p => p.type === 'Objeto');
-    const caracteristicas = learnedParticles.filter(p => p.type === 'Característica');
+    // Use learnedParticles prop when provided, otherwise fallback to agent.learnedParticles
+    const effectiveLearned = (Array.isArray(learnedParticles) && learnedParticles.length > 0)
+        ? learnedParticles
+        : (agent?.learnedParticles || []);
+
+    const learnedFunctions = effectiveLearned.filter((p: any) => p.type === 'Função');
+    const learnedObjects = effectiveLearned.filter((p: any) => p.type === 'Objeto');
+    const learnedCharacteristics = effectiveLearned.filter((p: any) => p.type === 'Característica');
+    // Complements and creators are global and optional
+    const complements = COMPLEMENTOS;
+    const creators = CRIADORES;
 
     const getDamageDie = () => {
         if (!selectedCaracteristica) return 'd4';
@@ -53,9 +81,11 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
         }
 
         const nameParts = [
+            selectedCreator ? (selectedCreator.name + ' ') : '',
             selectedFuncao.palavra || selectedFuncao.name,
             selectedCaracteristica ? (selectedCaracteristica.palavra || selectedCaracteristica.name) : null,
-            selectedObjeto.palavra || selectedObjeto.name
+            selectedObjeto.palavra || selectedObjeto.name,
+            selectedComplement ? `(${selectedComplement.name})` : ''
         ];
         const name = nameParts.filter(Boolean).join(' ');
         
@@ -100,7 +130,7 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
         onClose();
     };
 
-    const renderSelector = (title: string, items: LearnedParticle[], selected: LearnedParticle | null, setter: (item: LearnedParticle | null) => void) => (
+    const renderLearnedSelector = (title: string, items: LearnedParticle[], selected: LearnedParticle | null, setter: (item: LearnedParticle | null) => void) => (
         <div className="magic-creator-column">
             <h4>{title}</h4>
             <div className="particle-selector">
@@ -117,6 +147,24 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
             </div>
         </div>
     );
+
+    const renderGlobalSelector = (title: string, items: MagicParticle[], selected: MagicParticle | null, setter: (item: MagicParticle | null) => void) => (
+        <div className="magic-creator-column">
+            <h4>{title}</h4>
+            <div className="particle-selector">
+                {items.map(item => (
+                    <button 
+                        key={item.id} 
+                        className={`particle-btn ${selected?.id === item.id ? 'active' : ''}`}
+                        onClick={() => setter(item.id === selected?.id ? null : item)}
+                        title={item.description}
+                    >
+                        {item.name} ({item.id})
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
     
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -126,10 +174,18 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
                     <button onClick={onClose} className="close-modal-btn">&times;</button>
                 </div>
 
-                <div className="magic-creator-grid">
-                    {renderSelector('1. Função', funcoes, selectedFuncao, setSelectedFuncao)}
-                    {renderSelector('2. Objeto', objetos, selectedObjeto, setSelectedObjeto)}
-                    {renderSelector('3. Característica (Opcional)', caracteristicas, selectedCaracteristica, setSelectedCaracteristica)}
+                <div className={`magic-creator-grid ${'extended'}`}>
+                    {learnedFunctions.length === 0 && learnedObjects.length === 0 && learnedCharacteristics.length === 0 ? (
+                        <div style={{ gridColumn: '1 / -1', padding: '1rem 0', color: 'var(--secondary-text-color)' }}>
+                            Nenhuma partícula aprendida encontrada. Abra o Grimório e adicione partículas para que apareçam aqui.
+                        </div>
+                    ) : null}
+
+                    {renderLearnedSelector('1. FUNÇÃO', learnedFunctions, selectedFuncao, setSelectedFuncao)}
+                    {renderLearnedSelector('2. OBJETO', learnedObjects, selectedObjeto, setSelectedObjeto)}
+                    {renderLearnedSelector('3. CARACTERÍSTICA (OPCIONAL)', learnedCharacteristics, selectedCaracteristica, setSelectedCaracteristica)}
+                    {renderGlobalSelector('4. COMPLEMENTO (OPCIONAL)', complements, selectedComplement, setSelectedComplement)}
+                    {renderGlobalSelector('5. CRIADOR (OPCIONAL)', creators, selectedCreator, setSelectedCreator)}
                 </div>
 
                 <div className="magic-method-summary">
@@ -158,11 +214,11 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
                     )}
                 </div>
 
-                <div className="modal-footer">
-                    <button onClick={handleCreateAttack} disabled={!selectedFuncao || !selectedObjeto}>
-                        Criar Ataque
-                    </button>
-                </div>
+                        <div className="modal-footer">
+                            <button onClick={handleCreateAttack} disabled={!selectedFuncao || !selectedObjeto}>
+                                Criar Ataque
+                            </button>
+                        </div>
             </div>
         </div>
     );

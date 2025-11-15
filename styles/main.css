@@ -15,6 +15,7 @@
 @import url('./components/_modals.css');
 @import url('./components/_tabs.css');
 @import url('./components/_toasts.css');
+@import url('./components/_antecedentes.css');
 
 /* 4. Importa os estilos específicos da ficha por último */
 @import url('./sheets/_character-sheet.css');

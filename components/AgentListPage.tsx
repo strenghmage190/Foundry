@@ -131,15 +131,15 @@ export const AgentListPage: React.FC<AgentListPageProps> = ({ onAdd }) => {
                     {agents.map((agent) => (
                         <CharacterCard
                             key={agent.id}
-                            avatarUrl={agent.character.avatarUrl}
-                            name={agent.character.name}
-                            path={`${agent.character.pathway || 'Caminho não definido'} - Sequência ${agent.character.sequence}`}
+                            avatarUrl={agent?.character?.avatarUrl}
+                            name={agent?.character?.name || '[Sem nome]'}
+                            path={`${agent?.character?.pathway || 'Caminho não definido'} - Sequência ${agent?.character?.sequence ?? '-'}`}
                             createdAt={agent.lastModified}
                             customization={agent.customization}
-                            sanity={agent.character.sanity}
-                            maxSanity={agent.character.maxSanity}
-                            vitality={agent.character.vitality}
-                            maxVitality={agent.character.maxVitality}
+                            sanity={agent?.character?.sanity ?? 0}
+                            maxSanity={agent?.character?.maxSanity ?? 1}
+                            vitality={agent?.character?.vitality ?? 0}
+                            maxVitality={agent?.character?.maxVitality ?? 1}
                             onOpen={() => navigate(`/agent/${agent.id}`)}
                             onEdit={() => setDeletingAgentId(deletingAgentId === agent.id ? null : agent.id)}
                             onRemove={() => handleDeleteAgent(agent.id!)}

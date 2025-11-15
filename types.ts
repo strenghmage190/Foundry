@@ -88,7 +88,7 @@ export interface Character {
 }
 
 export interface Attack {
-    id: number;
+    id: string;
     name: string;
     damageFormula: string;
     quality: 'Comum' | 'Superior' | 'Obra-Prima';
@@ -154,11 +154,18 @@ export interface Money {
     pennies: number;
 }
 
+export interface Afiliacao {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Antecedente {
-    id: number;
+    id: string;
     name: string;
     description: string;
     points: number;
+    details?: string;
 }
 
 export interface LearnedParticle {
@@ -185,6 +192,7 @@ export interface AgentData {
     artifacts: Artifact[];
     money: Money;
     antecedentes: Antecedente[];
+    afiliacoes: Afiliacao[];
     learnedParticles: LearnedParticle[];
     customization: CustomizationSettings;
 }
@@ -205,6 +213,22 @@ export interface ToastData {
     title: string;
     message: string; // Mensagem principal e concisa
     details?: string; // Detalhes técnicos, ocultos por padrão
+    // Optional top-level damage value for logs (convenience)
+    damage?: number | null;
+    // Optional structured data for dice/roll displays
+    rollInfo?: {
+        // Separa os pools para permitir diferenciação visual
+        soulRolls?: number[]; // dados "Alma"
+        assimilationRolls?: number[]; // dados de Assimilação
+        absorptionRolls?: number[]; // dados de Absorção (quando aplicável)
+        // Fallback genérico (mantido por compatibilidade)
+        rolls?: number[];
+        successes?: number;
+        damage?: {
+            total: number;
+            breakdown: string;
+        } | null;
+    };
 }
 
 
@@ -296,7 +320,28 @@ export interface CampaignPlayer {
     userId: string;
     agentId: string;
 }
+export interface Background {
+    id: string;
+    name: string;
+    description: string;
+    imageUrl: string;
+}
 
+export const backgrounds: Background[] = [
+    {
+        id: 'bg1',
+        name: 'Background 1',
+        description: 'Description of Background 1',
+        imageUrl: 'https://example.com/bg1.jpg',
+    },
+    {
+        id: 'bg2',
+        name: 'Background 2',
+        description: 'Description of Background 2',
+        imageUrl: 'https://example.com/bg2.jpg',
+    },
+    // Adicione mais backgrounds conforme necessário
+];
 export interface Campaign {
     id: string;
     name: string;

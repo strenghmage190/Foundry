@@ -1,8 +1,8 @@
-import React from 'react';
-import { AgentData, Attack, ToastData, ProtectionItem } from '../../types.ts';
+import React, { useState } from 'react';
+import { AgentData, Attack, ToastData, ProtectionItem } from '../../types';
 import { initialHabilidadesState } from '../../constants.ts';
 import { rollDice, rollDamage } from '../../utils/diceRoller.ts';
-import { DiceIcon } from '../icons.tsx';
+import { DiceIcon, EditIcon } from '../icons.tsx';
 
 const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 
@@ -11,24 +11,31 @@ interface CombatTabProps {
     onUpdate: (updatedAgent: AgentData) => void;
     addLiveToast: (toast: Omit<ToastData, 'id'>) => void;
     addLogEntry: (log: Omit<ToastData, 'id'>) => void;
-    onOpenAddWeaponModal: () => void;
+    onOpenAddWeaponModal: (attack?: Attack) => void;
     onOpenAddProtectionModal: () => void;
     onOpenMagicCreator: () => void;
-    onRollRequest: (event: React.MouseEvent, name: string, pool: number, rollType: 'skill' | 'absorption') => void;
+    onRollRequest: (event: React.MouseEvent, name: string, pool: number, rollType: 'skill' | 'absorption', meta?: any) => void;
     onDirectRoll: (name: string, pool: number) => void;
 }
 
 export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveToast, addLogEntry, onOpenAddWeaponModal, onOpenAddProtectionModal, onOpenMagicCreator, onRollRequest, onDirectRoll }) => {
+    const [editingAttack, setEditingAttack] = useState<Attack | null>(null);
+    const [openAttackId, setOpenAttackId] = useState<string | null>(null);
+
     if (!agent || !agent.character) return null;
 
-    const { attacks = [], protections = [], character, attributes, habilidades } = agent;
+    const { attacks = [], protections = [], character } = agent;
+    const attributes = agent.attributes || ({} as any);
+    const habilidades = agent.habilidades || initialHabilidadesState;
 
     const onAttacksChange = (newAttacks: Attack[]) => onUpdate({ ...agent, attacks: newAttacks });
     const onProtectionsChange = (newProtections: ProtectionItem[]) => onUpdate({ ...agent, protections: newProtections });
     const onCharacterChange = (field: keyof AgentData['character'], value: any) => onUpdate({ ...agent, character: { ...character, [field]: value }});
 
-    const handleDeleteAttack = (id: number) => {
-        onAttacksChange(attacks.filter(attack => attack.id !== id));
+    const handleDeleteAttack = (id: string) => {
+        if (window.confirm("Tem certeza que deseja apagar este ataque?")) {
+            onAttacksChange(attacks.filter(attack => attack.id !== id));
+        }
     };
 
     const handleDeleteProtection = (id: number) => {
@@ -45,12 +52,12 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
     
     const getAttributeValue = (attrName: string) => {
         if (!attrName) return 0;
-        return agent.attributes[attrName.toLowerCase() as keyof typeof agent.attributes] || 0;
+        return (attributes as any)[attrName.toLowerCase() as keyof typeof attributes] || 0;
     };
 
     const getSkillValue = (skillName: string) => {
         if (!skillName) return 0;
-        const skill = [...(agent.habilidades.gerais || []), ...(agent.habilidades.investigativas || [])].find(s => s.name === skillName);
+        const skill = [...(habilidades.gerais || []), ...(habilidades.investigativas || [])].find(s => s.name === skillName);
         return skill ? skill.points : 0;
     };
 
@@ -70,7 +77,14 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
         
         const { rolls, successes } = rollDice(pool);
         const damageResult = rollDamage(attack.damageFormula, successes);
-    
+
+        // Combine damage dice with successes if the formula doesn't already include 'sucessos'
+        const formulaIncludesSuccesses = /sucessos/i.test(attack.damageFormula || '');
+        const baseDamageTotal = damageResult?.total ?? 0;
+        const totalDamage = baseDamageTotal + (formulaIncludesSuccesses ? 0 : successes);
+        const damageBreakdown = `${damageResult?.breakdown ?? ''}${formulaIncludesSuccesses ? '' : ` | + Sucessos: ${successes} = ${totalDamage}`}`;
+        const damageObj = { total: totalDamage, breakdown: damageBreakdown };
+
         let breakdown = `Parada: ${pool} (`;
         const breakdownParts = [];
         if (attack.attribute) breakdownParts.push(`${capitalize(attack.attribute)} ${attrValue}`);
@@ -82,11 +96,11 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
     
         const resultType = successes > 0 ? 'success' : 'failure';
         const title = attack.name;
-        const message = `${successes} sucesso(s) | Dano: ${damageResult?.total ?? '–'}`;
-        const details = `${breakdown}\nRolagem: [${rolls.join(', ')}]\nDano: ${damageResult?.breakdown ?? 'N/A'}`;
-    
-        addLiveToast({ type: resultType, title, message });
-        addLogEntry({ type: resultType, title, message, details });
+        const message = `${successes} sucesso(s) | Dano: ${damageObj.total ?? '–'}`;
+        const details = `${breakdown}\nRolagem: [${rolls.join(', ')}]\nDano: ${damageObj.breakdown ?? 'N/A'}`;
+
+        addLiveToast({ type: resultType, title, message, rollInfo: { rolls, successes, damage: damageObj } });
+        addLogEntry({ type: resultType, title, message, details, damage: damageObj.total ?? null, rollInfo: { rolls, successes, damage: damageObj } });
     };
 
     const handleFuryUpdate = (value: number) => {
@@ -94,7 +108,7 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
     };
 
     const prontidaoSkill = (habilidades.gerais || []).find(s => s.name === 'Prontidão') || { points: 0 };
-    const initiativePool = attributes.percepcao + prontidaoSkill.points;
+    const initiativePool = (attributes.percepcao || 0) + prontidaoSkill.points;
 
     return (
         <div>
@@ -112,17 +126,17 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
                         </button>
                     </div>
                     <p className="calculated-value">{initiativePool} dados</p>
-                    <small>(Percepção {attributes.percepcao} + Prontidão {prontidaoSkill.points})</small>
+                    <small>(Percepção {attributes.percepcao ?? 0} + Prontidão {prontidaoSkill.points})</small>
                 </div>
                 <div className="stat-box">
                     <div className="stat-box-header-with-roll">
                         <h4>Parada de Absorção Total</h4>
-                        <button className="inline-roll-btn" onClick={(e) => onRollRequest(e, 'Rolagem de Absorção', character.absorption, 'absorption')} aria-label="Rolar Absorção">
+                        <button className="inline-roll-btn" onClick={(e) => onRollRequest(e, 'Rolagem de Absorção', character.absorption || 0, 'absorption')} aria-label="Rolar Absorção">
                             <DiceIcon />
                         </button>
                     </div>
-                    <p className="calculated-value">{character.absorption} dados</p>
-                    <small>(Vigor {agent.attributes.vigor} + Bônus de Armadura)</small>
+                    <p className="calculated-value">{character.absorption ?? 0} dados</p>
+                    <small>(Vigor {attributes.vigor ?? 0} + Bônus de Armadura)</small>
                 </div>
             </div>
             <div className="tab-list">
@@ -171,7 +185,7 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
                 <h4 className="section-title">Arsenal</h4>
                 <div style={{display: 'flex', gap: '0.5rem'}}>
                     <button onClick={onOpenMagicCreator}>+ Criar Magia</button>
-                    <button onClick={onOpenAddWeaponModal}>+ Adicionar Arma</button>
+                    <button onClick={() => onOpenAddWeaponModal(undefined)}>+ Adicionar Arma</button>
                 </div>
             </div>
             <div className="tab-list">
@@ -181,34 +195,52 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
                     const qualityBonus = getQualityBonus(attack.quality);
                     const secondaryAttrValue = attack.secondaryAttribute ? getAttributeValue(attack.secondaryAttribute) : 0;
                     const attackPool = attrValue + skillValue + attack.bonusAttack + qualityBonus + secondaryAttrValue;
-                    
+                    const isOpen = openAttackId === attack.id;
+
                     return (
-                        <div key={attack.id} className="tab-list-item weapon-card">
-                            <div className="item-header">
-                                <h5 className="item-header-title">{attack.name} <span className="quality-tag">{attack.quality}</span></h5>
-                                <button onClick={() => handleDeleteAttack(attack.id)}>&times;</button>
-                            </div>
-                            <div className="weapon-stats">
-                                <div className="stat-block">
-                                    <span className="stat-label">Parada de Ataque</span>
-                                    <span className="stat-value">{attackPool}</span>
+                        <div key={attack.id} className={`tab-list-item weapon-card ${isOpen ? 'expanded' : 'collapsed'}`}>
+                            <div className="weapon-header item-header" onClick={() => setOpenAttackId(isOpen ? null : attack.id)}>
+                                <div className="item-header-title">
+                                    <span className="weapon-title">{attack.name}</span>
+                                    <div className="weapon-sub">Dano: <strong>{attack.damageFormula}</strong> · Crítico: x2</div>
                                 </div>
-                                <div className="stat-block">
-                                    <span className="stat-label">Dano</span>
-                                    <span className="stat-value">{attack.damageFormula} + Sucessos</span>
+                                <div className="header-controls">
+                                    <button className="skill-roll-btn" onClick={(e) => { e.stopPropagation(); onRollRequest(e, attack.name, attackPool, 'skill', { isAttack: true, damageFormula: attack.damageFormula, attackId: attack.id }); }} aria-label="Rolar Ataque">
+                                        <DiceIcon />
+                                    </button>
+                                    <button className="edit-btn" onClick={(e) => { e.stopPropagation(); onOpenAddWeaponModal(attack); }} title="Editar ataque" aria-label="Editar ataque">
+                                        <EditIcon />
+                                    </button>
+                                    <span className={`chev ${isOpen ? 'open' : ''}`}></span>
                                 </div>
                             </div>
-                            <div className="weapon-qualities">
-                                <strong>Qualidades:</strong> {attack.specialQualities || 'Nenhuma'}
-                            </div>
-                            {attack.enhancements && (
-                                <div className="weapon-enhancements">
-                                    <strong>Aprimoramentos:</strong> {attack.enhancements}
+
+                            {isOpen && (
+                                <div className="weapon-body">
+                                    <div className="weapon-stats">
+                                        <div className="stat-block">
+                                            <span className="stat-label">Parada de Ataque</span>
+                                            <span className="stat-value">{attackPool}</span>
+                                        </div>
+                                        <div className="stat-block">
+                                            <span className="stat-label">Dano</span>
+                                            <span className="stat-value">{attack.damageFormula} + Sucessos</span>
+                                        </div>
+                                    </div>
+                                    <div className="weapon-qualities">
+                                        <strong>Qualidades:</strong> {attack.specialQualities || 'Nenhuma'}
+                                    </div>
+                                    {attack.enhancements && (
+                                        <div className="weapon-enhancements">
+                                            <strong>Aprimoramentos:</strong> {attack.enhancements}
+                                        </div>
+                                    )}
+                                    <div className="weapon-actions">
+                                        <button className="link-btn remove-link" onClick={() => handleDeleteAttack(attack.id)}>Remover</button>
+                                        <button className="link-btn edit-link" onClick={() => onOpenAddWeaponModal(attack)}>Editar</button>
+                                    </div>
                                 </div>
                             )}
-                            <button className="roll-attack-btn" onClick={() => handleRollAttack(attack)}>
-                                <DiceIcon /> Atacar
-                            </button>
                         </div>
                     );
                 })}

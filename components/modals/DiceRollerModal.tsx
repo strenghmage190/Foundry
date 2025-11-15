@@ -46,11 +46,12 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
     }, [onClose]);
 
     const handleRoll = () => {
-        if (assimilationDice > agentData.character.assimilationDice) {
+        const availableAssimilation = agentData?.character?.assimilationDice ?? 0;
+        if (assimilationDice > availableAssimilation) {
             addLiveToast({
                 type: 'failure',
                 title: 'Dados de Assimilação Insuficientes',
-                message: `Você tentou usar ${assimilationDice}, mas só tem ${agentData.character.assimilationDice}.`,
+                message: `Você tentou usar ${assimilationDice}, mas só tem ${availableAssimilation}.`,
             });
             return;
         }
@@ -131,11 +132,12 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
         setLastResult({ soulRolls, assimilationRolls, finalSuccesses, madnessMessage });
 
         if (assimilationDice > 0) {
+            const currentAssim = agentData?.character?.assimilationDice ?? 0;
             const updatedAgent = {
                 ...agentData,
                 character: {
                     ...agentData.character,
-                    assimilationDice: agentData.character.assimilationDice - assimilationDice,
+                    assimilationDice: Math.max(0, currentAssim - assimilationDice),
                 }
             };
             onUpdate(updatedAgent);
@@ -169,7 +171,7 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
                      <div className="form-group">
                         <label htmlFor="assimilation-dice-input">Dados de Assimilação (Pretos)</label>
                         <input id="assimilation-dice-input" type="number" min="0" value={assimilationDice} onChange={e => setAssimilationDice(Math.max(0, parseInt(e.target.value) || 0))} />
-                        <span className="assimilation-available">Disponível: {agentData.character.assimilationDice}</span>
+                        <span className="assimilation-available">Disponível: {agentData?.character?.assimilationDice ?? 0}</span>
                     </div>
                     <button onClick={handleRoll} className="roll-btn">
                         <DiceIcon /> Rolar!

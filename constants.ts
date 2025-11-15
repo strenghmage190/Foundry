@@ -1,4 +1,4 @@
-import { AgentData, Character, Attributes, Habilidades, Attack, BeyonderAbility, Ritual, InventoryItem, Artifact, Money, Antecedente, LearnedParticle, CustomizationSettings, InfernalAspect, ProtectionItem } from './types.ts';
+import { AgentData, Character, Attributes, Habilidades, Attack, BeyonderAbility, Ritual, InventoryItem, Artifact, Money, Antecedente, Afiliacao, LearnedParticle, CustomizationSettings, InfernalAspect, ProtectionItem } from './types.ts';
 
 // --- CONFIGURAÇÕES GLOBAIS DO JOGO ---
 export const paRequirementsBySequence: { [key: number]: number } = {
@@ -70,6 +70,7 @@ export const initialInventoryState: InventoryItem[] = [];
 export const initialArtifactsState: Artifact[] = [];
 export const initialMoneyState: Money = { libras: 0, soli: 0, pennies: 0 };
 export const initialAntecedentesState: Antecedente[] = [];
+export const initialAfiliacoesState: Afiliacao[] = [];
 export const initialLearnedParticlesState: LearnedParticle[] = [];
 export const initialCustomizationState: CustomizationSettings = {
     useOpenDyslexicFont: false,
@@ -92,6 +93,7 @@ export const initialAgentData: Omit<AgentData, 'id' | 'lastModified'> = {
     artifacts: initialArtifactsState,
     money: initialMoneyState,
     antecedentes: initialAntecedentesState,
+    afiliacoes: initialAfiliacoesState,
     learnedParticles: initialLearnedParticlesState,
     customization: initialCustomizationState,
 };

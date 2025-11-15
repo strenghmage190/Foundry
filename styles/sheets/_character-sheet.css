@@ -63,20 +63,76 @@
 .delete-btn-popup { position: absolute; bottom: 100%; left: 0; margin-bottom: 5px; }
 
 /* --- CHARACTER SHEET --- */
+:root {
+  --col-width-left: 300px;
+  --col-width-right: 420px;
+  --gap-size: 1.5rem;
+}
+
+.sheet-container,
 .sheet-container-v2 {
     width: 100%;
     max-width: 1800px;
     margin: 0 auto;
     border: 1px solid var(--character-color, var(--border-color));
     padding: 1rem;
+    position: relative;
+}
+
+/* Grid layout for the sheet - three columns: left, middle (flex), right */
+.sheet-grid {
+    display: grid;
+    grid-template-columns: var(--col-width-left) 1fr var(--col-width-right);
+    gap: var(--gap-size);
+    align-items: flex-start;
+}
+
+.sheet-col-left,
+.sheet-column-left,
+.sheet-col-middle,
+.sheet-column-middle,
+.sheet-col-right,
+.sheet-column-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-size);
+    min-width: 0;
 }
 .sheet-management-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 0.5rem 1rem 0.5rem;
     margin-bottom: 1rem;
+    border-bottom: 1px solid #333;
 }
 .sheet-management-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+/* --- Widget Styles --- */
+.character-identity-widget,
+.resource-widget,
+.attributes-widget,
+.tabs-widget,
+.skills-widget {
+    background-color: #1a1a1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.widget-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    color: var(--character-color, #a978f8);
+}
 
 .section-title {
     font-family: var(--font-title);
@@ -86,6 +142,38 @@
     padding-bottom: 0.5rem;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
 }
+
+/* --- Character Identity Widget --- */
+.character-identity-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.character-identity-widget .char-avatar,
+.character-identity-widget .avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    border: 2px solid var(--character-color, #6f42c1);
+    background-color: #333;
+    background-size: cover;
+    background-position: center;
+}
+
+.character-identity-widget .char-info-main input,
+.character-identity-widget .name-input-wrapper input {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #444;
+    color: #fff;
+    width: 100%;
+    padding: 0.5rem;
+}
 .habilidade-subheader {
     margin: 1rem 0 0.5rem;
     padding-bottom: 0.25rem;
@@ -93,11 +181,84 @@
 }
 
 /* LEFT COLUMN WIDGETS */
-.char-header-v2 { background: var(--surface-color); padding: 1rem; border: 1px solid var(--border-color); }
-.char-avatar { width: 120px; height: 120px; margin: 0 auto 1rem; background-size: cover; background-position: center; border: 2px solid var(--character-color, var(--border-color)); background-color: #333; }
-.pathway-and-color { margin-top: 0.5rem; }
-.char-info-sub { display: flex; gap: 1rem; margin-top: 0.5rem; }
-.status-bars-container, .sanity-tracker, .attributes-section, .pa-tracker, .assimilation-dice-tracker, .control-test-tracker, .anchors-tracker { background: var(--surface-color); padding: 1rem; border: 1px solid var(--border-color); }
+.char-header-v2,
+.resource-widget,
+.status-bars-container,
+.sanity-tracker,
+.attributes-section,
+.pa-tracker,
+.assimilation-dice-tracker,
+.control-test-tracker,
+.anchors-tracker {
+    background-color: #1a1a1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.char-header-v2 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.char-avatar {
+    width: 120px;
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid var(--character-color, #6f42c1);
+    border-radius: 8px;
+    background-color: #333;
+}
+
+.char-info-main {
+    width: 100%;
+}
+
+.char-info-main input {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #444;
+    color: #fff;
+    width: 100%;
+    padding: 0.5rem;
+}
+
+.pathway-and-color {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.pathway-select {
+    width: 100%;
+    background-color: #222;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 0.6rem;
+    border-radius: 4px;
+}
+
+.char-info-sub {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.char-info-sub input {
+    flex: 1;
+    background-color: #222;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 0.6rem;
+    border-radius: 4px;
+    text-align: center;
+}
 .status-bar { margin-bottom: 1rem; }
 .status-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
 .status-bar-label { font-weight: 600; }
@@ -131,16 +292,91 @@
 .anchors-list { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem; }
 .anchor-slot .form-group { margin-bottom: 0.75rem; }
 .anchor-slot:not(:first-child) { opacity: 0.6; }
-.mythical-form-trigger-container { background: var(--surface-color); padding: 0.5rem 1rem; border: 1px solid var(--border-color); display: flex; justify-content: center; align-items: center; }
+.mythical-form-trigger-container {
+    background-color: #1a1a1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-/* MIDDLE COLUMN WIDGETS */
-.pericias-section { background: var(--surface-color); padding: 1rem; border: 1px solid var(--border-color); }
-.pericias-header { display: flex; justify-content: space-between; align-items: center; }
-.pericias-header .section-title { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+/* MIDDLE & RIGHT COLUMN WIDGETS */
+.tabs-section,
+.pericias-section,
+.skills-widget {
+    background-color: #1a1a1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.pericias-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.pericias-header .section-title,
+.pericias-header h3 {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    color: var(--character-color, #a978f8);
+}
 .pericia-item-v2 { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0.25rem; border-bottom: 1px solid var(--border-color); }
 .pericia-item-v2:last-child { border-bottom: none; }
 .pericia-item-v2 label { font-weight: 600; flex-grow: 1; }
 .pericia-controls { display: flex; align-items: center; gap: 0.75rem; }
+
+/* Container para a lógica de troca */
+.skill-attr-selector-wrapper {
+  position: relative;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A "Tag" de Texto Clicável */
+.skill-attr-tag {
+  font-size: 0.8rem;
+  font-weight: bold;
+  background-color: #333;
+  color: #aaa;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  min-width: 60px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid #444;
+  transition: all 0.2s;
+}
+
+.skill-attr-tag:hover {
+  border-color: var(--character-color, #a978f8);
+  color: #fff;
+  background-color: #3a3a3e;
+}
+
+/* O <select> quando visível */
+.skill-attr-select {
+  min-width: 60px;
+  background-color: #111;
+  border: 1px solid var(--character-color, #a978f8);
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  height: 35px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
 .skill-total-display { background-color: var(--character-color, var(--accent-color)); color: var(--character-contrast-color, white); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; flex-shrink: 0; }
 
 /* TAB CONTENT SPECIFICS */
@@ -150,6 +386,64 @@
 .tab-list-item { background: var(--background-color); padding: 1rem; border: 1px solid var(--border-color); }
 .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
 .item-header-title { flex-grow: 1; }
+.weapon-card {
+    display: block;
+    gap: 0.5rem;
+    align-items: flex-start;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border-left: 4px solid var(--character-color, var(--accent-color));
+    padding: 0.6rem;
+}
+.weapon-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.weapon-header .item-header-title { display:flex; flex-direction:column; }
+.weapon-header .weapon-title { font-weight:600; }
+.weapon-header .weapon-sub { font-size:0.85rem; color:var(--secondary-text-color); }
+.header-controls { display:flex; gap:0.35rem; align-items:center; }
+.header-controls .skill-roll-btn { width:32px; height:32px; border-radius:6px; padding:0; display:flex; align-items:center; justify-content:center; }
+.header-controls .skill-roll-btn svg { width:16px; height:16px; }
+.header-controls .edit-btn { background: none; border: none; width:28px; height:28px; display:flex; align-items:center; justify-content:center; color: var(--secondary-text-color); border-radius:6px; cursor:pointer; }
+.header-controls .edit-btn svg { width:14px; height:14px; }
+.dice-icon-btn { background: var(--character-color, #a978f8); border: none; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; color: var(--character-contrast-color, #fff); box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.dice-icon-btn { position: relative; z-index: 2; }
+.dice-icon-btn svg { width:18px; height:18px; display: block; fill: currentColor; color: inherit; }
+.dice-icon-btn svg path { fill: var(--character-contrast-color, #fff) !important; }
+.chev { width:12px; height:12px; display:inline-block; border-right:2px solid var(--secondary-text-color); border-bottom:2px solid var(--secondary-text-color); transform: rotate(-45deg); margin-left:6px; transition: transform 0.15s ease, border-color 0.15s ease; }
+.chev.open { transform: rotate(45deg); border-color: var(--primary-text-color); }
+
+.weapon-body { margin-top:0.6rem; padding-top:0.6rem; border-top:1px solid rgba(255,255,255,0.03); }
+.weapon-body .weapon-stats { display:flex; gap:1rem; align-items:center; }
+.weapon-card .stat-block { display:flex; flex-direction:column; gap:0.25rem; }
+.weapon-card .stat-label { font-size: 0.75rem; color: var(--secondary-text-color); }
+.weapon-card .stat-value { font-weight: 700; color: var(--primary-text-color); }
+.weapon-card .weapon-qualities { color: var(--secondary-text-color); font-size: 0.9rem; }
+.weapon-card .weapon-enhancements { color: var(--secondary-text-color); font-size: 0.9rem; }
+.weapon-card { padding: 0.75rem; }
+.weapon-card .weapon-stats {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
+.weapon-card .roll-attack-btn { width: 120px; padding: 0.45rem 0.6rem; font-size: 0.95rem; }
+.weapon-card .item-header-title .quality-tag { margin-left: 0.5rem; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.15); }
+
+/* Edit button smaller and subtle */
+.edit-btn { background: rgba(0,0,0,0.12); border: 1px solid rgba(255,255,255,0.04); color: var(--primary-text-color); width: 34px; height: 34px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; }
+.edit-btn svg { width: 14px; height: 14px; color: var(--character-color, #a978f8); }
+.edit-btn:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08); transform: translateY(-1px); }
+
+/* Tighter layout for weapon cards (compact) */
+.weapon-card .item-header { margin-bottom: 0; display:flex; align-items:center; gap:0.5rem; }
+.weapon-card .weapon-qualities, .weapon-card .weapon-enhancements { font-size: 0.85rem; }
+.weapon-card .stat-label { font-size: 0.75rem; }
+.weapon-card .stat-value { font-size: 1.1rem; }
+
+.item-header-controls { display:flex; gap:0.5rem; align-items:center; }
+
+.weapon-actions { display:flex; gap:1rem; margin-top:0.75rem; }
+.link-btn { background: none; border: none; color: var(--secondary-text-color); cursor: pointer; padding: 0; }
+.edit-link { color: var(--character-color, #a978f8); }
+.remove-link { color: var(--error-color, #e57373); }
 .stat-box { background: var(--background-color); padding: 1rem; text-align: center; border: 1px solid var(--border-color); }
 .stat-box h4 { font-family: var(--font-title); margin-bottom: 0.5rem; font-size: 1rem;}
 .stat-box .calculated-value { font-size: 1.5rem; font-weight: bold; color: var(--primary-text-color); }
@@ -240,17 +534,17 @@
 
 /* --- SKILL ROLL POPOVER --- */
 .skill-roll-popover {
-    position: absolute;
+    position: fixed; /* fixed so it positions relative to the viewport */
     background-color: var(--surface-color);
     border: 1px solid var(--character-color, var(--accent-color));
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    z-index: 100;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+    z-index: 3000; /* above modals/toasts and right panel */
     width: 240px;
     padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    transform: translateX(-85%); /* Adjust to better center on the icon */
+    transform: translateX(-50%); /* center horizontally on the provided x coordinate */
     margin-top: 8px;
 }
 .skill-roll-popover .popover-title {

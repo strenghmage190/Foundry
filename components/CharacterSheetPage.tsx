@@ -44,7 +44,7 @@ import { DiceIcon, PaletteIcon, FlameIcon } from "./icons.tsx";
 
 // Imports de Dados e Utilitários
 import { caminhosData } from "../data/beyonders-data.tsx";
-import { rollDice, rollSimpleDice } from "../utils/diceRoller.ts";
+import { rollDice, rollSimpleDice, rollDamage } from "../utils/diceRoller.ts";
 import { getAvatarForSanityAndVitality } from "../utils/agentUtils";
 import {
   getContrastColor,
@@ -66,6 +66,7 @@ interface RollPopoverProps {
     name: string;
     pool: number;
     rollType: RollType;
+    meta?: any;
   };
   onClose: () => void;
   onConfirm: (
@@ -85,6 +86,7 @@ const RollPopover: React.FC<RollPopoverProps> = ({
 }) => {
   const [assimilationDice, setAssimilationDice] = useState(0);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number }>({ top: popoverData.top, left: popoverData.left });
 
   const isSkillRoll = popoverData.rollType === "skill";
   const maxAssimilation = isSkillRoll
@@ -112,6 +114,42 @@ const RollPopover: React.FC<RollPopoverProps> = ({
     };
   }, [onClose]);
 
+  // Ensure popover is fully visible in the viewport (adjust if near edges)
+  useEffect(() => {
+    // reset to initial requested coordinates when popoverData changes
+    setPosition({ top: popoverData.top, left: popoverData.left });
+
+    const adjust = () => {
+      if (!popoverRef.current) return;
+      const rect = popoverRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const padding = 12; // keep some space from edges
+
+      let newLeft = popoverData.left;
+      let newTop = popoverData.top;
+
+      // If popover would overflow right edge, shift left
+      if (rect.right > vw - padding) {
+        newLeft = Math.max(padding, popoverData.left - (rect.right - (vw - padding)));
+      }
+      // If popover would overflow left edge, shift right
+      if (rect.left < padding) {
+        newLeft = Math.min(vw - padding, popoverData.left + (padding - rect.left));
+      }
+      // If popover would overflow bottom edge, move it above the click point
+      if (rect.bottom > vh - padding) {
+        newTop = Math.max(padding, popoverData.top - (rect.bottom - (vh - padding)) - 8);
+      }
+
+      setPosition({ top: newTop, left: newLeft });
+    };
+
+    // Run adjustment after a short delay to allow layout to settle
+    const t = setTimeout(adjust, 0);
+    return () => clearTimeout(t);
+  }, [popoverData.top, popoverData.left]);
+
   const handleConfirm = () => {
     onConfirm(
       popoverData.name,
@@ -131,7 +169,7 @@ const RollPopover: React.FC<RollPopoverProps> = ({
     <div
       className="skill-roll-popover"
       ref={popoverRef}
-      style={{ top: popoverData.top, left: popoverData.left }}
+      style={{ top: position.top, left: position.left }}
       onClick={(e) => e.stopPropagation()}
     >
       {isSkillRoll ? (
@@ -421,6 +459,7 @@ export const CharacterSheetPage = () => {
   const [hasMaintainedForm, setHasMaintainedForm] = useState(false);
   const [maintainButtonFeedback, setMaintainButtonFeedback] = useState(false);
   const prevPathwayRef = useRef<string>("");
+  const [editingSkillAttr, setEditingSkillAttr] = useState<string | null>(null);
 
   const [rollPopover, setRollPopover] = useState<{
     isVisible: boolean;
@@ -429,6 +468,7 @@ export const CharacterSheetPage = () => {
     name: string;
     pool: number;
     rollType: RollType;
+    meta?: any;
   } | null>(null);
 
   const pathwayData = useMemo(
@@ -538,6 +578,8 @@ export const CharacterSheetPage = () => {
   if (isLoading) return <div>Carregando Ficha...</div>;
 
   if (!agent || !effectiveAgentData) return <div>Agente não encontrado.</div>;
+
+  console.log("Renderizando com a aba ativa:", activeTab);
 
   const tabButtons: Tab[] = [
     "COMBATE & EQUIP.",
@@ -886,13 +928,61 @@ export const CharacterSheetPage = () => {
       const logMessage = `${finalSuccesses} sucesso(s).${madnessMessage}`;
       const details = breakdownLines.join("\n");
 
-      addLiveToast({ type: resultType, title, message: toastMessage });
-      addLogEntry({
-        type: resultType,
-        title: title,
-        message: logMessage,
-        details,
-      });
+      // reserve total damage for logging / payload (may be set when attack formula present)
+      let totalDamageForPayload: number | null = null;
+
+      // If this popover came from an attack, compute damage using the attack's damage formula
+      try {
+        const meta = (rollPopover && (rollPopover as any).meta) || null;
+          if (meta && meta.isAttack && meta.damageFormula) {
+            const damageResult = rollDamage(meta.damageFormula, finalSuccesses);
+            // If the damage formula doesn't explicitly include 'sucessos', add successes to the damage total
+            const formulaIncludesSuccesses = /sucessos/i.test(meta.damageFormula);
+            const baseDamageTotal = damageResult?.total ?? 0;
+            const totalDamage = baseDamageTotal + (formulaIncludesSuccesses ? 0 : finalSuccesses);
+            const damageBreakdown = `${damageResult?.breakdown ?? ''}${formulaIncludesSuccesses ? '' : ` | + Sucessos: ${finalSuccesses} = ${totalDamage}`}`;
+            const damageObj = { total: totalDamage, breakdown: damageBreakdown };
+            const damageText = `Dano total: ${damageObj.total} (${damageObj.breakdown})`;
+            // Mostrar apenas a mensagem resumida no toast ao vivo; detalhes completos vão para o log
+            addLiveToast({
+              type: resultType,
+              title: title,
+              message: toastMessage,
+              rollInfo: {
+                soulRolls,
+                assimilationRolls,
+                successes: finalSuccesses,
+                damage: damageObj,
+              },
+            });
+            addLogEntry({ type: resultType, title: title, message: `${logMessage} · ${damageText}`, details: `${details}\n${damageText}`, damage: damageObj.total ?? null, rollInfo: { soulRolls, assimilationRolls, successes: finalSuccesses, damage: damageObj } });
+            totalDamageForPayload = damageObj.total ?? null;
+            // If logging to campaign, include damage in payload below (handled later)
+          } else {
+          addLiveToast({
+            type: resultType,
+            title,
+            message: toastMessage,
+            rollInfo: { soulRolls, assimilationRolls, successes: finalSuccesses, damage: null },
+          });
+          addLogEntry({
+            type: resultType,
+            title: title,
+            message: logMessage,
+            details,
+            rollInfo: { soulRolls, assimilationRolls, successes: finalSuccesses, damage: null },
+          });
+        }
+      } catch (err) {
+        // Fallback to normal toast/log if damage calculation fails
+        addLiveToast({ type: resultType, title, message: toastMessage });
+        addLogEntry({
+          type: resultType,
+          title: title,
+          message: logMessage,
+          details,
+        });
+      }
 
       if (assimilationDiceUsed > 0) {
         handleCharacterFieldChange(
@@ -926,7 +1016,8 @@ export const CharacterSheetPage = () => {
               result: `${finalSuccesses} sucesso(s)`, // Um resumo simples
               details: details, // O texto de breakdown
               // 👇 ADICIONE O NOVO CAMPO JSON
-              roll_data: rollData
+              roll_data: rollData,
+              damage: totalDamageForPayload,
             };
             console.log("3. Payload a ser enviado para a API:", payload);
             logDiceRoll(payload);
@@ -950,8 +1041,8 @@ export const CharacterSheetPage = () => {
       const message = `${successes} sucesso(s).`;
       const details = `Parada: ${pool}\nRolagem: [${rolls.join(", ")}]`;
 
-      addLiveToast({ type: resultType, title, message });
-      addLogEntry({ type: resultType, title, message, details });
+      addLiveToast({ type: resultType, title, message, rollInfo: { absorptionRolls: rolls, successes, damage: null } });
+      addLogEntry({ type: resultType, title, message, details, rollInfo: { absorptionRolls: rolls, successes, damage: null } });
 
       // Log the dice roll to the campaign
       try {
@@ -1000,15 +1091,28 @@ export const CharacterSheetPage = () => {
     event: React.MouseEvent,
     name: string,
     pool: number,
-    rollType: RollType
+    rollType: RollType,
+    meta?: any
   ) => {
+    // Prefer anchoring to the clicked element's bounding rect so the popover
+    // appears next to the button, not just the click coordinates.
+    const target = event.currentTarget as HTMLElement | null;
+    let left = event.clientX;
+    let top = event.clientY;
+    if (target && typeof target.getBoundingClientRect === 'function') {
+      const rect = target.getBoundingClientRect();
+      left = rect.left + rect.width / 2; // center horizontally on the button
+      top = rect.top + rect.height + 8; // place slightly below the button
+    }
+
     setRollPopover({
       isVisible: true,
-      top: event.clientY,
-      left: event.clientX,
+      top,
+      left,
       name,
       pool,
       rollType,
+      meta,
     });
   };
 
@@ -1310,10 +1414,8 @@ export const CharacterSheetPage = () => {
                 }}
               >
                 <AntecedentesTab
-                  antecedentes={effectiveAgentData.antecedentes}
-                  onAntecedentesChange={(v) =>
-                    handleUpdate({ antecedentes: v })
-                  }
+                  agent={effectiveAgentData}
+                  onUpdate={handleUpdate}
                 />
               </div>
             </div>
@@ -1350,6 +1452,44 @@ export const CharacterSheetPage = () => {
                       <div key={skill.name} className="pericia-item-v2">
                         <label>{skill.name}</label>
                         <div className="pericia-controls">
+                          <div className="skill-attr-selector-wrapper">
+                            {editingSkillAttr === skill.name ? (
+                              <select
+                                className="skill-attr-select"
+                                value={skill.attr}
+                                onChange={(e) => {
+                                  const newList = [...(list as Habilidade[])];
+                                  newList[index] = {
+                                    ...skill,
+                                    attr: e.target.value,
+                                  };
+                                  handleUpdate({
+                                    habilidades: {
+                                      ...effectiveAgentData.habilidades,
+                                      [type]: newList,
+                                    },
+                                  });
+                                  setEditingSkillAttr(null);
+                                }}
+                                onBlur={() => setEditingSkillAttr(null)}
+                                autoFocus
+                              >
+                                <option value="Força">FOR</option>
+                                <option value="Destreza">DES</option>
+                                <option value="Constituição">CON</option>
+                                <option value="Inteligência">INT</option>
+                                <option value="Sabedoria">SAB</option>
+                                <option value="Carisma">CAR</option>
+                              </select>
+                            ) : (
+                              <div 
+                                className="skill-attr-tag" 
+                                onClick={() => setEditingSkillAttr(skill.name)}
+                              >
+                                {attrName.substring(0, 3).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="number"
                             value={skill.points}
@@ -1488,6 +1628,7 @@ export const CharacterSheetPage = () => {
             handleUpdate({ attacks: [...effectiveAgentData.attacks, a] })
           }
           agent={effectiveAgentData}
+          learnedParticles={effectiveAgentData.learnedParticles || []}
         />
       )}
       {activeModal === "customization" && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AgentData, Attributes, BeyonderAbility, Antecedente, SequenceAbility, ToastData, Habilidade } from '../../types';
 import { caminhosData } from '../../data/beyonders-data';
-import { paRequirementsBySequence } from '../../constants';
+import { paRequirementsBySequence, initialAgentData } from '../../constants';
 
 interface ImprovementModalProps {
     isOpen: boolean;
@@ -25,15 +25,17 @@ const ANTECEDENTE_COST = 3;
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onClose, agent, onUpdateAgent, addLiveToast }) => {
-    const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent)));
+    const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent || initialAgentData)));
     const [paSpent, setPaSpent] = useState(0);
     const [activeTab, setActiveTab] = useState<ImprovementTab>('Atributos');
     const [selectedFreeAbilityName, setSelectedFreeAbilityName] = useState<string | null>(null);
     const [isAddingAntecedente, setIsAddingAntecedente] = useState(false);
     const [newAntecedenteName, setNewAntecedenteName] = useState('');
 
-    const { paDisponivel, paTotalGasto, sequence } = agent.character;
-    const isEligibleForFreebie = !(agent.character.claimedFreeAbilitiesForSequences?.includes(agent.character.sequence));
+    const safeCharacter = agent?.character || initialAgentData.character;
+    const safeHabilidadesBeyonder = agent?.habilidadesBeyonder || [];
+    const { paDisponivel, paTotalGasto, sequence } = safeCharacter;
+    const isEligibleForFreebie = !(safeCharacter.claimedFreeAbilitiesForSequences?.includes(safeCharacter.sequence));
     
     // Updated Digestion Logic
     const targetPa = paRequirementsBySequence[sequence] || 999;
@@ -43,7 +45,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
     
     const hasChanges = paSpent > 0;
 
-    const pathwayData = useMemo(() => agent.character.pathway ? caminhosData[agent.character.pathway] : undefined, [agent.character.pathway]);
+    const pathwayData = useMemo(() => safeCharacter.pathway ? caminhosData[safeCharacter.pathway] : undefined, [safeCharacter.pathway]);
 
     useEffect(() => {
         if (isOpen) {
@@ -56,7 +58,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
         }
     }, [isOpen, agent, isEligibleForFreebie]);
     
-    const availablePA = agent.character.paDisponivel - paSpent;
+    const availablePA = (safeCharacter.paDisponivel || 0) - paSpent;
 
     const handleAdvanceSequence = () => {
         if (!canAdvance) return;
@@ -202,15 +204,15 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
     }, [pathwayData, currentAgent.character.sequence, currentAgent.habilidadesBeyonder]);
 
     const availableAbilitiesForFreeChoice = useMemo(() => {
-        if (!pathwayData || !agent) return [];
-        const ownedAbilityNames = new Set(agent.habilidadesBeyonder.map(a => a.name));
-        const seqNameKey = Object.keys(pathwayData.sequences).find(key => key.includes(`Sequência ${agent.character.sequence}:`));
+        if (!pathwayData) return [];
+        const ownedAbilityNames = new Set(safeHabilidadesBeyonder.map(a => a.name));
+        const seqNameKey = Object.keys(pathwayData.sequences).find(key => key.includes(`Sequência ${safeCharacter.sequence}:`));
         if (!seqNameKey) return [];
         
         return (pathwayData.sequences[seqNameKey as keyof typeof pathwayData.sequences] as SequenceAbility[])
             .filter(ability => !ownedAbilityNames.has(ability.name))
             .map(ability => ({ name: ability.name, desc: ability.desc, seqName: seqNameKey }));
-    }, [pathwayData, agent?.character.sequence, agent?.habilidadesBeyonder]);
+    }, [pathwayData, safeCharacter.sequence, safeHabilidadesBeyonder]);
 
 
     if (!isOpen) return null;

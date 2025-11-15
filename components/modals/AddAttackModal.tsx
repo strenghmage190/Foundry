@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Attack } from '../../types';
+import { Attack } from '../../types.ts';
 import { initialHabilidadesState } from '../../constants';
 
 // Constants for dropdowns
@@ -18,7 +18,10 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 interface AddWeaponModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAddAttack: (attack: Attack) => void;
+    // Support two prop names: `onSave` (older) and `onAddAttack` (used by CharacterSheetPage)
+    onSave?: (attack: Omit<Attack, 'id'> & { id?: string }) => void;
+    onAddAttack?: (attack: Omit<Attack, 'id'> & { id?: string }) => void;
+    initialData?: Attack | null;
 }
 
 const initialWeaponState: Omit<Attack, 'id'> = {
@@ -35,26 +38,30 @@ const initialWeaponState: Omit<Attack, 'id'> = {
     maxAmmo: 0,
 };
 
-export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose, onAddAttack }) => {
-    const [weapon, setWeapon] = useState<Omit<Attack, 'id'>>(initialWeaponState);
+export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose, onSave, onAddAttack, initialData }) => {
+    const [weapon, setWeapon] = useState<Omit<Attack, 'id'> & { id?: string }>(initialData || initialWeaponState);
 
     useEffect(() => {
         if (isOpen) {
-            setWeapon(initialWeaponState);
+            setWeapon(initialData || initialWeaponState);
         }
-    }, [isOpen]);
+    }, [isOpen, initialData]);
 
-    const handleChange = (field: keyof Omit<Attack, 'id'>, value: string | number) => {
+    const handleChange = (field: keyof Attack, value: string | number) => {
         setWeapon(prev => ({ ...prev, [field]: value }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const newWeapon: Attack = {
-            id: Date.now(),
-            ...weapon,
-        };
-        onAddAttack(newWeapon);
+        // prefer onAddAttack if provided (page uses that), fallback to onSave
+        const weaponToSave = { ...weapon, id: weapon.id || `atk-${Date.now()}` };
+        if (typeof (onAddAttack as any) === 'function') {
+            (onAddAttack as any)(weaponToSave);
+        } else if (typeof (onSave as any) === 'function') {
+            (onSave as any)(weaponToSave);
+        } else {
+            console.warn('No save handler provided for AddWeaponModal');
+        }
         onClose();
     };
 
@@ -64,7 +71,7 @@ export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose,
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3 className="title-font">Adicionar Nova Arma</h3>
+                    <h3 className="title-font">{initialData ? 'Editar Arma' : 'Adicionar Nova Arma'}</h3>
                     <button onClick={onClose} className="close-modal-btn">&times;</button>
                 </div>
                 <form onSubmit={handleSubmit} className="add-attack-form">
@@ -115,7 +122,7 @@ export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose,
                         </div>
                     </div>
                     <div className="modal-footer">
-                        <button type="submit">Adicionar Arma</button>
+                        <button type="submit">Salvar</button>
                     </div>
                 </form>
             </div>

@@ -1,8 +1,10 @@
 /* --- TABS --- */
-.tabs-section {
-    background: var(--surface-color);
-    padding: 1rem;
-    border: 1px solid var(--border-color);
+.tabs-section,
+.tabs-widget {
+    background-color: #1a1a1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.25rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
@@ -43,4 +45,298 @@
     overflow-y: auto;
     flex-grow: 1;
     min-height: 0; /* Fix for flexbox overflow */
+}
+
+/* ======================== */
+/* === Magic Tab CSS === */
+/* ======================== */
+
+.magic-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem; /* Aumenta o espaço entre as seções */
+}
+
+.magic-section {
+    width: 100%;
+}
+
+.magic-section-header {
+    display: flex;
+    justify-content: space-between; /* Empurra o título para a esquerda e o botão para a direita */
+    align-items: center; /* Alinha verticalmente */
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #444;
+}
+
+.magic-section-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #aaa;
+}
+
+.magic-section-content .empty-state-text {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+.particles-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.particle-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #2a2a2e;
+    border: 1px solid #444;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.particle-tag button {
+    background: var(--character-color, #a978f8);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    margin-left: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.particle-tag button:hover {
+    background-color: #c62828; /* Vermelho para indicar exclusão */
+}
+
+/* Particle details aside */
+.particle-details h4 { margin: 0 0 0.5rem 0; }
+.particle-details p { color: #ddd; }
+.particle-details .button-secondary { margin-top: 0.5rem; }
+
+/* Two-column layout for Magic Tab */
+.magic-tab-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px; /* left flexible, right details panel fixed */
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.particles-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.particle-group h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #bbb;
+    text-transform: uppercase;
+}
+
+.particles-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.particle-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: #2a2a2e;
+    border: 1px solid #444;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    color: #ccc;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.particle-tag:hover { background-color: #3a3a3e; }
+
+.particle-tag.active {
+    background-color: var(--character-color, #6f42c1);
+    border-color: rgba(167,120,248,0.6);
+    color: #fff;
+    font-weight: 500;
+}
+
+.particle-tag button {
+    background: none;
+    border: none;
+    color: #888;
+    margin-left: 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+.particle-tag.active button { color: #fff; }
+
+.particle-details-panel {
+    background-color: #151517;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.25rem;
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+}
+
+.particle-details-panel h3 { margin: 0 0 0.5rem 0; font-size: 1.25rem; color: var(--character-color, #a978f8); }
+.particle-details-panel .particle-type { display:block; color: #888; font-size: 0.85rem; margin-bottom: 0.75rem; text-transform: uppercase; }
+.particle-details-panel .particle-description { color: #ddd; line-height: 1.5; }
+
+.empty-state-details { color: #666; text-align: center; padding: 2.5rem 1rem; font-style: italic; }
+
+.empty-group { color: #666; font-style: italic; }
+
+/* Popup / Modal styles for particle details */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.particle-popup {
+    background: #1a1a1c;
+    border: 1px solid #3d3d3d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+    animation: fadeIn 0.18s ease-out;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+.particle-popup h3 { margin: 0 0 0.5rem 0; }
+.particle-popup .particle-type { font-size: 0.85rem; color: #888; text-transform: uppercase; display: block; margin-bottom: 1rem; }
+.particle-popup .particle-description { color: #ccc; line-height: 1.5; margin-bottom: 1.25rem; }
+.popup-actions { display:flex; justify-content: flex-end; gap: 0.6rem; }
+
+/* ======================== */
+/* === Antecedentes Tab (Compacto) === */
+/* ======================== */
+
+.antecedentes-list.active {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.antecedente-item-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.antecedente-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto; /* Label, Pontos, Remover */
+  align-items: center;
+  background-color: #1c1c1c;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+}
+
+.antecedente-description {
+  background-color: #141416;
+  padding: 0.75rem;
+  border-left: 3px solid var(--character-color, #a978f8);
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-left: 1rem;
+}.antecedente-item label { font-weight: 500; }
+.points-dots { display: flex; gap: 0.5rem; justify-content: center; }
+.points-dots .dot {
+    width: 14px; height: 14px;
+    background-color: #333;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.points-dots .dot.filled { background-color: var(--character-color, #a978f8); }
+.remove-btn { background: none; border: none; color: #666; font-size: 1.1rem; cursor: pointer; margin-left: 0.6rem; }
+.remove-btn:hover { color: #c62828; }
+
+.add-antecedente-form.compact {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.add-antecedente-form.compact select {
+    width: 100%;
+    background-color: #222;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 0.6rem;
+    border-radius: 4px;
+}
+
+.add-antecedente-form.compact button { padding: 0.6rem 1rem; }
+
+.affiliation-header { margin-top: 1.5rem; }
+
+/* Formulário de Antecedente Personalizado */
+.add-custom-antecedente-form {
+  background-color: #1a1a1c;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.add-custom-antecedente-form h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  color: #aaa;
+  text-transform: uppercase;
+}
+
+.add-custom-antecedente-form input,
+.add-custom-antecedente-form textarea {
+  width: 100%;
+  background-color: #222;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.add-custom-antecedente-form .add-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.add-custom-antecedente-form .warning-text {
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  font-style: italic;
 }

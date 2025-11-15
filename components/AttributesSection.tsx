@@ -2,11 +2,29 @@ import React from 'react';
 import { Attributes } from '../types.ts';
 
 interface AttributesSectionProps {
-    attributes: Attributes;
-    onAttributeChange: (attribute: keyof Attributes, value: number) => void;
+    attributes?: Attributes;
+    onAttributeChange?: (attribute: keyof Attributes, value: number) => void;
 }
 
 export const AttributesSection: React.FC<AttributesSectionProps> = ({ attributes, onAttributeChange }) => {
+    // provide a safe default attributes object to avoid runtime errors
+    const safeAttributes: Attributes = {
+        forca: 1,
+        destreza: 1,
+        vigor: 1,
+        carisma: 1,
+        manipulacao: 1,
+        autocontrole: 1,
+        inteligencia: 1,
+        raciocinio: 1,
+        percepcao: 1,
+        espiritualidade: 1,
+        ...(attributes || {} as Attributes),
+    };
+
+    const handleChange = (attribute: keyof Attributes, value: number) => {
+        if (onAttributeChange) onAttributeChange(attribute, value);
+    };
     const attributeGroups = {
         Físicos: ['forca', 'destreza', 'vigor'],
         Sociais: ['carisma', 'manipulacao', 'autocontrole'],
@@ -41,8 +59,8 @@ export const AttributesSection: React.FC<AttributesSectionProps> = ({ attributes
                                     type="number"
                                     min="1"
                                     max="10"
-                                    value={attributes[attr as keyof Attributes]}
-                                    onChange={(e) => onAttributeChange(attr as keyof Attributes, parseInt(e.target.value, 10) || 1)}
+                                    value={safeAttributes[attr as keyof Attributes]}
+                                    onChange={(e) => handleChange(attr as keyof Attributes, parseInt(e.target.value, 10) || 1)}
                                 />
                             </div>
                         ))}

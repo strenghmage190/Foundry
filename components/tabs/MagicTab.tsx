@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Ritual, LearnedParticle, AgentData, ToastData } from '../../types.ts';
 
 // --- Modal Component Definition ---
@@ -120,6 +120,28 @@ const ArcaneDeconstructionModal: React.FC<ArcaneDeconstructionModalProps> = ({ i
     );
 };
 
+// --- Particle Detail Popup ---
+interface ParticleDetailPopupProps {
+    particle: LearnedParticle | null;
+    onClose: () => void;
+}
+
+const ParticleDetailPopup: React.FC<ParticleDetailPopupProps> = ({ particle, onClose }) => {
+    if (!particle) return null;
+    return (
+        <div className="modal-backdrop" onClick={onClose}>
+            <div className="particle-popup" onClick={(e) => e.stopPropagation()}>
+                <h3 style={{ color: 'var(--character-color, #a978f8)', margin: 0 }}>{particle.name}</h3>
+                <span className="particle-type">{particle.type} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                <p className="particle-description">{particle.description}</p>
+                <div className="popup-actions">
+                    <button onClick={onClose} className="button-primary">Fechar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Tab Component ---
 interface MagicTabProps {
     agent: AgentData;
@@ -135,6 +157,25 @@ export const MagicTab: React.FC<MagicTabProps> = ({
 
     const [isDeconstructionModalOpen, setIsDeconstructionModalOpen] = useState(false);
     const { rituais = [], learnedParticles = [], character } = agent;
+
+    const [selectedParticle, setSelectedParticle] = useState<LearnedParticle | null>(null);
+
+    const groupedParticles = useMemo(() => {
+        const groups: Record<string, LearnedParticle[]> = {
+            'Função': [],
+            'Objeto': [],
+            'Característica': [],
+            'Complemento': [],
+            'Criador': [],
+            'Outro': [],
+        };
+        learnedParticles.forEach(p => {
+            const t = p.type || 'Outro';
+            if (!groups[t]) groups[t] = [];
+            groups[t].push(p);
+        });
+        return groups;
+    }, [learnedParticles]);
 
     const handleRitualChange = (id: number, field: keyof Ritual, value: any) => {
         const newRituals = rituais.map(r => r.id === id ? { ...r, [field]: value } : r);
@@ -157,40 +198,77 @@ export const MagicTab: React.FC<MagicTabProps> = ({
     };
 
     return (
-        <div>
+        <div className="magic-tab">
             <div className="magic-section">
-                <div className="tab-header">
-                    <h4>Rituais & Feitiçaria</h4>
-                    <button onClick={handleAddRitual}>+ Novo Ritual</button>
+                <div className="magic-section-header">
+                    <h3>Rituais & Feitiçaria</h3>
+                    <button className="button-primary" onClick={handleAddRitual}>+ Novo Ritual</button>
                 </div>
-                {rituais.map(ritual => (
-                    <div key={ritual.id} className="tab-list-item">
-                        <div className="item-header">
-                            <input type="text" value={ritual.name} onChange={e => handleRitualChange(ritual.id, 'name', e.target.value)} />
-                            <button onClick={() => handleDeleteRitual(ritual.id)}>&times;</button>
-                        </div>
-                        <textarea value={ritual.description} onChange={e => handleRitualChange(ritual.id, 'description', e.target.value)} placeholder="Descrição do ritual..."></textarea>
-                    </div>
-                ))}
+                <div className="magic-section-content">
+                    {rituais.length === 0 ? (
+                        <p className="empty-state-text">Nenhum ritual criado ainda.</p>
+                    ) : (
+                        rituais.map(ritual => (
+                            <div key={ritual.id} className="tab-list-item">
+                                <div className="item-header">
+                                    <input type="text" value={ritual.name} onChange={e => handleRitualChange(ritual.id, 'name', e.target.value)} />
+                                    <button onClick={() => handleDeleteRitual(ritual.id)}>&times;</button>
+                                </div>
+                                <textarea value={ritual.description} onChange={e => handleRitualChange(ritual.id, 'description', e.target.value)} placeholder="Descrição do ritual..."></textarea>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
 
             <div className="magic-section">
-                <div className="tab-header">
-                    <h4>Partículas Arcanas Aprendidas</h4>
-                    <div className="tab-header-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
-                         {character.sequence <= 4 && (
-                            <button onClick={() => setIsDeconstructionModalOpen(true)}>Desconstrução Arcana</button>
-                         )}
-                        <button className="add-from-grimoire-btn" onClick={onOpenMagicGrimoire}>Adicionar do Grimório</button>
+                <div className="magic-section-header">
+                    <h3>Partículas Arcanas Aprendidas</h3>
+                    <div>
+                        {character.sequence <= 4 && (
+                            <button className="button-secondary" onClick={() => setIsDeconstructionModalOpen(true)}>Desconstrução Arcana</button>
+                        )}
+                        <button className="button-secondary" onClick={onOpenMagicGrimoire} style={{ marginLeft: '0.5rem' }}>Adicionar do Grimório</button>
                     </div>
                 </div>
-                <div className="particle-list">
-                    {learnedParticles.map(particle => (
-                        <div key={particle.id} className={`particle-item ${particle.isDomain ? 'domain' : ''}`} title={particle.description}>
-                            <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
-                            <button onClick={() => handleDeleteParticle(particle.id)} disabled={particle.isDomain}>&times;</button>
-                        </div>
-                    ))}
+                <div className="magic-section-content">
+                    {/* Single-column list with popup for details */}
+                    <div className="particles-list-container">
+                        {Object.entries(groupedParticles).map(([groupName, items]) => (
+                            <div key={groupName} className="particle-group">
+                                <h4>{groupName}</h4>
+                                <div className="particles-grid">
+                                    {items.length === 0 ? (
+                                        <span className="empty-group">— nenhum —</span>
+                                    ) : (
+                                        items.map(particle => (
+                                            <div
+                                                key={particle.id}
+                                                className={`particle-tag`}
+                                                title={particle.description}
+                                                onClick={() => setSelectedParticle(particle)}
+                                            >
+                                                <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteParticle(particle.id); }}
+                                                    disabled={particle.isDomain}
+                                                    aria-label={`Remover ${particle.name}`}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {learnedParticles.length === 0 && (
+                            <p className="empty-state-text">Nenhuma partícula aprendida.</p>
+                        )}
+                    </div>
+
+                    {/* When a particle is selected show popup (we keep selection for keyboard/nav too) */}
+                    <ParticleDetailPopup particle={selectedParticle} onClose={() => setSelectedParticle(null)} />
                 </div>
             </div>
 
