@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AgentData, Attack, ToastData, ProtectionItem } from '../../types';
 import { initialHabilidadesState } from '../../constants.ts';
 import { rollDice, rollDamage } from '../../utils/diceRoller.ts';
+import { getInitiativePool, getAbsorptionPool } from '../../utils/calculations';
 import { DiceIcon, EditIcon } from '../icons.tsx';
 
 const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
@@ -108,7 +109,8 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
     };
 
     const prontidaoSkill = (habilidades.gerais || []).find(s => s.name === 'Prontidão') || { points: 0 };
-    const initiativePool = (attributes.percepcao || 0) + prontidaoSkill.points;
+    const initiativePool = getInitiativePool(agent);
+    const absorptionPool = getAbsorptionPool(agent);
 
     return (
         <div>
@@ -131,11 +133,11 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
                 <div className="stat-box">
                     <div className="stat-box-header-with-roll">
                         <h4>Parada de Absorção Total</h4>
-                        <button className="inline-roll-btn" onClick={(e) => onRollRequest(e, 'Rolagem de Absorção', character.absorption || 0, 'absorption')} aria-label="Rolar Absorção">
+                        <button className="inline-roll-btn" onClick={(e) => onRollRequest(e, 'Rolagem de Absorção', absorptionPool, 'absorption')} aria-label="Rolar Absorção">
                             <DiceIcon />
                         </button>
                     </div>
-                    <p className="calculated-value">{character.absorption ?? 0} dados</p>
+                    <p className="calculated-value">{absorptionPool} dados</p>
                     <small>(Vigor {attributes.vigor ?? 0} + Bônus de Armadura)</small>
                 </div>
             </div>
@@ -158,7 +160,12 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
             </div>
 
             {/* --- RESTORED FURY TRACKER SECTION --- */}
-            {agent.character.pathway === 'CAMINHO DO TIRANO' && (
+            {(() => {
+                const pathways = agent.character.pathways 
+                    ? [agent.character.pathways.primary, ...agent.character.pathways.secondary]
+                    : (Array.isArray(agent.character.pathway) ? agent.character.pathway : [agent.character.pathway]);
+                return pathways.includes('CAMINHO DO TIRANO');
+            })() && (
                 <div className="pathway-mechanic-section" style={{ marginTop: '2rem' }}>
                     <h4 className="section-title">Fúria da Tempestade</h4>
                     <div className="mechanic-widget">

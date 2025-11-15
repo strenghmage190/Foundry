@@ -688,3 +688,159 @@
 .magic-method-summary .form-group {
     max-width: 250px;
 }
+
+/* ======================== */
+/* === Pathway Manager CSS === */
+/* ======================== */
+
+.pathway-manager {
+    margin-bottom: 1rem;
+}
+
+.pathway-manager h4 {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+/* --- TAG de Caminho Base --- */
+.pathway-tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #444;
+  background-color: #2a2a2e;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-bottom: 0.5rem;
+}
+
+.pathway-tag .path-name { 
+  flex-grow: 1; 
+  color: #ccc;
+}
+
+/* --- Interface Padrão (1 Caminho) --- */
+.pathway-tag.single {
+  justify-content: center;
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  border-color: var(--character-color, #a978f8);
+  background-color: transparent;
+  margin-bottom: 0;
+}
+
+.pathway-tag.single .path-name {
+  color: var(--character-color, #a978f8);
+  font-weight: 600;
+}
+
+/* --- Interface Avançada (>1 Caminho) --- */
+.pathway-list-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pathway-tag.primary {
+  color: #fff;
+  border-color: var(--character-color, #a978f8);
+  background: rgba(169, 120, 248, 0.1);
+}
+
+.pathway-tag.primary .path-name {
+  color: var(--character-color, #a978f8);
+}
+
+.pathway-tag .star-icon {
+  margin-right: 0.5rem;
+  color: var(--character-color, #a978f8);
+  font-size: 1.1rem;
+}
+
+.pathway-tag.secondary {
+  color: #aaa;
+  background-color: #1a1a1c;
+}
+
+.pathway-tag.secondary .path-name {
+  color: #aaa;
+}
+
+.tag-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tag-actions button {
+  font-size: 0.7rem;
+  background: #333;
+  border: 1px solid #555;
+  color: #aaa;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+
+.tag-actions button:hover {
+  background: #444;
+  color: #fff;
+  border-color: var(--character-color, #666);
+}
+
+.tag-actions .remove-btn {
+  color: #888;
+  font-size: 1.2rem;
+  padding: 0 0.5rem;
+  background: transparent;
+  border: none;
+}
+
+.tag-actions .remove-btn:hover {
+  color: #e57373;
+  background: transparent;
+}
+
+.add-pathway-form {
+  margin-top: 0.5rem;
+}
+
+.add-pathway-form select {
+  width: 100%;
+  background-color: #1a1a1c;
+  border: 1px dashed #444;
+  color: #888;
+  padding: 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+
+.add-pathway-form select option {
+  background-color: #1a1a1c;
+  color: #ccc;
+  padding: 0.5rem;
+}
+
+.add-pathway-form select:hover {
+  border-color: #666;
+  color: #ccc;
+  background-color: #2a2a2e;
+}
+
+.add-pathway-form select:focus {
+  outline: none;
+  border-color: var(--character-color, #a978f8);
+  color: #fff;
+  background-color: #2a2a2e;
+}

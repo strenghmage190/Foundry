@@ -74,7 +74,11 @@ const AddAgentModal: React.FC<Props> = ({ campaignId, onClose, onAgentAdded }) =
                 />
                 <div className="agent-info">
                   <span className="agent-name">{agent.character.name || '[Sem nome]'}</span>
-                  <span className="agent-path">{agent.character.pathway || 'NPC'}</span>
+                  <span className="agent-path">
+                    {agent.character.pathways?.primary || 
+                     (Array.isArray(agent.character.pathway) ? agent.character.pathway[0] : agent.character.pathway) || 
+                     'NPC'}
+                  </span>
                 </div>
               </div>
             ))

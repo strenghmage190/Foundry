@@ -1,122 +1,69 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { BeyonderAbility, PathwayData, Character, InfernalAspect } from '../../types.ts';
-import { hasArcaneMastery } from '../../utils/calculations';
 
 interface BeyonderTabProps {
     abilities: BeyonderAbility[];
     onAbilitiesChange: (newAbilities: BeyonderAbility[]) => void;
-    pathwayData?: PathwayData;
-    allPathways: { [key: string]: PathwayData };
+    pathwayData?: PathwayData; // Deprecated: mantido para compatibilidade
+    allPathways: { [key: string]: PathwayData }; // Todos os caminhos disponíveis
     sequence: number;
     character: Character;
     onCharacterChange: (field: keyof Character, value: any) => void;
+    onOpenImprovementModal?: (pathwayName: string) => void; // Callback para abrir modal de evolução
+}
+
+// Componente auxiliar para exibir detalhes de um caminho
+interface PathwayDetailsProps {
+    pathwayName: string;
+    pathwayData: PathwayData;
+    isPrimary: boolean;
+    sequence: number;
+    character: Character;
+    onCharacterChange: (field: keyof Character, value: any) => void;
+    abilities: BeyonderAbility[];
+    onAbilitiesChange: (newAbilities: BeyonderAbility[]) => void;
     onOpenImprovementModal?: (pathwayName: string) => void;
 }
 
-type FilterSection = 'todas' | 'domain' | 'mecanica' | 'inatos' | 'mitica' | 'adquiridas';
-
-export const BeyonderTab: React.FC<BeyonderTabProps> = ({ 
-    abilities = [], 
-    onAbilitiesChange, 
-    pathwayData,
-    allPathways,
-    sequence, 
-    character, 
+const PathwayDetails: React.FC<PathwayDetailsProps> = ({ 
+    pathwayName, 
+    pathwayData, 
+    isPrimary, 
+    sequence,
+    character,
     onCharacterChange,
+    abilities,
+    onAbilitiesChange,
     onOpenImprovementModal
 }) => {
-    const [openMainSection, setOpenMainSection] = useState<string | null>(null);
+    const [openSection, setOpenSection] = useState<string | null>(null);
     const [openAbilitySequence, setOpenAbilitySequence] = useState<string | null>(null);
-    const [activeFilter, setActiveFilter] = useState<FilterSection>('todas');
-    const [selectedPathway, setSelectedPathway] = useState<string>('');
     
     // State for Abismo pathway mechanic
     const [isAddingAspect, setIsAddingAspect] = useState(false);
     const [selectedNewAspectName, setSelectedNewAspectName] = useState<string>('');
 
-    const refs = {
-        domain: useRef<HTMLDivElement>(null),
-        mecanica: useRef<HTMLDivElement>(null),
-        inatos: useRef<HTMLDivElement>(null),
-        mitica: useRef<HTMLDivElement>(null),
-        adquiridas: useRef<HTMLDivElement>(null),
-    };
-
-    // Obter todos os caminhos do personagem
-    const characterPathways = useMemo(() => {
-        if (character.pathways) {
-            return [character.pathways.primary, ...character.pathways.secondary];
-        } else if (character.pathway) {
-            return Array.isArray(character.pathway) ? character.pathway : [character.pathway];
-        }
-        return [];
-    }, [character]);
-
-    // Inicializar selectedPathway com o caminho primário
-    React.useEffect(() => {
-        if (!selectedPathway && characterPathways.length > 0) {
-            setSelectedPathway(characterPathways[0]);
-        }
-    }, [characterPathways, selectedPathway]);
-
-    // Obter dados do caminho selecionado
-    const currentPathwayData = useMemo(() => {
-        if (!selectedPathway) return null;
-        return allPathways[selectedPathway];
-    }, [selectedPathway, allPathways]);
-
-    const arcaneMasteryActive = useMemo(() => {
-        // We need minimal agent-like info; reuse character + fake wrapper
-        const agentLike: any = { character };
-        return hasArcaneMastery(agentLike, allPathways);
-    }, [character, allPathways]);
-
-    // Extracts a numeric PE cost from a description like
-    // "Gaste 6 PE" or "(Custo: 8 PE)" or "10 PE e 1 Vontade"
-    const extractPeCost = (text?: string): number | null => {
-        if (!text) return null;
-        const m = text.match(/(?:Custo:\s*)?(\d+)\s*PE/i);
-        if (m) return parseInt(m[1], 10);
-        return null;
-    };
-
-    const toggleMainSection = (sectionName: string) => {
-        const newOpenSection = openMainSection === sectionName ? null : sectionName;
-        setOpenMainSection(newOpenSection);
-        setActiveFilter((newOpenSection as FilterSection) || 'todas');
-    };
-
-    const handleFilterClick = (filter: FilterSection) => {
-        setActiveFilter(filter);
-        if (filter === 'todas') {
-            setOpenMainSection(null);
-        } else {
-            setOpenMainSection(filter);
-            setTimeout(() => {
-                refs[filter as keyof typeof refs]?.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                });
-            }, 100);
-        }
+    const toggleSection = (sectionName: string) => {
+        setOpenSection(prev => prev === sectionName ? null : sectionName);
     };
 
     const toggleAbilitySequence = (seqName: string) => {
-        setOpenAbilitySequence(prev => (prev === seqName ? null : seqName));
+        setOpenAbilitySequence(prev => prev === seqName ? null : seqName);
     };
-    
-    const mecanicaUnica = currentPathwayData?.mecanicaUnica;
+
+    const mecanicaUnica = pathwayData?.mecanicaUnica;
     const poderesInatos = useMemo(() => {
-        if (!currentPathwayData?.poderesInatos) return [];
-        return currentPathwayData.poderesInatos
+        if (!pathwayData?.poderesInatos) return [];
+        return pathwayData.poderesInatos
             .filter(p => {
                 const seqNum = parseInt(p.seq.match(/\d+/)?.[0] ?? '99');
                 return seqNum >= sequence;
             })
             .sort((a, b) => (parseInt(b.seq.match(/\d+/)?.[0] ?? '0')) - (parseInt(a.seq.match(/\d+/)?.[0] ?? '0')));
-    }, [currentPathwayData, sequence]);
-    const formaMitica = currentPathwayData?.formaMitica;
-    const domain = currentPathwayData?.domain;
+    }, [pathwayData, sequence]);
+    
+    const formaMitica = pathwayData?.formaMitica;
+    const domain = pathwayData?.domain;
 
     const handleAbilityChange = (id: number, field: keyof BeyonderAbility, value: any) => {
         const newAbilities = abilities.map(ability =>
@@ -129,7 +76,12 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
         onAbilitiesChange(abilities.filter(ability => ability.id !== id));
     };
 
-    const groupedAbilities = abilities.reduce((acc, ability) => {
+    // Filtrar habilidades deste caminho específico
+    const pathwayAbilities = abilities.filter(ability => 
+        ability.seqName?.includes(pathwayName) || ability.pathway === pathwayName
+    );
+
+    const groupedAbilities = pathwayAbilities.reduce((acc, ability) => {
         const key = ability.seqName || 'Habilidades Únicas';
         if (!acc[key]) {
             acc[key] = [];
@@ -139,29 +91,29 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
     }, {} as Record<string, BeyonderAbility[]>);
 
     const sequenceOrder = useMemo(() => {
-        if (!currentPathwayData) return [];
-        return Object.keys(currentPathwayData.sequences).sort((a, b) => {
+        if (!pathwayData) return [];
+        return Object.keys(pathwayData.sequences).sort((a, b) => {
             const numA = parseInt(a.match(/\d+/)?.[0] ?? '99');
             const numB = parseInt(b.match(/\d+/)?.[0] ?? '99');
             return numB - numA;
         });
-    }, [currentPathwayData]);
-    
-    // --- Abismo Pathway Logic ---
-    const allPossibleAspects = useMemo(() => currentPathwayData?.mecanicaUnica?.items || [], [currentPathwayData]);
+    }, [pathwayData]);
+
+    // Abismo pathway logic
+    const allPossibleAspects = useMemo(() => pathwayData?.mecanicaUnica?.items || [], [pathwayData]);
     const learnedAspectNames = useMemo(() => new Set((character.infernalAspects || []).map(a => a.name)), [character.infernalAspects]);
-    const availableNewAspects = useMemo(() => allPossibleAspects.filter((a: any) => !learnedAspectNames.has(a.nome)), [allPossibleAspects, learnedAspectNames]);
+    const availableNewAspects = useMemo(() => allPossibleAspects.filter(a => !learnedAspectNames.has(a.nome)), [allPossibleAspects, learnedAspectNames]);
     const liberatedCount = (character.infernalAspects || []).filter(a => a.isLiberated).length;
 
     const handleAddNewAspect = () => {
-        if (!selectedNewAspectName || !currentPathwayData?.mecanicaUnica) return;
-        const aspectData = currentPathwayData.mecanicaUnica.items.find((item: any) => item.nome === selectedNewAspectName);
+        if (!selectedNewAspectName || !pathwayData?.mecanicaUnica) return;
+        const aspectData = pathwayData.mecanicaUnica.items.find(item => item.nome === selectedNewAspectName);
         if (!aspectData) return;
 
         const newAspect: InfernalAspect = {
             id: Date.now(),
-            name: (aspectData as any).nome,
-            description: (aspectData as any).desc,
+            name: aspectData.nome,
+            description: aspectData.desc,
             isLiberated: false
         };
 
@@ -181,92 +133,33 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
         onCharacterChange('infernalAspects', (character.infernalAspects || []).filter(a => a.id !== aspectId));
     };
 
-    const filters = [
-        { key: 'todas' as FilterSection, label: 'Todas', condition: true },
-        { key: 'domain' as FilterSection, label: 'Domínio', condition: !!domain },
-        { key: 'mecanica' as FilterSection, label: 'Mecânica Única', condition: !!mecanicaUnica },
-        { key: 'inatos' as FilterSection, label: 'Poderes Inatos', condition: poderesInatos.length > 0 },
-        { key: 'mitica' as FilterSection, label: 'Forma Mítica', condition: !!(formaMitica && sequence <= 4) },
-        { key: 'adquiridas' as FilterSection, label: 'Habilidades Compráveis', condition: true },
-    ];
-
-    if (characterPathways.length === 0) {
-        return <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-            Nenhum caminho selecionado
-        </div>;
-    }
-
     return (
-        <div>
-            {/* Filtro de Caminhos */}
-            {characterPathways.length > 1 && (
-                <div className="pathway-filter" style={{ 
-                    marginBottom: '1.5rem',
-                    padding: '1rem',
-                    backgroundColor: '#1a1a1c',
-                    border: '1px solid #333',
-                    borderRadius: '8px'
-                }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa', fontSize: '0.9rem' }}>
-                        Caminho Ativo:
-                    </label>
-                    <select 
-                        value={selectedPathway} 
-                        onChange={(e) => setSelectedPathway(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            backgroundColor: '#2a2a2e',
-                            border: '1px solid #444',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            fontSize: '1rem',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        {characterPathways.map((pathName) => {
-                            const isPrimary = character.pathways?.primary === pathName;
-                            return (
-                                <option key={pathName} value={pathName}>
-                                    {isPrimary ? '★ ' : ''}{pathName}{isPrimary ? ' (Principal)' : ''}
-                                </option>
-                            );
-                        })}
-                    </select>
-                </div>
-            )}
-
-            {/* Filtros de Seções */}
-            <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
-                {filters.filter(f => f.condition).map(f => (
-                    <button
-                        key={f.key}
-                        className={`filter-btn ${activeFilter === f.key ? 'active' : ''}`}
-                        onClick={() => handleFilterClick(f.key)}
-                    >
-                        {f.label}
-                    </button>
-                ))}
-            </div>
-
-            {arcaneMasteryActive && (
-                <div style={{
-                    marginBottom: '1rem',
-                    padding: '0.75rem 1rem',
-                    background: '#132a13',
-                    border: '1px solid #1f3b1f',
-                    borderRadius: 8,
-                    color: '#c9f7c9',
-                    fontSize: '0.95rem'
-                }}>
-                    Maestria Arcana ativa: custos de PE das suas habilidades são reduzidos pela metade (arredondado para cima).
-                </div>
-            )}
+        <div className={`pathway-details-section ${isPrimary ? 'primary' : 'secondary'}`} style={{
+            marginBottom: '2rem',
+            padding: '1.5rem',
+            backgroundColor: isPrimary ? 'rgba(169, 120, 248, 0.08)' : '#1a1a1c',
+            border: `2px solid ${isPrimary ? 'var(--character-color)' : '#333'}`,
+            borderRadius: '8px'
+        }}>
+            <h3 style={{ 
+                margin: '0 0 1rem 0', 
+                color: isPrimary ? 'var(--character-color)' : '#aaa',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '1.1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+            }}>
+                {isPrimary && <span style={{ fontSize: '1.3rem' }}>★</span>}
+                {pathwayName}
+                {isPrimary && <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>(Principal)</span>}
+            </h3>
 
             {/* Mecânicas Específicas do Caminho */}
-            {currentPathwayData?.pathway === 'CAMINHO DO ACORRENTADO' && (
-                <div className="pathway-mechanic-section">
-                    <h3 className="section-title">A Prisão da Carne</h3>
+            {pathwayData?.pathway === 'CAMINHO DO ACORRENTADO' && (
+                <div className="pathway-mechanic-section" style={{ marginBottom: '1.5rem' }}>
+                    <h4 className="section-title">A Prisão da Carne</h4>
                     <div className="form-group">
                         <label>Maldição Atual:</label>
                         <textarea
@@ -294,16 +187,15 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                 </div>
             )}
 
-            {currentPathwayData?.pathway === 'CAMINHO DO ABISMO' && (
-                <div className="pathway-mechanic-section">
-                    <h3 className="section-title">Aspectos Infernais</h3>
-                     <div className="mechanic-widget">
+            {pathwayData?.pathway === 'CAMINHO DO ABISMO' && (
+                <div className="pathway-mechanic-section" style={{ marginBottom: '1.5rem' }}>
+                    <h4 className="section-title">Aspectos Infernais</h4>
+                    <div className="mechanic-widget">
                         <label>Aspectos Libertos: {liberatedCount}</label>
                     </div>
                     <div className="mechanic-info" style={{textAlign: 'left', marginTop: 0, marginBottom: '1rem'}}>
                         Cada Aspecto Liberto aumenta em 1 a dificuldade para resistir a impulsos pecaminosos.
                     </div>
-
                     <div className="aspect-list">
                         {(character.infernalAspects || []).map(aspect => (
                             <div key={aspect.id} className="aspect-item">
@@ -322,12 +214,11 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                             </div>
                         ))}
                     </div>
-
                     {isAddingAspect ? (
                         <div className="add-aspect-form">
                             <select value={selectedNewAspectName} onChange={e => setSelectedNewAspectName(e.target.value)}>
                                 <option value="">Selecione um Aspecto</option>
-                                {availableNewAspects.map((asp: any) => (
+                                {availableNewAspects.map(asp => (
                                     <option key={asp.nome} value={asp.nome}>{asp.nome}</option>
                                 ))}
                             </select>
@@ -346,8 +237,8 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
 
             {/* Domínio */}
             {domain && (
-                <div ref={refs.domain} className={`accordion-section ${openMainSection === 'domain' ? 'active' : ''}`}>
-                    <div className="accordion-header" onClick={() => toggleMainSection('domain')}>
+                <div className={`accordion-section ${openSection === 'domain' ? 'active' : ''}`}>
+                    <div className="accordion-header" onClick={() => toggleSection('domain')}>
                         <h4>Domínio</h4>
                         <span className="accordion-icon"></span>
                     </div>
@@ -372,30 +263,21 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
 
             {/* Mecânica Única */}
             {mecanicaUnica && (
-                <div ref={refs.mecanica} className={`accordion-section ${openMainSection === 'mecanica' ? 'active' : ''}`}>
-                    <div className="accordion-header" onClick={() => toggleMainSection('mecanica')}>
-                        <h4>{mecanicaUnica.titulo}</h4>
+                <div className={`accordion-section ${openSection === 'mecanica' ? 'active' : ''}`}>
+                    <div className="accordion-header" onClick={() => toggleSection('mecanica')}>
+                        <h4>{mecanicaUnica.nome}</h4>
                         <span className="accordion-icon"></span>
                     </div>
                     <div className="accordion-content">
-                        <div className="tab-list">
-                            {mecanicaUnica.items.map((item, idx) => (
-                                <div key={idx} className="tab-list-item">
-                                    <div className="item-header">
-                                        <h5 className="item-header-title">{item.nome}</h5>
-                                    </div>
-                                    <p className="item-description">{item.desc}</p>
-                                </div>
-                            ))}
-                        </div>
+                        <p className="item-description">{mecanicaUnica.descricao}</p>
                     </div>
                 </div>
             )}
 
             {/* Poderes Inatos */}
             {poderesInatos.length > 0 && (
-                <div ref={refs.inatos} className={`accordion-section ${openMainSection === 'inatos' ? 'active' : ''}`}>
-                    <div className="accordion-header" onClick={() => toggleMainSection('inatos')}>
+                <div className={`accordion-section ${openSection === 'inatos' ? 'active' : ''}`}>
+                    <div className="accordion-header" onClick={() => toggleSection('inatos')}>
                         <h4>Poderes Inatos</h4>
                         <span className="accordion-icon"></span>
                     </div>
@@ -417,8 +299,8 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
 
             {/* Forma Mítica */}
             {formaMitica && sequence <= 4 && (
-                 <div ref={refs.mitica} className={`accordion-section ${openMainSection === 'mitica' ? 'active' : ''}`}>
-                    <div className="accordion-header" onClick={() => toggleMainSection('mitica')}>
+                <div className={`accordion-section ${openSection === 'mitica' ? 'active' : ''}`}>
+                    <div className="accordion-header" onClick={() => toggleSection('mitica')}>
                         <h4>Forma Mítica: {formaMitica.nome}</h4>
                         <span className="accordion-icon"></span>
                     </div>
@@ -433,35 +315,37 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                         <div className="domain-particle-item">
                             <h5>Bônus</h5> <p>{formaMitica.bonus}</p>
                         </div>
-                         <div className="domain-particle-item">
+                        <div className="domain-particle-item">
                             <h5>Poderes</h5>
                             {formaMitica.poderes.map(poder => (
-                                <p key={poder.nome} style={{marginTop: '0.5rem'}}><strong>{poder.tipo} ({poder.nome}):</strong> {poder.desc}</p>
+                                <p key={poder.nome} style={{marginTop: '0.5rem'}}>
+                                    <strong>{poder.tipo} ({poder.nome}):</strong> {poder.desc}
+                                </p>
                             ))}
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Habilidades Adquiridas */}
-            <div ref={refs.adquiridas} className={`accordion-section ${openMainSection === 'adquiridas' ? 'active' : ''}`}>
-                <div className="accordion-header" onClick={() => toggleMainSection('adquiridas')}>
-                    <h4>Habilidades Adquiridas</h4>
+            {/* Habilidades Compráveis */}
+            <div className={`accordion-section ${openSection === 'adquiridas' ? 'active' : ''}`}>
+                <div className="accordion-header" onClick={() => toggleSection('adquiridas')}>
+                    <h4>Habilidades Adquiridas ({pathwayAbilities.length})</h4>
                     <span className="accordion-icon"></span>
                 </div>
                 <div className="accordion-content">
-                    {/* Botão para comprar habilidades do caminho selecionado */}
-                    {onOpenImprovementModal && selectedPathway && (
+                    {/* Botão para comprar novas habilidades */}
+                    {onOpenImprovementModal && (
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onOpenImprovementModal(selectedPathway);
+                                onOpenImprovementModal(pathwayName);
                             }}
                             style={{
                                 width: '100%',
                                 padding: '0.75rem',
                                 marginBottom: '1rem',
-                                backgroundColor: 'var(--character-color)',
+                                backgroundColor: isPrimary ? 'var(--character-color)' : '#4a4a4e',
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: '6px',
@@ -470,13 +354,13 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                                 fontWeight: '500',
                                 transition: 'all 0.2s'
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.8')}
-                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                         >
-                            + Comprar Habilidades de {selectedPathway}
+                            + Comprar Habilidades Deste Caminho
                         </button>
                     )}
-
+                    
                     {Object.keys(groupedAbilities).length > 0 ? (
                         sequenceOrder.map(seqName => {
                             const abilityList = groupedAbilities[seqName];
@@ -497,21 +381,6 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                                                         <button onClick={() => handleDeleteAbility(ability.id)}>&times;</button>
                                                     </div>
                                                     <p className="item-description">{ability.description}</p>
-                                                    {arcaneMasteryActive && (() => {
-                                                        const base = extractPeCost(ability.description);
-                                                        if (!base) return null;
-                                                        const eff = Math.ceil(base / 2);
-                                                        if (eff === base) return null;
-                                                        return (
-                                                            <div style={{
-                                                                marginTop: '0.25rem',
-                                                                fontSize: '0.9rem',
-                                                                color: '#bde0fe'
-                                                            }}>
-                                                                Custo efetivo com Maestria Arcana: {eff} PE (antes: {base} PE)
-                                                            </div>
-                                                        );
-                                                    })()}
                                                 </div>
                                             ))}
                                         </div>
@@ -520,10 +389,87 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                             );
                         })
                     ) : (
-                        <p className="empty-state-text">Nenhuma habilidade comprada ainda. Clique no botão acima para comprar habilidades deste caminho.</p>
+                        <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhuma habilidade adquirida deste caminho ainda.</p>
                     )}
                 </div>
             </div>
+        </div>
+    );
+};
+
+// Componente principal BeyonderTab
+export const BeyonderTab: React.FC<BeyonderTabProps> = ({ 
+    abilities = [], 
+    onAbilitiesChange, 
+    pathwayData, // Deprecated, mantido para compatibilidade
+    allPathways,
+    sequence, 
+    character, 
+    onCharacterChange,
+    onOpenImprovementModal
+}) => {
+    // Se não tem o novo formato de pathways, mostra o caminho antigo
+    if (!character.pathways || !character.pathways.primary) {
+        // Fallback para formato antigo
+        if (!pathwayData) {
+            return <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+                Nenhum caminho selecionado
+            </div>;
+        }
+        
+        return (
+            <PathwayDetails
+                pathwayName={pathwayData.pathway}
+                pathwayData={pathwayData}
+                isPrimary={true}
+                sequence={sequence}
+                character={character}
+                onCharacterChange={onCharacterChange}
+                abilities={abilities}
+                onAbilitiesChange={onAbilitiesChange}
+                onOpenImprovementModal={onOpenImprovementModal}
+            />
+        );
+    }
+
+    const primaryPathwayName = character.pathways.primary;
+    const secondaryPathwayNames = character.pathways.secondary || [];
+
+    return (
+        <div className="beyonder-tab">
+            {/* Renderiza o caminho principal */}
+            {primaryPathwayName && allPathways[primaryPathwayName] && (
+                <PathwayDetails 
+                    pathwayName={primaryPathwayName}
+                    pathwayData={allPathways[primaryPathwayName]}
+                    isPrimary={true}
+                    sequence={sequence}
+                    character={character}
+                    onCharacterChange={onCharacterChange}
+                    abilities={abilities}
+                    onAbilitiesChange={onAbilitiesChange}
+                    onOpenImprovementModal={onOpenImprovementModal}
+                />
+            )}
+            
+            {/* Renderiza os caminhos secundários */}
+            {secondaryPathwayNames.map(pathName => {
+                if (!allPathways[pathName]) return null;
+                return (
+                    <PathwayDetails 
+                        key={pathName}
+                        pathwayName={pathName}
+                        pathwayData={allPathways[pathName]}
+                        isPrimary={false}
+                        sequence={sequence}
+                        character={character}
+                        onCharacterChange={onCharacterChange}
+                        abilities={abilities}
+                        onAbilitiesChange={onAbilitiesChange}
+                        onOpenImprovementModal={onOpenImprovementModal}
+                    />
+                );
+            })}
         </div>
     );
 };

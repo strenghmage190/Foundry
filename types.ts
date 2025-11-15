@@ -46,7 +46,11 @@ export interface InfernalAspect {
 
 export interface Character {
   name: string;
-  pathway: string;
+  pathway?: string | string[]; // DEPRECATED: mantido para compatibilidade com dados antigos
+  pathways?: {
+    primary: string; // Caminho principal
+    secondary: string[]; // Caminhos secundários
+  };
   sequence: number;
   player: string;
   avatarUrl: string;

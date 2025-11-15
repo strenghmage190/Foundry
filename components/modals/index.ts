@@ -4,6 +4,7 @@ export { AddProtectionModal } from './AddBeyonderAbilityModal';
 export { default as CoverImageModal } from './CoverImageModal';
 export { CreateCampaignModal } from './CreateCampaignModal';
 export { CreateMagicAttackModal } from './CreateMagicAttackModal';
+export { CreatePathwayModal } from './CreatePathwayModal';
 export { CustomizationModal } from './CustomizationModal';
 export { DiceRollerModal } from './DiceRollerModal';
 export { default as EditCampaignModal } from './EditCampaignModal';

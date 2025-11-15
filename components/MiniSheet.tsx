@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AgentData, Character } from '../types';
+import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import { supabase } from '../supabaseClient';
 
 interface MiniSheetProps {
@@ -29,10 +30,9 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
   }, [avatarPath]);
 
   // Cálculos derivados
-  const defesa = (attributes.raciocinio || 0) + (agentData.habilidades?.gerais?.find(h => h.name === 'Esquiva')?.points || 0);
-  const bonusArmadura = protections?.find(p => p.isEquipped)?.armorBonus || 0;
-  const absorcao = (attributes.vigor || 0) + bonusArmadura;
-  const iniciativa = (attributes.percepcao || 0) + (agentData.habilidades?.gerais?.find(h => h.name === 'Prontidão')?.points || 0);
+  const defesa = getDefense(agentData);
+  const absorcao = getAbsorptionPool(agentData);
+  const iniciativa = getInitiativePool(agentData);
 
   // Função para obter a Fraqueza Fundamental baseada no caminho
   const getFraquezaFundamental = (pathway: string): string => {
@@ -121,7 +121,14 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
         </div>
         <div className="msc-info">
           <h4>{character.name || 'Sem Nome'}</h4>
-          <span>{character.pathway || 'Sem Caminho'} | Seq. {character.sequence}</span>
+          <span>
+            {(() => {
+              if (character.pathways?.primary) return character.pathways.primary;
+              if (Array.isArray(character.pathway)) return character.pathway[0] || 'Sem Caminho';
+              return character.pathway || 'Sem Caminho';
+            })()}
+            {' | Seq. '}{character.sequence}
+          </span>
         </div>
       </div>
 
@@ -141,11 +148,17 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
       <div className="msc-status-section">
         <div className="status-item">
           <span className="label">Fraqueza Fundamental</span>
-          <span className="value">{getFraquezaFundamental(character.pathway)}</span>
+          <span className="value">{getFraquezaFundamental(
+            character.pathways?.primary || 
+            (Array.isArray(character.pathway) ? character.pathway[0] : character.pathway)
+          )}</span>
         </div>
         <div className="status-item">
           <span className="label">Resistências</span>
-          <span className="value">{getResistencias(character.pathway)}</span>
+          <span className="value">{getResistencias(
+            character.pathways?.primary || 
+            (Array.isArray(character.pathway) ? character.pathway[0] : character.pathway)
+          )}</span>
         </div>
         {character.currentCurse && (
           <div className="status-item">

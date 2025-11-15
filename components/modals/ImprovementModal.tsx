@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AgentData, Attributes, BeyonderAbility, Antecedente, SequenceAbility, ToastData, Habilidade } from '../../types';
 import { caminhosData } from '../../data/beyonders-data';
-import { paRequirementsBySequence, initialAgentData } from '../../constants';
+import { initialAgentData } from '../../constants';
+import { getPaRequirement, getSanityLossOnAdvance } from '../../utils/calculations';
 
 interface ImprovementModalProps {
     isOpen: boolean;
@@ -9,6 +10,8 @@ interface ImprovementModalProps {
     agent: AgentData;
     onUpdateAgent: (updatedAgent: AgentData) => void;
     addLiveToast: (toast: Omit<ToastData, 'id'>) => void;
+    pathwayToImprove?: string | null; // Caminho específico para comprar habilidades
+    allPathwaysData?: { [key: string]: any }; // Todos os caminhos disponíveis
 }
 
 type ImprovementTab = 'Atributos' | 'Perícias' | 'Habilidades' | 'Antecedentes' | 'Digestão & Avanço';
@@ -24,7 +27,15 @@ const ANTECEDENTE_COST = 3;
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onClose, agent, onUpdateAgent, addLiveToast }) => {
+export const ImprovementModal: React.FC<ImprovementModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    agent, 
+    onUpdateAgent, 
+    addLiveToast,
+    pathwayToImprove,
+    allPathwaysData
+}) => {
     const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent || initialAgentData)));
     const [paSpent, setPaSpent] = useState(0);
     const [activeTab, setActiveTab] = useState<ImprovementTab>('Atributos');
@@ -38,14 +49,51 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
     const isEligibleForFreebie = !(safeCharacter.claimedFreeAbilitiesForSequences?.includes(safeCharacter.sequence));
     
     // Updated Digestion Logic
-    const targetPa = paRequirementsBySequence[sequence] || 999;
+    const targetPa = getPaRequirement(sequence);
     const digestaoProgressoAtual = (paTotalGasto || 0) + (paDisponivel || 0);
     const canAdvance = digestaoProgressoAtual >= targetPa;
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
     
     const hasChanges = paSpent > 0;
 
-    const pathwayData = useMemo(() => safeCharacter.pathway ? caminhosData[safeCharacter.pathway] : undefined, [safeCharacter.pathway]);
+    // Caminhos ativos do personagem (novo e legado)
+    const characterPathways = useMemo(() => {
+        if (safeCharacter.pathways?.primary) {
+            return [safeCharacter.pathways.primary, ...(safeCharacter.pathways.secondary || [])];
+        }
+        if (safeCharacter.pathway) {
+            return Array.isArray(safeCharacter.pathway) ? safeCharacter.pathway : [safeCharacter.pathway];
+        }
+        return [] as string[];
+    }, [safeCharacter.pathways, safeCharacter.pathway]);
+
+    const primaryPathwayName = useMemo(() => {
+        if (safeCharacter.pathways?.primary) return safeCharacter.pathways.primary;
+        if (safeCharacter.pathway) return Array.isArray(safeCharacter.pathway) ? safeCharacter.pathway[0] : safeCharacter.pathway;
+        return null as string | null;
+    }, [safeCharacter.pathways, safeCharacter.pathway]);
+
+    // Caminho ativo dentro do modal: prioriza pathwayToImprove
+    const [activePathway, setActivePathway] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        if (isEligibleForFreebie && primaryPathwayName) {
+            // Durante a escolha gratuita, force o caminho principal
+            setActivePathway(primaryPathwayName);
+        } else if (pathwayToImprove) {
+            setActivePathway(pathwayToImprove);
+        } else if (characterPathways.length > 0) {
+            setActivePathway(characterPathways[0]);
+        } else {
+            setActivePathway(null);
+        }
+    }, [isOpen, pathwayToImprove, characterPathways, isEligibleForFreebie, primaryPathwayName]);
+
+    const dataSource = allPathwaysData || caminhosData;
+    const pathwayData = useMemo(() => {
+        return activePathway ? dataSource[activePathway] : undefined;
+    }, [activePathway, dataSource]);
 
     useEffect(() => {
         if (isOpen) {
@@ -65,9 +113,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
         const currentSeq = agent.character.sequence;
         if (currentSeq <= 1) return;
 
-        let sanityLoss = 1;
-        if (currentSeq === 9) sanityLoss = 0; 
-        if (currentSeq === 3 || currentSeq === 2) sanityLoss = 2; 
+        const sanityLoss = getSanityLossOnAdvance(currentSeq);
 
         const newMaxSanity = agent.character.maxSanity - sanityLoss;
         
@@ -166,7 +212,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
         if (!trimmedName || availablePA < ANTECEDENTE_COST) return;
 
         setPaSpent(prev => prev + ANTECEDENTE_COST);
-        const newAntecedente: Antecedente = { id: Date.now(), name: trimmedName, description: '', points: 1 };
+        const newAntecedente: Antecedente = { id: String(Date.now()), name: trimmedName, description: '', points: 1 };
         setCurrentAgent(prev => ({ ...prev, antecedentes: [...prev.antecedentes, newAntecedente] }));
         
         setIsAddingAntecedente(false);
@@ -204,15 +250,18 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
     }, [pathwayData, currentAgent.character.sequence, currentAgent.habilidadesBeyonder]);
 
     const availableAbilitiesForFreeChoice = useMemo(() => {
-        if (!pathwayData) return [];
+        const sourcePathName = primaryPathwayName;
+        if (!sourcePathName) return [];
+        const sourcePath = dataSource[sourcePathName];
+        if (!sourcePath) return [];
         const ownedAbilityNames = new Set(safeHabilidadesBeyonder.map(a => a.name));
-        const seqNameKey = Object.keys(pathwayData.sequences).find(key => key.includes(`Sequência ${safeCharacter.sequence}:`));
+        const seqNameKey = Object.keys(sourcePath.sequences).find(key => key.includes(`Sequência ${safeCharacter.sequence}:`));
         if (!seqNameKey) return [];
-        
-        return (pathwayData.sequences[seqNameKey as keyof typeof pathwayData.sequences] as SequenceAbility[])
+
+        return (sourcePath.sequences[seqNameKey as keyof typeof sourcePath.sequences] as SequenceAbility[])
             .filter(ability => !ownedAbilityNames.has(ability.name))
             .map(ability => ({ name: ability.name, desc: ability.desc, seqName: seqNameKey }));
-    }, [pathwayData, safeCharacter.sequence, safeHabilidadesBeyonder]);
+    }, [primaryPathwayName, dataSource, safeCharacter.sequence, safeHabilidadesBeyonder]);
 
 
     if (!isOpen) return null;
@@ -221,7 +270,43 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({ isOpen, onCl
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content large" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3 className="title-font">Evolução do Agente</h3>
+                    <div style={{ flex: 1 }}>
+                        <h3 className="title-font">Evolução do Agente</h3>
+                        {/* Seletor de Caminho dentro do modal */}
+                        {characterPathways.length > 1 ? (
+                            <div style={{ marginTop: '0.25rem' }}>
+                                <label style={{ fontSize: '0.85rem', color: '#aaa', marginRight: '0.5rem' }}>Caminho:</label>
+                                <select
+                                    value={activePathway || ''}
+                                    onChange={(e) => setActivePathway(e.target.value)}
+                                    disabled={isEligibleForFreebie}
+                                    style={{
+                                        backgroundColor: '#1a1a1c',
+                                        border: '1px solid #444',
+                                        color: '#fff',
+                                        borderRadius: 6,
+                                        padding: '0.35rem 0.5rem',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    {characterPathways.map(p => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
+                                {isEligibleForFreebie && (
+                                    <p style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#aaa' }}>
+                                        Escolha gratuita apenas do caminho principal.
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            activePathway && (
+                                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#aaa' }}>
+                                    Caminho: <strong style={{ color: 'var(--character-color)' }}>{activePathway}</strong>
+                                </p>
+                            )
+                        )}
+                    </div>
                     <div className="pa-display-modal">
                         PA Disponível: {availablePA} / {agent.character.paDisponivel}
                     </div>

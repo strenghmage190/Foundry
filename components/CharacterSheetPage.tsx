@@ -20,6 +20,7 @@ import { supabase } from "../supabaseClient";
 import { uploadAgentAvatar } from "../api/agents";
 import { logDiceRoll } from "../api/campaigns";
 import { useDebounce } from "../src/hooks/useDebounce";
+import { usePermissions } from "../src/hooks/usePermissions";
 import { useMyContext } from "../MyContext";
 
 // Imports de Componentes
@@ -34,6 +35,7 @@ import { NotesTab } from "./tabs/NotesTab.tsx";
 import { AntecedentesTab } from "./tabs/AntecedentesTab.tsx";
 import { MagicGrimoireModal } from './modals/MagicGrimoireModal';
 import { ImprovementModal } from './modals/ImprovementModal';
+import { CreatePathwayModal } from './modals/CreatePathwayModal';
 import { CreateMagicAttackModal } from './modals/CreateMagicAttackModal';
 import { AddWeaponModal } from './modals/AddAttackModal';
 import { AddProtectionModal } from './modals/AddBeyonderAbilityModal';
@@ -55,8 +57,100 @@ import { NotificationLog } from "./ToastContainer.tsx";
 import { ControlTestTracker } from "./ControlTestTracker.tsx";
 import { AnchorsTracker } from "./AnchorsTracker.tsx";
 import { PaTracker } from "./PaTracker.tsx";
+import { computeDerivedFromPrimary, getMaxLuckPointsBySequence } from "../utils/calculations";
 
 type RollType = "skill" | "absorption";
+
+// --- PathwayManager Component ---
+interface PathwayManagerProps {
+  agent: AgentData;
+  permissions: { max_pathways: number; can_create_pathways: boolean };
+  allPathways: { [key: string]: PathwayData };
+  onUpdate: (updatedAgent: Partial<AgentData>) => void;
+  onPathwayToggle: (pathName: string) => void;
+  onSetAsPrimary: (pathName: string) => void;
+}
+
+const PathwayManager: React.FC<PathwayManagerProps> = ({ 
+  agent, 
+  permissions, 
+  allPathways, 
+  onUpdate,
+  onPathwayToggle,
+  onSetAsPrimary
+}) => {
+  const { pathways } = agent.character;
+  const primaryPathway = pathways?.primary;
+
+  const removePathway = (pathName: string) => {
+    if (pathName === primaryPathway) {
+      alert('Não é possível remover o caminho principal. Mude o primário primeiro.');
+      return;
+    }
+    onPathwayToggle(pathName);
+  };
+
+  const addPathway = (pathName: string) => {
+    if (!pathName) return;
+    onPathwayToggle(pathName);
+  };
+  
+  // Lista de caminhos disponíveis para adicionar
+  const availablePathways = Object.keys(allPathways).filter(
+    p => p !== primaryPathway && !pathways?.secondary?.includes(p)
+  );
+  
+  const currentCount = (pathways?.secondary?.length || 0) + (pathways?.primary ? 1 : 0);
+  const hasSpace = currentCount < permissions.max_pathways;
+
+  // --- Renderização Principal ---
+  return (
+    <div className="pathway-manager">
+      <h4>Caminhos Beyonder</h4>
+
+      {/* Interface Padrão (para usuários normais) */}
+      {!primaryPathway && <p>Nenhum caminho selecionado.</p>}
+      
+      {primaryPathway && permissions.max_pathways <= 1 && (
+        <div className="pathway-tag primary single">
+          <span className="path-name">{primaryPathway}</span>
+        </div>
+      )}
+      
+      {/* Interface Avançada (para usuários com permissão) */}
+      {primaryPathway && permissions.max_pathways > 1 && (
+        <div className="pathway-list-advanced">
+          {/* Exibe o caminho primário */}
+          <div className="pathway-tag primary">
+            <span className="star-icon">★</span>
+            <span className="path-name">{primaryPathway}</span>
+          </div>
+
+          {/* Exibe os caminhos secundários */}
+          {(pathways?.secondary || []).map(pathName => (
+            <div key={pathName} className="pathway-tag secondary">
+              <span className="path-name">{pathName}</span>
+              <div className="tag-actions">
+                <button onClick={() => onSetAsPrimary(pathName)} title="Tornar Primário">Primário</button>
+                <button onClick={() => removePathway(pathName)} className="remove-btn">×</button>
+              </div>
+            </div>
+          ))}
+
+          {/* Formulário para adicionar mais caminhos (se houver espaço) */}
+          {hasSpace && (
+            <div className="add-pathway-form">
+              <select onChange={(e) => addPathway(e.target.value)} value="">
+                <option value="">+ Adicionar Caminho</option>
+                {availablePathways.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // --- Sub-componente para o Popover de Rolagem ---
 interface RollPopoverProps {
@@ -257,10 +351,12 @@ const normalizeAttributeName = (name: string): string => {
 export const CharacterSheetPage = () => {
   const { addLiveToast, addLogEntry, logHistory, onRemoveLogEntry } =
     useMyContext();
+  const { permissions, loading: permissionsLoading } = usePermissions();
   // =======================================================
   // 1. FONTE DA VERDADE E ESTADO PRINCIPAL
   // =======================================================
   const { agentId, campaignId } = useParams<{ agentId: string; campaignId?: string }>();
+  const [allPathways, setAllPathways] = useState<typeof caminhosData>(caminhosData);
   console.log("CharacterSheetPage carregada. AgentID:", agentId, "| CampaignID:", campaignId);
   const navigate = useNavigate();
 
@@ -348,6 +444,31 @@ export const CharacterSheetPage = () => {
 
     generateSignedUrls();
   }, [agent]);
+
+  // =======================================================
+  // 2.6. BUSCAR CAMINHOS CUSTOMIZADOS
+  // =======================================================
+  useEffect(() => {
+    async function fetchCustomPathways() {
+      try {
+        const { data, error } = await supabase.from('custom_pathways').select('*');
+        if (error) {
+          console.error('Erro ao buscar caminhos customizados:', error);
+          return;
+        }
+        if (data && data.length > 0) {
+          const customData = data.reduce((acc: any, path: any) => {
+            acc[path.name] = path.pathway_data;
+            return acc;
+          }, {});
+          setAllPathways(prev => ({ ...prev, ...customData }));
+        }
+      } catch (error) {
+        console.error('Erro ao buscar caminhos customizados:', error);
+      }
+    }
+    fetchCustomPathways();
+  }, []);
 
   // =======================================================
   // 3. FUNÇÃO DE ATUALIZAÇÃO CENTRALIZADA
@@ -444,8 +565,10 @@ export const CharacterSheetPage = () => {
     | "createMagicAttack"
     | "customization"
     | "diceRoller"
-    | "mythicalForm";
+    | "mythicalForm"
+    | "createPathway";
   const [activeModal, setActiveModal] = useState<ModalType | null>(null);
+  const [improvingPathway, setImprovingPathway] = useState<string | null>(null);
 
   // Estado relacionado à Forma Mítica
   const [isMythicalFormActive, setIsMythicalFormActive] = useState(false);
@@ -471,10 +594,20 @@ export const CharacterSheetPage = () => {
     meta?: any;
   } | null>(null);
 
-  const pathwayData = useMemo(
-    () => (agent ? caminhosData[agent.character.pathway] : null),
-    [agent]
-  );
+  const pathwayData = useMemo(() => {
+    if (!agent) return null;
+    // Suporte para novo formato (pathways) e antigo (pathway)
+    let pathwayKey: string | undefined;
+    if (agent.character.pathways?.primary) {
+      pathwayKey = agent.character.pathways.primary;
+    } else if (agent.character.pathway) {
+      // Fallback para formato antigo
+      pathwayKey = Array.isArray(agent.character.pathway) 
+        ? agent.character.pathway[0] 
+        : agent.character.pathway;
+    }
+    return pathwayKey ? allPathways[pathwayKey] : null;
+  }, [agent, allPathways]);
 
   const formToActivate = useMemo(() => {
     if (!pathwayData?.mythicalForm || !agent) return null;
@@ -489,50 +622,39 @@ export const CharacterSheetPage = () => {
   const derivedStats = useMemo(() => {
     if (!agent) return null;
 
-    const pathwayData = caminhosData[agent.character.pathway];
+    // Suporte para novo formato (pathways) e antigo (pathway)
+    let pathwayKey: string | undefined;
+    if (agent.character.pathways?.primary) {
+      pathwayKey = agent.character.pathways.primary;
+    } else if (agent.character.pathway) {
+      pathwayKey = Array.isArray(agent.character.pathway) 
+        ? agent.character.pathway[0] 
+        : agent.character.pathway;
+    }
+    const pathwayData = pathwayKey ? allPathways[pathwayKey] : null;
     if (!pathwayData) return null;
 
-    const { attributes, character, protections } = agent;
-    const { sequence } = character;
-    const { vigor, espiritualidade, raciocinio, autocontrole } = attributes;
-
-    const levelsAdvanced = Math.max(0, 9 - sequence);
-    const maxVitality =
-      (pathwayData.pvBase || 0) +
-      vigor * 3 +
-      levelsAdvanced * (pathwayData.pvPorAvanço || 0) +
-      (character.tempHpBonus || 0);
-    const maxSpirituality =
-      (pathwayData.peBase || 0) +
-      espiritualidade * 5 +
-      levelsAdvanced * (pathwayData.pePorAvanço || 0);
-    const maxWillpower =
-      (raciocinio || 0) + (autocontrole || 0) + (pathwayData.vontadeBonus || 0);
-
-    const equippedProtection = protections?.find((p) => p.isEquipped);
-    const absorption = vigor + (equippedProtection?.armorBonus || 0);
-
-    const calculateMaxLuckPoints = (seq: number): number => {
-      if (seq <= 1) return 5;
-      if (seq <= 3) return 4;
-      if (seq <= 5) return 3;
-      if (seq <= 7) return 2;
-      if (seq <= 9) return 1;
-      return 0;
-    };
-    const maxLuckPoints =
-      character.pathway === "CAMINHO DA RODA DA FORTUNA"
-        ? calculateMaxLuckPoints(sequence)
-        : 0;
+    const { sequence } = agent.character;
+    const base = computeDerivedFromPrimary(agent, pathwayData);
+    // Verifica se tem CAMINHO DA RODA DA FORTUNA (suporta ambos formatos)
+    let characterPathways: string[] = [];
+    if (agent.character.pathways) {
+      characterPathways = [agent.character.pathways.primary, ...agent.character.pathways.secondary].filter(Boolean);
+    } else if (agent.character.pathway) {
+      characterPathways = Array.isArray(agent.character.pathway) ? agent.character.pathway : [agent.character.pathway];
+    }
+    const hasFortuneWheel = characterPathways.includes("CAMINHO DA RODA DA FORTUNA");
+    const maxLuckPoints = hasFortuneWheel ? getMaxLuckPointsBySequence(sequence) : 0;
 
     return {
-      maxVitality,
-      maxSpirituality,
-      maxWillpower,
-      absorption,
+      maxVitality: base.maxVitality,
+      maxSpirituality: base.maxSpirituality,
+      maxWillpower: base.maxWillpower,
+      maxSanity: base.maxSanity,
+      absorption: base.absorption,
       maxLuckPoints,
     };
-  }, [agent]); // Este hook só recalcula quando 'agent' muda
+  }, [agent, allPathways]); // Este hook só recalcula quando 'agent' ou 'allPathways' muda
 
   // Agora, usamos os valores calculados diretamente no JSX
   const effectiveAgentData = useMemo(() => {
@@ -553,6 +675,11 @@ export const CharacterSheetPage = () => {
           agent.character.willpower,
           derivedStats.maxWillpower
         ),
+        sanity: Math.min(
+          agent.character.sanity,
+          derivedStats.maxSanity
+        ),
+        maxSanity: derivedStats.maxSanity,
         luckPoints: Math.min(
           agent.character.luckPoints || 0,
           derivedStats?.maxLuckPoints ?? (agent.character.maxLuckPoints || 0)
@@ -621,6 +748,94 @@ export const CharacterSheetPage = () => {
     handleUpdate({
       attributes: { ...effectiveAgentData.attributes, [attribute]: value },
     });
+  };
+
+  // Funções para gerenciar múltiplos caminhos (primário/secundários)
+  const handlePathwayToggle = (pathwayName: string) => {
+    const currentPathways = effectiveAgentData.character.pathways;
+    
+    // Se não existe estrutura de pathways, cria uma nova
+    if (!currentPathways || !currentPathways.primary) {
+      handleUpdate({ 
+        character: { 
+          ...effectiveAgentData.character, 
+          pathways: { primary: pathwayName, secondary: [] } 
+        } 
+      });
+      return;
+    }
+
+    const isPrimary = currentPathways.primary === pathwayName;
+    const isSecondary = currentPathways.secondary.includes(pathwayName);
+
+    if (isPrimary) {
+      // Não permite remover o primário diretamente
+      addLiveToast({
+        type: 'failure',
+        title: 'Ação Inválida',
+        message: 'Não é possível remover o caminho primário. Defina outro como primário primeiro.'
+      });
+      return;
+    }
+
+    if (isSecondary) {
+      // Remove o caminho secundário
+      const newSecondary = currentPathways.secondary.filter(p => p !== pathwayName);
+      handleUpdate({ 
+        character: { 
+          ...effectiveAgentData.character, 
+          pathways: { primary: currentPathways.primary, secondary: newSecondary } 
+        } 
+      });
+    } else {
+      // Adiciona novo caminho secundário (verifica limite)
+      const totalPathways = 1 + currentPathways.secondary.length; // primary + secondary
+      if (totalPathways >= permissions.max_pathways) {
+        addLiveToast({
+          type: 'failure',
+          title: 'Limite Atingido',
+          message: `Você só pode ter ${permissions.max_pathways} caminho(s).`
+        });
+        return;
+      }
+
+      const newSecondary = [...currentPathways.secondary, pathwayName];
+      handleUpdate({ 
+        character: { 
+          ...effectiveAgentData.character, 
+          pathways: { primary: currentPathways.primary, secondary: newSecondary } 
+        } 
+      });
+    }
+  };
+
+  const setAsPrimaryPathway = (pathwayName: string) => {
+    const currentPathways = effectiveAgentData.character.pathways;
+    if (!currentPathways || currentPathways.primary === pathwayName) return;
+
+    // Move o primário antigo para secundários e define o novo primário
+    const newSecondary = [
+      ...currentPathways.secondary.filter(p => p !== pathwayName),
+      currentPathways.primary
+    ];
+
+    handleUpdate({ 
+      character: { 
+        ...effectiveAgentData.character, 
+        pathways: { primary: pathwayName, secondary: newSecondary } 
+      } 
+    });
+
+    addLiveToast({
+      type: 'success',
+      title: 'Caminho Primário Alterado',
+      message: `${pathwayName} agora é seu caminho primário.`
+    });
+  };
+
+  const handleOpenImprovementModal = (pathwayName: string) => {
+    setImprovingPathway(pathwayName);
+    setActiveModal('improvement');
   };
 
   const toggleMythicalForm = () => {
@@ -1141,6 +1356,16 @@ export const CharacterSheetPage = () => {
           >
             Salvar
           </button>
+          {permissions.can_create_pathways && (
+            <button
+              onClick={() => setActiveModal("createPathway")}
+              className="customize-btn"
+              aria-label="Criar Novo Caminho"
+              title="Criar Novo Caminho"
+            >
+              <FlameIcon />
+            </button>
+          )}
           <button
             onClick={() => setActiveModal("customization")}
             className="customize-btn"
@@ -1179,20 +1404,14 @@ export const CharacterSheetPage = () => {
               />
             </div>
             <div className="pathway-and-color">
-              <select
-                className="pathway-select"
-                value={effectiveAgentData.character.pathway}
-                onChange={(e) =>
-                  handleCharacterFieldChange("pathway", e.target.value)
-                }
-              >
-                <option value="">Selecione um Caminho</option>
-                {Object.keys(caminhosData).map((path) => (
-                  <option key={path} value={path}>
-                    {path}
-                  </option>
-                ))}
-              </select>
+              <PathwayManager
+                agent={effectiveAgentData}
+                permissions={permissions}
+                allPathways={allPathways}
+                onUpdate={handleUpdate}
+                onPathwayToggle={handlePathwayToggle}
+                onSetAsPrimary={setAsPrimaryPathway}
+              />
             </div>
             <div className="char-info-sub">
               <input
@@ -1244,8 +1463,19 @@ export const CharacterSheetPage = () => {
               onValueChange={(v) => handleCharacterFieldChange("willpower", v)}
               color="#388E3C"
             />
-            {effectiveAgentData.character.pathway ===
-              "CAMINHO DA RODA DA FORTUNA" && (
+            {(() => {
+              const c = effectiveAgentData.character;
+              let hasWheel = false;
+              if (c.pathways?.primary) {
+                const list = [c.pathways.primary, ...(c.pathways.secondary || [])].filter(Boolean);
+                hasWheel = list.includes("CAMINHO DA RODA DA FORTUNA");
+              } else if (c.pathway) {
+                hasWheel = Array.isArray(c.pathway)
+                  ? c.pathway.includes("CAMINHO DA RODA DA FORTUNA")
+                  : c.pathway === "CAMINHO DA RODA DA FORTUNA";
+              }
+              return hasWheel;
+            })() && (
               <StatusBar
                 label="Pontos de Sorte"
                 value={effectiveAgentData.character.luckPoints || 0}
@@ -1369,9 +1599,11 @@ export const CharacterSheetPage = () => {
                     handleUpdate({ habilidadesBeyonder: v })
                   }
                   pathwayData={pathwayData}
+                  allPathways={allPathways}
                   sequence={effectiveAgentData.character.sequence}
                   character={effectiveAgentData.character}
                   onCharacterChange={handleCharacterFieldChange}
+                  onOpenImprovementModal={handleOpenImprovementModal}
                 />
               </div>
               <div
@@ -1594,10 +1826,15 @@ export const CharacterSheetPage = () => {
       {activeModal === "improvement" && (
         <ImprovementModal
           isOpen={true}
-          onClose={() => setActiveModal(null)}
+          onClose={() => {
+            setActiveModal(null);
+            setImprovingPathway(null);
+          }}
           agent={effectiveAgentData}
           onUpdateAgent={handleUpdate}
           addLiveToast={addLiveToast}
+          pathwayToImprove={improvingPathway}
+          allPathwaysData={allPathways}
         />
       )}
       {activeModal === "addWeapon" && (
@@ -1660,6 +1897,58 @@ export const CharacterSheetPage = () => {
           mythicalFormData={formToActivate}
           pathwayName={pathwayData?.formaMitica?.nome || "Forma Mítica"}
           sequence={effectiveAgentData.character.sequence}
+        />
+      )}
+      {activeModal === "createPathway" && (
+        <CreatePathwayModal
+          isOpen={true}
+          onClose={() => setActiveModal(null)}
+          onCreate={async (newPathwayData) => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) {
+                addLiveToast({
+                  type: 'failure',
+                  title: 'Erro',
+                  message: 'Você precisa estar logado para criar um caminho.'
+                });
+                return;
+              }
+
+              const { error } = await supabase.from('custom_pathways').insert({
+                created_by: user.id,
+                name: newPathwayData.pathway,
+                pathway_data: newPathwayData
+              });
+
+              if (error) {
+                console.error('Erro ao criar caminho:', error);
+                addLiveToast({
+                  type: 'failure',
+                  title: 'Erro',
+                  message: 'Falha ao criar o caminho personalizado.'
+                });
+              } else {
+                // Adiciona o novo caminho ao estado local
+                setAllPathways(prev => ({
+                  ...prev,
+                  [newPathwayData.pathway]: newPathwayData as any
+                }));
+                addLiveToast({
+                  type: 'success',
+                  title: 'Caminho Criado!',
+                  message: `${newPathwayData.pathway} foi criado com sucesso.`
+                });
+              }
+            } catch (error) {
+              console.error('Erro ao criar caminho:', error);
+              addLiveToast({
+                type: 'failure',
+                title: 'Erro',
+                message: 'Erro inesperado ao criar o caminho.'
+              });
+            }
+          }}
         />
       )}
     </div>
