@@ -128,12 +128,20 @@ export const AgentListPage: React.FC<AgentListPageProps> = ({ onAdd }) => {
             </div>
             {agents.length > 0 ? (
                 <div className="agent-grid">
-                    {agents.map((agent) => (
+                    {agents.map((agent) => {
+                        const primaryPath = (
+                            agent?.character?.pathways?.primary
+                            || (agent?.character?.pathways?.secondary && agent.character.pathways.secondary[0])
+                            || (Array.isArray(agent?.character?.pathway) ? agent.character.pathway[0] : agent?.character?.pathway)
+                            || (agent as any)?.pathways?.primary // fallback for legacy wrong nesting
+                        );
+                        const pathLabel = `${primaryPath || 'Caminho não definido'} - Sequência ${agent?.character?.sequence ?? '-'}`;
+                        return (
                         <CharacterCard
                             key={agent.id}
                             avatarUrl={agent?.character?.avatarUrl}
                             name={agent?.character?.name || '[Sem nome]'}
-                            path={`${agent?.character?.pathway || 'Caminho não definido'} - Sequência ${agent?.character?.sequence ?? '-'}`}
+                            path={pathLabel}
                             createdAt={agent.lastModified}
                             customization={agent.customization}
                             sanity={agent?.character?.sanity ?? 0}
@@ -144,7 +152,8 @@ export const AgentListPage: React.FC<AgentListPageProps> = ({ onAdd }) => {
                             onEdit={() => setDeletingAgentId(deletingAgentId === agent.id ? null : agent.id)}
                             onRemove={() => handleDeleteAgent(agent.id!)}
                         />
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <p>Nenhum agente encontrado. Clique em "+ Novo Agente" para começar.</p>

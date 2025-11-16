@@ -185,6 +185,8 @@ export interface LearnedParticle {
 export interface AgentData {
     id: number;
     lastModified: string;
+    // Optional privacy flag mirrored from DB column `agents.is_private`
+    isPrivate?: boolean;
     character: Character;
     attributes: Attributes;
     habilidades: Habilidades;
@@ -353,4 +355,12 @@ export interface Campaign {
     gm_id: string;
     invite_code?: string;
     cover_image_url?: string | null;
+}
+
+// Simple user profile persisted in `user_profiles`
+export interface UserProfile {
+    displayName: string;
+    pronouns: string;
+    useOpenDyslexicFont: boolean;
+    avatarPath: string | null;
 }

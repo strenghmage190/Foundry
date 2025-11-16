@@ -66,9 +66,11 @@ body {
 }
 
 .character-info {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  /* allow content to shrink correctly in tight layouts */
+  min-width: 0;
 }
 
 .character-name {
@@ -76,13 +78,23 @@ body {
 }
 
 .character-subtitle {
-    font-size: 0.8rem;
-    color: #aaa;
+  font-size: 0.8rem;
+  color: #aaa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .character-actions {
-    display: flex;
-    gap: 8px;
+  display: flex;
+  gap: 8px;
+  /* push actions to the right and prevent overlap with long text */
+  margin-left: auto;
+  flex-shrink: 0;
+  /* hide secondary actions by default and reveal on hover */
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .character-btn {
@@ -102,6 +114,43 @@ body {
     top: 8px;
     right: 8px;
     cursor: pointer;
+}
+
+/* Interactive card behavior: reveal actions on hover/focus */
+.character-card {
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.character-card:hover,
+.character-card:focus-within {
+  cursor: pointer;
+  background-color: #171717;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+}
+.character-card:hover .character-actions,
+.character-card:focus-within .character-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* make the secondary buttons visually subtle */
+.character-btn.gear {
+  background: transparent;
+  border: none;
+  color: #cfcfcf;
+  font-size: 1rem;
+}
+.character-btn.gear:hover { color: #fff; }
+.character-btn-remove {
+  background: transparent;
+  border: none;
+  color: #f66;
+  font-size: 1.05rem;
+}
+.character-btn-remove:hover { color: #ff8b8b; }
+
+/* On small screens show actions always (no hover) */
+@media (max-width: 640px) {
+  .character-actions { opacity: 1; transform: none; }
 }
 
 /* --- MasterScreen Styles --- */

@@ -36,9 +36,8 @@ const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkChar
   };
 
   const handleOpenCharacter = () => {
-    if (agentId) {
-      navigate(`/campaign/${campaign.id}/agent/${agentId}`);
-    }
+    // Como jogador: abrir a campanha na aba de Jogadores
+    navigate(`/campaign/${campaign.id}?tab=players`);
   };
 
   return (
@@ -58,7 +57,7 @@ const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkChar
         {isPlayer ? (
           agentId ? (
             <button className="button-primary" onClick={handleOpenCharacter}>
-              Abrir Ficha
+              Abrir Campanha
             </button>
           ) : (
             <button className="button-primary" onClick={() => onLinkCharacter && onLinkCharacter(campaign.id)}>

@@ -393,7 +393,7 @@ export const CharacterSheetPage = () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("agents")
-        .select("id, data")
+        .select("id, data, is_private")
         .eq("id", agentId)
         .single();
 
@@ -406,7 +406,7 @@ export const CharacterSheetPage = () => {
         });
         setAgent(null);
       } else {
-        const formattedAgent = { ...(data.data as AgentData), id: data.id };
+        const formattedAgent = { ...(data.data as AgentData), id: data.id, isPrivate: !!(data as any).is_private };
         setAgent(formattedAgent);
       }
       setIsLoading(false);
@@ -486,7 +486,7 @@ export const CharacterSheetPage = () => {
 
     const saveChanges = async () => {
       setSaveStatus("salvando");
-      const { id, ...dataToSave } = debouncedAgent; // Separa o ID do resto dos dados
+      const { id, isPrivate, ...dataToSave } = debouncedAgent; // Separa o ID e campos fora de data
       const { error } = await supabase
         .from("agents")
         .update({ data: dataToSave })
@@ -546,10 +546,27 @@ export const CharacterSheetPage = () => {
         return; // Encerra a função aqui para não prosseguir com a lógica de mesclagem
       }
 
-      // Lógica de mesclagem de dados normal (sem upload)
-      setAgent((prev) =>
-        prev ? { ...prev, ...(update as Partial<AgentData>) } : null
-      );
+      // Se a atualização inclui a privacidade, persista imediatamente no topo (coluna is_private)
+      if (update && typeof update === 'object' && 'isPrivate' in update) {
+        const newIsPrivate = (update as any).isPrivate === true;
+        try {
+          if (agent?.id) {
+            const { error } = await supabase
+              .from('agents')
+              .update({ is_private: newIsPrivate })
+              .eq('id', agent.id);
+            if (error) throw error;
+          }
+          setAgent(prev => prev ? { ...prev, isPrivate: newIsPrivate } as AgentData : prev);
+        } catch (e) {
+          addLiveToast({ type: 'failure', title: 'Erro', message: 'Não foi possível atualizar a privacidade.' });
+        }
+      } else {
+        // Lógica de mesclagem de dados normal (sem upload)
+        setAgent((prev) =>
+          prev ? { ...prev, ...(update as Partial<AgentData>) } : null
+        );
+      }
     },
     [agent, addLiveToast]
   );

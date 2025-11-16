@@ -4,11 +4,15 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AgentListPage } from './components/AgentListPage';
 import { CharacterSheetPage } from './components/CharacterSheetPage';
 import { Header } from './components/Header';
+import UserProfilePage from './components/UserProfilePage';
 import CampaignsListPage from './components/CampaignsListPage';
 import CampaignDashboardPage from './components/CampaignDashboardPage';
 import InvitePage from './components/InvitePage';
 import MasterScreenPage from './components/MasterScreenPage';
+import PlayerSettingsPage from './components/PlayerSettingsPage';
 import { initialAgentData } from './constants';
+import { getUserProfile } from './api/users';
+import { getSignedAvatarUrl } from './utils/avatarUtils';
 import { AgentData, ToastData } from './types';
 import { LiveToastContainer } from './components/LiveToastContainer';
 import { AuthPage } from './components/AuthPage';
@@ -24,6 +28,20 @@ const AppContent = () => {
     const { addLiveToast, addLogEntry, logHistory, onRemoveLogEntry, liveToasts, removeLiveToast } = useMyContext();
     const navigate = useNavigate();
 
+        // Apply dyslexic font class if user previously enabled it (localStorage fallback)
+        useEffect(() => {
+            try {
+                const raw = localStorage.getItem('userProfile');
+                if (raw) {
+                    const parsed = JSON.parse(raw) as any;
+                    if (parsed?.useOpenDyslexicFont) document.body.classList.add('open-dyslexic');
+                    else document.body.classList.remove('open-dyslexic');
+                }
+            } catch (e) {
+                // ignore
+            }
+        }, []);
+
     // A função handleAddAgent agora só precisa navegar
     const handleAddAgent = useCallback(async () => {
         const {
@@ -35,13 +53,25 @@ const AppContent = () => {
         }
 
         const tempName = `Agente_${Date.now()}`;
-        const newAgentBase = {
+                // Attempt to use profile avatar as default for new agents
+                let defaultAvatar = '';
+                try {
+                    const dbProfile = await getUserProfile(user.id);
+                    if (dbProfile?.avatarPath) {
+                        const signed = await getSignedAvatarUrl(dbProfile.avatarPath, 'user-avatars');
+                        defaultAvatar = signed || '';
+                    }
+                } catch (e) {
+                    console.warn('Could not resolve user profile avatar for new agent', e);
+                }
+
+                const newAgentBase = {
             ...JSON.parse(JSON.stringify(initialAgentData)),
             lastModified: new Date().toISOString(),
             character: {
                 ...(initialAgentData.character || {}),
                 name: tempName,
-                avatarUrl: "",
+                                avatarUrl: defaultAvatar,
             },
         };
 
@@ -68,6 +98,7 @@ const AppContent = () => {
             <Header
                 onShowAgents={() => navigate('/agents')}
                 onShowCampaigns={() => navigate('/campaigns')}
+                onShowProfile={() => navigate('/profile')}
                 onLogout={async () => { await supabase.auth.signOut(); }} />
             <main className="main-content">
                 <Routes>
@@ -85,7 +116,9 @@ const AppContent = () => {
                     {/* ... Suas outras rotas (campaigns, masterscreen, etc.) */}
                     <Route path="/campaigns" element={<CampaignsListPage />} />
                     <Route path="/campaign/:campaignId" element={<CampaignDashboardPage />} />
+                    <Route path="/campaign/:campaignId/player/:playerId" element={<PlayerSettingsPage />} />
                     <Route path="/masterscreen/:campaignId" element={<MasterScreenPage />} />
+                    <Route path="/profile" element={<UserProfilePage />} />
                     <Route path="/invite/:inviteCode" element={<InvitePage />} />
                 </Routes>
             </main>

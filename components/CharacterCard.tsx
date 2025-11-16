@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CustomizationSettings, AgentData } from '../types';
 import { getAvatarForSanityAndVitality } from '../utils/agentUtils';
-import { supabase } from '../supabaseClient';
+import { getSignedAvatarUrl, getDefaultDicebearUrl } from '../utils/avatarUtils';
 
 interface CharacterCardProps {
   agent?: AgentData;
@@ -31,7 +31,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ agent, avatarUrl, 
   // Extract values from agent or use fallbacks
   const extractedName = agent?.character?.name || name || '[Sem nome]';
   const extractedPath = agent?.character?.pathway || path || 'NPC';
-  const extractedAvatarUrl = agent?.character?.avatarUrl || avatarUrl;
+  const extractedAvatarUrl = agent?.character?.avatarUrl || avatarUrl || null;
   const extractedCustomization = agent?.customization || customization;
   const extractedSanity = agent?.character?.sanity ?? sanity ?? 0;
   const extractedMaxSanity = agent?.character?.maxSanity ?? maxSanity ?? 1;
@@ -45,39 +45,57 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ agent, avatarUrl, 
     vitality: extractedVitality,
     maxVitality: extractedMaxVitality,
     avatarUrl: extractedAvatarUrl,
-    insaneAvatarUrl: extractedCustomization?.insaneAvatarUrl,
-    deadAvatarUrl: extractedCustomization?.deadAvatarUrl,
+    customization: extractedCustomization || null,
   });
 
-  const [avatarUrlState, setAvatarUrlState] = useState<string | null>(null);
+  const defaultDicebear = getDefaultDicebearUrl(extractedName);
+  const [avatarUrlState, setAvatarUrlState] = useState<string | null>(defaultDicebear);
 
   useEffect(() => {
-    if (displayAvatar && !displayAvatar.startsWith('http')) {
-      // É um path, gere a URL assinada
-      supabase.storage.from('agent-avatars').createSignedUrl(displayAvatar, 3600)
-        .then(({ data }) => {
-          if (data) setAvatarUrlState(data.signedUrl);
-        });
-    } else {
-      // É uma URL completa (DiceBear, link externo) ou está vazio
-      setAvatarUrlState(displayAvatar || null);
-    }
-  }, [displayAvatar]);
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!displayAvatar) {
+          if (!cancelled) setAvatarUrlState(defaultDicebear);
+          return;
+        }
+        // Try agent-avatars bucket first (displayAvatar may be a path)
+        const signed = await getSignedAvatarUrl(displayAvatar, 'agent-avatars');
+        if (!cancelled) setAvatarUrlState(signed || defaultDicebear);
+      } catch (e) {
+        if (!cancelled) setAvatarUrlState(defaultDicebear);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [displayAvatar, extractedName]);
 
   return (
-    <div className="character-card">
+    <div
+      className="character-card"
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={() => onOpen && onOpen()}
+      onKeyDown={(e) => { if (onOpen && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
+    >
       <div className="character-avatar">
-        {avatarUrlState ? <img src={avatarUrlState} alt="avatar" className="character-avatar-img" /> : 'Avatar'}
+        <img
+          src={avatarUrlState || defaultDicebear}
+          alt="avatar"
+          className="character-avatar-img"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = defaultDicebear; }}
+        />
       </div>
       <div className="character-info">
         <span className="character-name">{extractedName}</span>
         <span className="character-subtitle">{extractedPath}</span>
       </div>
-      <div className="character-actions">
-        <button onClick={onOpen} className="character-btn">Acessar Ficha</button>
-        <button onClick={onRemove} className="character-btn-remove">🗑️</button>
+
+      <div className="character-actions" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onEdit} className="character-btn gear" title="Configurar">⚙️</button>
+        <button onClick={onRemove} className="character-btn-remove" title="Remover">🗑️</button>
       </div>
-      <div className="character-gear" onClick={onEdit}>⚙️</div>
     </div>
   );
 };

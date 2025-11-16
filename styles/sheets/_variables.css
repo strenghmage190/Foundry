@@ -1,6 +1,27 @@
 /* --- FONTES GLOBAIS --- */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Open+Dyslexic&display=swap');
+
+/*
+    OpenDyslexic font: self-host recommended.
+    Place the font files under `public/fonts/`:
+        - /fonts/OpenDyslexic-Regular.woff2
+        - /fonts/OpenDyslexic-Bold.woff2
+    If you prefer a CDN, replace the src urls below with CDN links.
+*/
+@font-face {
+    font-family: 'OpenDyslexic';
+    src: url('/fonts/OpenDyslexic-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'OpenDyslexic';
+    src: url('/fonts/OpenDyslexic-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* --- VARIÁVEIS GLOBAIS E RESET --- */
 :root {
@@ -17,7 +38,8 @@
     --font-body: 'Open Sans', sans-serif;
 }
 
-/* --- ESTILOS DE ACESSIBSIBILIDADE --- */
-.opendyslexic, .opendyslexic * {
-    font-family: 'OpenDyslexic', !important;
+/* --- ESTILOS DE ACESSIBILIDADE --- */
+/* Use the `open-dyslexic` class on <body> to enable the dyslexic-friendly font */
+body.open-dyslexic, body.open-dyslexic * {
+    --font-body: 'OpenDyslexic', 'Open Sans', sans-serif;
 }

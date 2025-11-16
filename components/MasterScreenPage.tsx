@@ -4,8 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCampaignById, getPlayersByCampaignId, getCampaignsByMasterId } from '../api/campaigns';
+import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
 import type { Campaign, Character } from '../types';
-import MiniSheet from './MiniSheet';
+import CharacterStatusCard from './CharacterStatusCard';
+import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import DiceLogEntry from './DiceLogEntry';
 
 
@@ -25,8 +27,10 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
   const [loading, setLoading] = useState(true);
   const [hideAgents, setHideAgents] = useState(false);
   const [characters, setCharacters] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const [selectedIds, setSelectedIds] = useState<Record<string | number, boolean>>({});
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | number | null>(null);
   const [initiativeOrder, setInitiativeOrder] = useState<Array<{ id: string | number; name: string; initiative: number; status?: string }>>([]);
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
@@ -41,9 +45,11 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     async function load() {
       setLoading(true);
       let id = effectiveCampaignId;
+      // Capture current viewer id for privacy filtering (always)
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id ?? null);
 
       if (!id) {
-        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const list = await getCampaignsByMasterId(user.id);
           if (list && list.length > 0) id = list[0].id;
@@ -63,7 +69,22 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
       ]);
 
       setCampaign(foundCampaign);
-      setCharacters(foundPlayers || []);
+      // Enriquecer players com signed avatar URLs (quando aplicável)
+      const enriched = await Promise.all((foundPlayers || []).map(async (p: any) => {
+        const profile = p.user_profiles || null;
+        const signedAvatar = await getAvatarUrlOrFallback(profile?.avatarPath ?? null, profile?.displayName ?? p.player_id, 'user-avatars');
+        return { ...p, user_profiles: { ...(profile || {}), signedAvatarUrl: signedAvatar } };
+      }));
+      setCharacters(enriched || []);
+      // Clean up selectedIds: remove selections that point to participants without characters
+      setSelectedIds(prev => {
+        const next: Record<string | number, boolean> = {};
+        (enriched || []).forEach((p: any) => {
+          const hasCharacter = !!p?.agents?.data?.character;
+          if (hasCharacter && prev[p.id]) next[p.id] = true;
+        });
+        return next;
+      });
       setLoading(false);
     }
     load();
@@ -151,6 +172,10 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     try { localStorage.setItem(key, JSON.stringify({ order, activeIndex: active })); } catch (e) { }
   };
     const toggleSelect = (id: string | number) => {
+    // Prevent selecting participants that don't have a linked character
+    const participant = characters.find(c => c.id === id);
+    const hasCharacter = !!participant?.agents?.data?.character;
+    if (!hasCharacter) return; // ignore toggles for missing characters
     setSelectedIds(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
@@ -162,7 +187,7 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
         // Pula participantes inválidos
         if (!ch?.id || !ch?.agents?.data?.character) return null;
 
-        const baseInitiative = ch.agents.data.character.initiative ?? 0;
+        const baseInitiative = ch.agents.data.character.initiative != null ? ch.agents.data.character.initiative : 0;
         const roll = Math.floor(Math.random() * 20) + 1;
         const total = roll + baseInitiative;
         const name = ch.agents.data.character.name || `Participante #${ch.id}`;
@@ -263,10 +288,15 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
   const masterId = campaign.gm_id;
 
   const visibleCharacters = characters.filter(p => {
-    // Lógica simplificada para ocultar NPCs
     const isNpc = p.player_id === null;
     if (hideAgents && isNpc) return false;
-    return true;
+    // Enforce privacy: only GM or owner can view private sheets
+    const isPrivate = p?.agents?.is_private === true;
+    if (!isPrivate) return true;
+    const viewerId = currentUserId;
+    const ownerId = p?.agents?.user_id || null;
+    const gmId = campaign?.gm_id || null;
+    return viewerId && (viewerId === ownerId || viewerId === gmId);
   });
 
   const handleLogout = async () => {
@@ -281,15 +311,22 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
           <div className="ms-participants-selector">
             <h4>Selecione os Participantes</h4>
             <div className="ms-participants-grid">
-              {visibleCharacters.map(ch => {
-                const name = ch.agents?.data?.character?.name ?? `Participante #${ch.id}`;
-                return (
-                  <label key={ch.id} className="ms-participant-tag">
-                    <input type="checkbox" checked={!!selectedIds[ch.id]} onChange={() => toggleSelect(ch.id)} />
-                    <span>{name}</span>
-                  </label>
-                );
-              })}
+                {visibleCharacters.map(ch => {
+                  const hasCharacter = !!ch.agents?.data?.character;
+                  const name = hasCharacter ? ch.agents.data.character.name : (ch.user_profiles?.displayName ?? (ch.player_id ? `Player: ${ch.player_id}` : `Participante #${ch.id}`));
+                  const isSelected = selectedParticipantId === ch.id;
+
+                  return (
+                    <div key={ch.id} className={`ms-participant-tag ${isSelected ? 'selected' : ''}`}>
+                      {hasCharacter ? (
+                        <input type="checkbox" checked={!!selectedIds[ch.id]} onChange={() => toggleSelect(ch.id)} />
+                      ) : (
+                        <div style={{ width: 18 }} />
+                      )}
+                      <span className="ms-participant-name" onClick={() => setSelectedParticipantId(ch.id)}>{name}</span>
+                    </div>
+                  );
+                })}
             </div>
             <div className="ms-participants-actions">
               <button onClick={rollInitiatives} className="button-primary">Rolar Iniciativas!</button>
@@ -300,66 +337,117 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
             {visibleCharacters.length === 0 ? (
               <div className="ms-empty-state">Nenhum personagem disponível.</div>
             ) : (
-              visibleCharacters.map(ch => {
-                // 👇👇👇 ADICIONE ESTE LOG AQUI 👇👇👇
-                console.log("DADOS COMPLETOS DO PARTICIPANTE:", ch);
+              (() => {
+                const selected = characters.find(c => c.id === selectedParticipantId) || visibleCharacters[0] || null;
+                if (!selected) return <div className="ms-empty-state">Nenhum participante selecionado.</div>;
+
+                const ch = selected;
+                const agentData = ch?.agents?.data ?? null;
+
+                if (!agentData) {
+                  const profile = ch.user_profiles || null;
+                  const displayName = profile?.displayName ?? (ch.player_id ? `Player: ${ch.player_id}` : `Link ID: ${ch.id}`);
+                  const avatar = profile?.signedAvatarUrl ?? null;
+                  return (
+                    <div key={ch.id} style={{ width: '100%' }}>
+                      <div className="ms-profile-card">
+                        <div className="char-status-header">
+                          <div className="char-avatar">
+                            {avatar ? (
+                              <img src={avatar} alt={displayName} className="char-avatar-img" />
+                            ) : (
+                              <div className="char-avatar-fallback">{(displayName || '??').slice(0,2).toUpperCase()}</div>
+                            )}
+                          </div>
+                          <div className="char-identity">
+                            <div className="char-name">{displayName}</div>
+                            <div className="char-path">Sem personagem</div>
+                          </div>
+                        </div>
+                        <div className="char-action">
+                          <button className="char-cta" onClick={() => { if (ch.player_id) navigate(`/profile/${ch.player_id}`); }}>Ver Perfil</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const character = agentData.character || {};
+                const avatar = (character && character.avatarUrl) ? character.avatarUrl : (ch.user_profiles?.signedAvatarUrl ?? null);
+                const pathName = character.pathways?.primary ?? (Array.isArray(character.pathway) ? character.pathway?.[0] : character.pathway) ?? 'Sem Caminho';
+                const weaknesses = [`Vulnerável a ${pathName}`];
+                const resistances = [`Afinidade com ${pathName}`];
+
+                const stats = {
+                  defense: getDefense(agentData),
+                  absorption: getAbsorptionPool(agentData),
+                  initiative: getInitiativePool(agentData),
+                };
 
                 return (
-                  <MiniSheet
+                  <CharacterStatusCard
                     key={ch.id}
-                    agentData={ch.agents.data} // Passe o objeto de dados completo
-                    campaignId={campaign.id} // Passe o ID da campanha
-                    onUpdate={(updates) => updateAgentCharacter(ch.agent_id, updates)}
+                    name={character.name || `Participante #${ch.id}`}
+                    avatarUrl={avatar}
+                    path={pathName}
+                    sequence={character.sequence}
+                    vitality={character.vitality}
+                    maxVitality={character.maxVitality}
+                    sanity={character.sanity}
+                    maxSanity={character.maxSanity}
+                    spirituality={character.spirituality}
+                    maxSpirituality={character.maxSpirituality}
+                    stats={stats}
+                    weaknesses={weaknesses}
+                    resistances={resistances}
+                    onViewDetails={() => navigate(`/campaign/${campaign.id}/agent/${agentData.id}`)}
                   />
                 );
-              })
+              })()
             )}
           </div>
         </section>
-        <aside className="ms-sidebar">
-          <div className="ms-sidebar-widget">
-            <h3>Ordem de Combate</h3>
-            {initiativeOrder.length === 0 ? (
-              <div className="ms-empty-state small">Nenhuma iniciativa rolada.</div>
-            ) : (
-              <>
-                <ol className="ms-initiative-list">
-                  {initiativeOrder.map((p, idx) => {
-                    // 👇👇👇 ADICIONE ESTA LINHA DE SEGURANÇA 👇👇👇
-                    if (!p) return null; // Pula a renderização se o item 'p' for nulo ou undefined
-
-                    return (
-                      <li key={p.id || idx} className={idx === activeIndex ? 'active' : ''}>
-                        <div className="initiative-entry">
-                          {/* 👇 ADICIONE VALORES PADRÃO PARA CADA PROPRIEDADE 👇 */}
-                          <span className="name">{p.name || 'Nome Inválido'}</span>
-                          <span className="value">{p.initiative ?? 0}</span>
-                        </div>
-                        <div className="status">{p.status || ''}</div>
-                      </li>
-                    );
-                  })}
-                </ol>
-                <div className="ms-initiative-controls">
-                  <button onClick={prevTurn}>{'<'} Anterior</button>
-                  <button onClick={nextTurn}>Próximo {'>'}</button>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="ms-sidebar-widget">
-            <h3>Log de Dados</h3>
-            {diceLog.length === 0 ? (
-              <div className="ms-empty-state small">Nenhuma rolagem registrada.</div>
-            ) : (
-              <ul className="ms-dice-log-list">
-                {diceLog.map((roll, idx) => (
-                  <DiceLogEntry key={idx} roll={roll} />
-                ))}
-              </ul>
-            )}
-          </div>
-        </aside>
+          <aside className="ms-sidebar">
+            <div className="ms-sidebar-widget">
+              <h3>Ordem de Combate</h3>
+              {initiativeOrder.length === 0 ? (
+                <div className="ms-empty-state small">Nenhuma iniciativa rolada.</div>
+              ) : (
+                <>
+                  <ol className="ms-initiative-list">
+                    {initiativeOrder.map((p, idx) => {
+                      if (!p) return null;
+                      return (
+                        <li key={p.id || idx} className={idx === activeIndex ? 'active' : ''}>
+                          <div className="initiative-entry">
+                            <span className="name">{p.name || 'Nome Inválido'}</span>
+                            <span className="value">{p.initiative != null ? p.initiative : 0}</span>
+                          </div>
+                          <div className="status">{p.status || ''}</div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  <div className="ms-initiative-controls">
+                    <button onClick={prevTurn}>{'<'} Anterior</button>
+                    <button onClick={nextTurn}>Próximo {'>'}</button>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="ms-sidebar-widget">
+              <h3>Log de Dados</h3>
+              {diceLog.length === 0 ? (
+                <div className="ms-empty-state small">Nenhuma rolagem registrada.</div>
+              ) : (
+                <ul className="ms-dice-log-list">
+                  {diceLog.map((roll, idx) => (
+                    <DiceLogEntry key={idx} roll={roll} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          </aside>
       </main>
     </div>
   );

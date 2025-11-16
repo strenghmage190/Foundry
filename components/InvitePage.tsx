@@ -47,12 +47,12 @@ const InvitePage: React.FC = () => {
     try {
       await addPlayerToCampaign(campaign.id, user.id);
       alert(`Você entrou na campanha "${campaign.name}"!`);
-      navigate(`/campaign/${campaign.id}`); // Redireciona para o dashboard da campanha
+      navigate(`/campaign/${campaign.id}?tab=players`); // Redireciona para a aba de jogadores
     } catch (err) {
       // Verifica se o erro é de violação de chave única (jogador já está na campanha)
       if ((err as any)?.message?.includes('duplicate key value violates unique constraint')) {
           alert('Você já faz parte desta campanha.');
-          navigate(`/campaign/${campaign.id}`);
+          navigate(`/campaign/${campaign.id}?tab=players`);
       } else {
           setError('Ocorreu um erro ao tentar entrar na campanha.');
       }

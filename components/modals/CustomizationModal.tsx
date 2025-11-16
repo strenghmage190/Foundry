@@ -16,6 +16,7 @@ type AvatarField = 'avatarHealthy' | 'avatarHurt' | 'avatarDisturbed' | 'avatarI
 export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, onClose, agent, onUpdateAgent }) => {
     const [settings, setSettings] = useState<CustomizationSettings>(agent?.customization || initialAgentData.customization);
     const [color, setColor] = useState(agent?.character?.pathwayColor || initialAgentData.character.pathwayColor);
+    const [isPrivate, setIsPrivate] = useState<boolean>(!!agent?.isPrivate);
     const [previewUrls, setPreviewUrls] = useState<Record<AvatarField, string>>({
         avatarHealthy: '',
         avatarHurt: '',
@@ -46,6 +47,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
         if (isOpen) {
             setSettings(agent?.customization || initialAgentData.customization);
             setColor(agent?.character?.pathwayColor || initialAgentData.character.pathwayColor);
+            setIsPrivate(!!agent?.isPrivate);
 
             // Generate signed URLs for existing avatars
             const generatePreviews = async () => {
@@ -92,7 +94,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
                 URL.revokeObjectURL(url);
             }
         });
-        onUpdateAgent({ customization: settings, character: { ...(agent?.character || {}), pathwayColor: color } });
+        onUpdateAgent({ customization: settings, character: { ...(agent?.character || {}), pathwayColor: color }, isPrivate });
         onClose();
     };
 
@@ -147,6 +149,17 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
                     </div>
 
                     <div className="customization-section">
+                            <h4>Privacidade</h4>
+                            <div className="toggle-row">
+                                <label>Ficha Privada</label>
+                                <label className="toggle-switch">
+                                    <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} />
+                                    <span className="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="customization-section">
                         <h4>Acessibilidade</h4>
                         <div className="toggle-row">
                             <label>Fonte para Dislexia</label>
