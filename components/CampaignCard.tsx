@@ -8,9 +8,11 @@ interface Props {
   isPlayer: boolean; // Para saber se é uma campanha de jogador
   agentId?: string | null;
   onLinkCharacter?: (id: string) => void;
+  onDeleteCampaign?: (id: string) => void;
+  onLeaveCampaign?: (id: string) => void;
 }
 
-const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkCharacter }) => {
+const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkCharacter, onDeleteCampaign, onLeaveCampaign }) => {
   const navigate = useNavigate();
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
 
@@ -56,18 +58,28 @@ const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkChar
       <div className="campaign-card-actions">
         {isPlayer ? (
           agentId ? (
-            <button className="button-primary" onClick={handleOpenCharacter}>
-              Abrir Campanha
-            </button>
+            <>
+              <button className="button-primary" onClick={handleOpenCharacter}>
+                Abrir Campanha
+              </button>
+              <button className="button-danger" onClick={() => onLeaveCampaign && onLeaveCampaign(campaign.id)}>
+                Sair
+              </button>
+            </>
           ) : (
             <button className="button-primary" onClick={() => onLinkCharacter && onLinkCharacter(campaign.id)}>
               Vincular Personagem
             </button>
           )
         ) : (
-          <button className="button-primary" onClick={handleOpenClick}>
-            Abrir
-          </button>
+          <>
+            <button className="button-primary" onClick={handleOpenClick}>
+              Abrir
+            </button>
+            <button className="button-danger" onClick={() => onDeleteCampaign && onDeleteCampaign(campaign.id)}>
+              Apagar
+            </button>
+          </>
         )}
       </div>
     </div>

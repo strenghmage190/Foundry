@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { getCampaignsByMasterId, getPlayersByCampaignId, getCampaignById } from '../api/campaigns';
+import { getCampaignsByMasterId, getPlayersByCampaignId, getCampaignById, deleteCampaign, leaveCampaign } from '../api/campaigns';
 import { Campaign, CampaignPlayer } from '../types';
 import CreateCampaignModal from './modals/CreateCampaignModal';
 import LinkCharacterModal from './modals/LinkCharacterModal';
@@ -83,6 +83,30 @@ const CampaignsListPage: React.FC = () => {
     }
   };
 
+  const handleDeleteCampaign = async (campaignId: string) => {
+    if (!window.confirm('Tem certeza que deseja apagar esta campanha? Esta ação não pode ser desfeita.')) return;
+    try {
+      await deleteCampaign(campaignId);
+      setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+      alert('Campanha apagada.');
+    } catch (e) {
+      alert('Não foi possível apagar a campanha. Verifique permissões.');
+    }
+  };
+
+  const handleLeaveCampaign = async (campaignId: string) => {
+    if (!window.confirm('Deseja sair desta campanha?')) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    try {
+      await leaveCampaign(campaignId, user.id);
+      setPlayerCampaigns(prev => prev.filter(c => c.id !== campaignId));
+      alert('Você saiu da campanha.');
+    } catch (e) {
+      alert('Não foi possível sair da campanha.');
+    }
+  };
+
   return (
     <div className="campaign-list-page">
       <div className="page-header">
@@ -98,6 +122,7 @@ const CampaignsListPage: React.FC = () => {
               key={c.id}
               campaign={c}
               isPlayer={false}
+              onDeleteCampaign={handleDeleteCampaign}
             />
           ))}
         </div>
@@ -113,6 +138,7 @@ const CampaignsListPage: React.FC = () => {
               isPlayer={true}
               agentId={c.agentId}
               onLinkCharacter={handleLinkCharacter}
+              onLeaveCampaign={handleLeaveCampaign}
             />
           ))}
         </div>

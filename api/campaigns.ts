@@ -316,3 +316,32 @@ export async function logDiceRoll(payload: {
     console.error("ERRO INESPERADO NA API:", e);
   }
 }
+
+/**
+ * Exclui uma campanha. Espera-se que RLS permita somente ao mestre (gm_id) executar.
+ */
+export async function deleteCampaign(campaignId: string): Promise<void> {
+  const { error } = await supabase
+    .from('campaigns')
+    .delete()
+    .eq('id', campaignId);
+  if (error) {
+    console.error('Erro ao apagar campanha:', error);
+    throw error;
+  }
+}
+
+/**
+ * Remove o jogador autenticado da campanha ("Sair da campanha").
+ */
+export async function leaveCampaign(campaignId: string, playerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('campaign_players')
+    .delete()
+    .eq('campaign_id', campaignId)
+    .eq('player_id', playerId);
+  if (error) {
+    console.error('Erro ao sair da campanha:', error);
+    throw error;
+  }
+}
