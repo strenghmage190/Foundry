@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Campaign, CampaignPlayer } from '../types';
-import { getCampaignById, getCampaignsByMasterId, getPlayersByCampaignId, removeParticipantFromCampaign } from '../api/campaigns';
+import { getCampaignById, getCampaignsByMasterId, getPlayersByCampaignId, removeParticipantFromCampaign, generateInviteCode } from '../api/campaigns';
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
 import { supabase } from '../supabaseClient';
 import CharacterCard from './CharacterCard';
@@ -174,12 +174,23 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
   if (!campaign) return <div style={{ padding: 20 }}>Campanha não encontrada.</div>;
 
   // Função para copiar o link para a área de transferência
-  const handleCopyInviteLink = () => {
-    if (!campaign?.invite_code) return;
-    const inviteLink = `${window.location.origin}/invite/${campaign.invite_code}`;
-    navigator.clipboard.writeText(inviteLink)
-      .then(() => alert('Link de convite copiado para a área de transferência!'))
-      .catch(err => console.error('Falha ao copiar o link:', err));
+  const handleCopyInviteLink = async () => {
+    try {
+      let code = campaign?.invite_code;
+      if (!campaign) return;
+      if (!code) {
+        const updated = await generateInviteCode(campaign.id);
+        setCampaign(updated);
+        code = updated.invite_code as string;
+      }
+      if (!code) return;
+      const inviteLink = `${window.location.origin}/invite/${code}`;
+      await navigator.clipboard.writeText(inviteLink);
+      alert('Link de convite copiado para a área de transferência!');
+    } catch (err) {
+      console.error('Falha ao gerar/copiar link:', err);
+      alert('Não foi possível gerar/copiar o link de convite.');
+    }
   };
 
   const handlePlayerInvited = () => {

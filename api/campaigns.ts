@@ -7,11 +7,16 @@ import { Campaign, CampaignPlayer } from '../types';
  * Cria uma nova campanha no banco de dados Supabase.
  */
 export async function createCampaign(name: string, masterId: string): Promise<Campaign> {
+  // Gera um código de convite único (UUID) para a campanha
+  const inviteCode = (globalThis as any).crypto?.randomUUID
+    ? (globalThis as any).crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const { data, error } = await supabase
     .from('campaigns')
     .insert({
       name: name,
       gm_id: masterId,
+      invite_code: inviteCode,
     })
     .select()
     .single();
@@ -247,6 +252,16 @@ export async function updateCampaign(campaignId: string, updates: Partial<Campai
     throw error;
   }
   return data as Campaign;
+}
+
+/**
+ * Gera e define um novo invite_code para a campanha (se estiver vazio ou por regeneração).
+ */
+export async function generateInviteCode(campaignId: string): Promise<Campaign> {
+  const code = (globalThis as any).crypto?.randomUUID
+    ? (globalThis as any).crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return updateCampaign(campaignId, { invite_code: code } as any);
 }
 
 

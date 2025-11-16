@@ -8,6 +8,7 @@ create table if not exists public.campaigns (
   name text not null,
   description text,
   gm_id uuid references auth.users(id) not null,
+  invite_code uuid,
   players jsonb default '[]'::jsonb,
   created_at timestamptz default now()
 );
