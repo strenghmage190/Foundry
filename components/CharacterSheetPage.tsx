@@ -108,8 +108,39 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
     <div className="pathway-manager">
       <h4>Caminhos Beyonder</h4>
 
-      {/* Interface Padrão (para usuários normais) */}
-      {!primaryPathway && <p>Nenhum caminho selecionado.</p>}
+      {/* Interface para seleção inicial quando não há caminho */}
+      {!primaryPathway && (
+        <div className="select-initial-pathway">
+          <p style={{ marginBottom: '0.75rem', color: '#aaa' }}>Nenhum caminho selecionado.</p>
+          <select 
+            onChange={(e) => {
+              if (e.target.value) {
+                onUpdate({
+                  character: {
+                    ...agent.character,
+                    pathways: { primary: e.target.value, secondary: [] }
+                  }
+                });
+              }
+            }}
+            value=""
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              backgroundColor: '#2a2a2e',
+              border: '1px solid #444',
+              borderRadius: '6px',
+              color: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">Selecione um caminho...</option>
+            {Object.keys(allPathways).map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+      )}
       
       {primaryPathway && permissions.max_pathways <= 1 && (
         <div className="pathway-tag primary single">

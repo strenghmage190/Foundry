@@ -374,9 +374,10 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
 
                 const character = agentData.character || {};
                 const avatar = (character && character.avatarUrl) ? character.avatarUrl : (ch.user_profiles?.signedAvatarUrl ?? null);
-                const pathName = character.pathways?.primary ?? (Array.isArray(character.pathway) ? character.pathway?.[0] : character.pathway) ?? 'Sem Caminho';
-                const weaknesses = [`Vulnerável a ${pathName}`];
-                const resistances = [`Afinidade com ${pathName}`];
+                const pathName = character.pathways?.primary ?? (Array.isArray(character.pathway) ? character.pathway?.[0] : character.pathway) ?? '';
+                const hasPathway = pathName && pathName.trim() !== '' && pathName !== 'Nenhum caminho selecionado.';
+                const weaknesses = hasPathway ? [`Vulnerável a ${pathName}`] : [];
+                const resistances = hasPathway ? [`Afinidade com ${pathName}`] : [];
 
                 const stats = {
                   defense: getDefense(agentData),
@@ -389,7 +390,7 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
                     key={ch.id}
                     name={character.name || `Participante #${ch.id}`}
                     avatarUrl={avatar}
-                    path={pathName}
+                    path={hasPathway ? pathName : undefined}
                     sequence={character.sequence}
                     vitality={character.vitality}
                     maxVitality={character.maxVitality}

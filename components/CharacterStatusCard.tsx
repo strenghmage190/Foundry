@@ -91,7 +91,15 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
         </div>
         <div className="char-identity">
           <div className="char-name">{name}</div>
-          <div className="char-path">{path ? `${path}` : 'Sem caminho'} <span className="char-seq">{sequence ? `| SEQ. ${sequence}` : ''}</span></div>
+          <div className="char-path">
+            {path ? (
+              <>
+                {path} {sequence ? <span className="char-seq">| SEQ. {sequence}</span> : ''}
+              </>
+            ) : (
+              'Caminho não selecionado'
+            )}
+          </div>
         </div>
       </header>
 

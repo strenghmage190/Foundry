@@ -44,10 +44,11 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
 
     // Obter todos os caminhos do personagem
     const characterPathways = useMemo(() => {
-        if (character.pathways) {
-            return [character.pathways.primary, ...character.pathways.secondary];
+        if (character.pathways?.primary) {
+            return [character.pathways.primary, ...(character.pathways.secondary || [])].filter(Boolean);
         } else if (character.pathway) {
-            return Array.isArray(character.pathway) ? character.pathway : [character.pathway];
+            const pathways = Array.isArray(character.pathway) ? character.pathway : [character.pathway];
+            return pathways.filter(Boolean);
         }
         return [];
     }, [character]);
@@ -191,9 +192,39 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
     ];
 
     if (characterPathways.length === 0) {
-        return <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-            Nenhum caminho selecionado
-        </div>;
+        return (
+            <div style={{ 
+                padding: '2rem', 
+                textAlign: 'center', 
+                color: '#999',
+                backgroundColor: '#1a1a1c',
+                border: '1px solid #333',
+                borderRadius: '8px',
+                margin: '1rem'
+            }}>
+                <h3 style={{ color: '#fff', marginBottom: '1rem' }}>⚠️ CAMINHOS BEYONDER</h3>
+                <p style={{ marginBottom: '0.5rem' }}>Nenhum caminho selecionado.</p>
+                <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                    Configure um caminho na seção de Antecedentes ou fale com o Mestre.
+                </p>
+                {/* Debug info - pode remover depois */}
+                <details style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#555', textAlign: 'left' }}>
+                    <summary style={{ cursor: 'pointer' }}>Debug Info</summary>
+                    <pre style={{ 
+                        marginTop: '0.5rem', 
+                        padding: '0.5rem', 
+                        backgroundColor: '#0a0a0a',
+                        borderRadius: '4px',
+                        overflow: 'auto'
+                    }}>
+                        {JSON.stringify({ 
+                            'character.pathways': character.pathways,
+                            'character.pathway': character.pathway 
+                        }, null, 2)}
+                    </pre>
+                </details>
+            </div>
+        );
     }
 
     return (
