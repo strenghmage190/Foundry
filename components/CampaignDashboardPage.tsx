@@ -7,8 +7,9 @@ import { supabase } from '../supabaseClient';
 import CharacterCard from './CharacterCard';
 import InvitePlayerModal from './modals/InvitePlayerModal';
 import AddAgentModal from './modals/AddAgentModal';
-import EditCampaignModal from './modals/EditCampaignModal'; // Importe o novo modal
+import EditCampaignModal from './modals/EditCampaignModal';
 import CoverImageModal from './modals/CoverImageModal';
+import LinkCharacterModal from './modals/LinkCharacterModal';
 
 type Tab = 'agents' | 'players' | 'combats';
 
@@ -69,9 +70,10 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false); // <--- NOVO ESTADO
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null); // <--- NOVO ESTADO
+  const [showLinkCharacterModal, setShowLinkCharacterModal] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // 👇 1. CRIE UMA FUNÇÃO DEDICADA PARA BUSCAR OS JOGADORES
@@ -242,6 +244,13 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
             <button onClick={() => navigate(`/masterscreen/${campaign.id}`)}>Escudo do Mestre</button>
           </div>
         )}
+        
+        {/* Botão para jogadores (não-GM) vincularem seu personagem */}
+        {!isGameMaster && (
+          <div style={actionBarStyles}>
+            <button onClick={() => setShowLinkCharacterModal(true)}>Vincular Meu Personagem</button>
+          </div>
+        )}
 
         <div>
           <h1 style={{ fontSize: 28, margin: '8px 0' }}>{campaign.name}</h1>
@@ -361,8 +370,18 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
           campaign={campaign}
           onClose={() => setShowCoverModal(false)}
           onSaved={(updatedCampaign) => {
-            setCampaign(updatedCampaign); // ATUALIZA A UI IMEDIATAMENTE!
+            setCampaign(updatedCampaign);
             setShowCoverModal(false);
+          }}
+        />
+      )}
+      {showLinkCharacterModal && (
+        <LinkCharacterModal
+          campaignId={campaign.id}
+          onClose={() => setShowLinkCharacterModal(false)}
+          onCharacterLinked={() => {
+            setShowLinkCharacterModal(false);
+            loadPlayers(campaign.id);
           }}
         />
       )}
