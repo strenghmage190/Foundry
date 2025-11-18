@@ -231,11 +231,15 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
   return (
     <div>
       <header style={headerStyles}>
-        {/* Mostrar apenas Adicionar Agentes e Convidar com Link para o GM */}
+        {/* Mostrar todos os botões de GM */}
         {isGameMaster && (
           <div style={actionBarStyles}>
+            <button onClick={() => setShowCoverModal(true)}>Foto de Capa</button>
             <button onClick={() => setShowAddAgentModal(true)}>Adicionar Agentes</button>
             <button onClick={handleCopyInviteLink}>Convidar com Link</button>
+            <button onClick={() => setShowEditModal(true)}>Editar Campanha</button>
+            <button onClick={() => alert('Funcionalidade de Criar Combate ainda não implementada')}>Criar Combate</button>
+            <button onClick={() => navigate(`/masterscreen/${campaign.id}`)}>Escudo do Mestre</button>
           </div>
         )}
 

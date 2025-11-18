@@ -6,8 +6,8 @@ DROP POLICY IF EXISTS "Users can view their own agents" ON public.agents;
 
 -- 2. Criar nova política que permite:
 --    - Ver seus próprios agentes
---    - Ver agentes vinculados às campanhas que você participa (públicos ou seus)
---    - GM pode ver todos os agentes de suas campanhas
+--    - Ver agentes vinculados às campanhas que você participa (como jogador)
+--    - GM pode ver TODOS os agentes de suas campanhas
 CREATE POLICY "Users can view own or campaign agents" ON public.agents
   FOR SELECT
   TO authenticated
@@ -17,24 +17,20 @@ CREATE POLICY "Users can view own or campaign agents" ON public.agents
     OR
     auth.uid() = created_by
     OR
-    -- Pode ver agentes vinculados às campanhas que você participa
+    -- GM pode ver TODOS os agentes vinculados às suas campanhas
     EXISTS (
       SELECT 1 FROM public.campaign_players cp
+      INNER JOIN public.campaigns c ON cp.campaign_id = c.id
       WHERE cp.agent_id = agents.id
-      AND EXISTS (
-        -- Você está na mesma campanha
-        SELECT 1 FROM public.campaign_players cp2
-        WHERE cp2.campaign_id = cp.campaign_id
-        AND cp2.player_id = auth.uid()
-      )
+      AND c.gm_id = auth.uid()
     )
     OR
-    -- GM pode ver todos os agentes de suas campanhas
+    -- Jogador pode ver agentes das campanhas onde ele está
     EXISTS (
-      SELECT 1 FROM public.campaigns c
-      INNER JOIN public.campaign_players cp ON c.id = cp.campaign_id
-      WHERE c.gm_id = auth.uid()
-      AND cp.agent_id = agents.id
+      SELECT 1 FROM public.campaign_players cp1
+      INNER JOIN public.campaign_players cp2 ON cp1.campaign_id = cp2.campaign_id
+      WHERE cp1.agent_id = agents.id
+      AND cp2.player_id = auth.uid()
     )
   );
 
