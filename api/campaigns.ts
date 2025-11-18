@@ -203,6 +203,8 @@ export async function linkAgentToCampaign(campaignId: string, agentId: string): 
  * Vincula o PERSONAGEM (agent) de um JOGADOR a uma campanha.
  */
 export async function linkPlayerCharacter(campaignId: string, playerId: string, agentId: string): Promise<any> {
+  console.log('📡 API: Vinculando personagem:', { campaignId, playerId, agentId });
+  
   const { data, error } = await supabase
     .from('campaign_players')
     .update({ agent_id: agentId })
@@ -212,9 +214,11 @@ export async function linkPlayerCharacter(campaignId: string, playerId: string, 
     .single();
 
   if (error) {
-    console.error('Erro ao vincular personagem do jogador:', error);
+    console.error('❌ Erro ao vincular personagem do jogador:', error);
     throw error;
   }
+  
+  console.log('✅ Personagem vinculado:', data);
   return data;
 }
 

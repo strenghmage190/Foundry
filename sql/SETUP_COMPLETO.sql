@@ -19,6 +19,7 @@ drop policy if exists "Select" on public.campaigns;
 drop policy if exists "UPDATE" on public.campaigns;
 drop policy if exists "Campaigns: allow insert for owner" on public.campaigns;
 drop policy if exists "Campaigns: allow select for owner" on public.campaigns;
+drop policy if exists "Campaigns: allow select for owner or invite" on public.campaigns;
 drop policy if exists "Campaigns: allow update for owner" on public.campaigns;
 drop policy if exists "Campaigns: allow delete for owner" on public.campaigns;
 
@@ -131,13 +132,6 @@ create policy "CampaignPlayers: select for gm and members"
     or
     -- Próprio jogador pode ver seu registro
     player_id = auth.uid()
-    or
-    -- Membros podem ver outros membros
-    exists (
-      select 1 from public.campaign_players cp2
-      where cp2.campaign_id = campaign_players.campaign_id
-      and cp2.player_id = auth.uid()
-    )
   );
 
 -- UPDATE: GM ou próprio jogador podem atualizar (vincular personagem)

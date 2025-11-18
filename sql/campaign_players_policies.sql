@@ -52,13 +52,6 @@ create policy "CampaignPlayers: select for gm and members"
     or
     -- Ou o próprio jogador pode ver seus registros
     player_id = auth.uid()
-    or
-    -- Ou qualquer membro da campanha pode ver outros membros
-    exists (
-      select 1 from public.campaign_players cp2
-      where cp2.campaign_id = campaign_players.campaign_id
-      and cp2.player_id = auth.uid()
-    )
   );
 
 -- PASSO 5: Criar política de UPDATE

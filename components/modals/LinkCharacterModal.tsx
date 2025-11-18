@@ -43,12 +43,26 @@ const LinkCharacterModal: React.FC<Props> = ({ campaignId, onClose, onCharacterL
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    console.log('🔗 Tentando vincular personagem:', {
+      campaignId,
+      userId: user.id,
+      agentId: selectedAgentId
+    });
+
     try {
       await linkPlayerCharacter(campaignId, user.id, selectedAgentId);
+      console.log('✅ Personagem vinculado com sucesso!');
       alert('Personagem vinculado com sucesso!');
       onCharacterLinked();
-    } catch (error) {
-      alert('Erro ao vincular o personagem.');
+    } catch (error: any) {
+      console.error('❌ Erro ao vincular personagem:', error);
+      console.error('Detalhes do erro:', {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code
+      });
+      alert(`Erro ao vincular o personagem: ${error?.message || 'Erro desconhecido'}`);
     }
   };
 
