@@ -68,6 +68,8 @@ export async function getCampaignById(id: string): Promise<Campaign | null> {
  * Busca os jogadores de uma campanha específica, incluindo os dados dos seus agentes.
  */
 export async function getPlayersByCampaignId(campaignId: string): Promise<any[]> {
+  console.log('📡 Buscando jogadores da campanha:', campaignId);
+  
   // Primeiro, tentamos o select com join (mais eficiente), mas se o PostgREST
   // não encontrar uma relação FK entre as tabelas ele retorna PGRST200.
   // Nesse caso fazemos um fallback: buscamos os links em `campaign_players`
@@ -95,23 +97,27 @@ export async function getPlayersByCampaignId(campaignId: string): Promise<any[]>
       .eq('campaign_id', campaignId);
 
     if (!error) {
+      console.log('✅ Jogadores encontrados:', data?.length || 0);
+      console.log('Dados:', data);
       return data || [];
     }
 
     // Se o erro indicar ausência de relacionamento (PGRST200), cai no fallback abaixo
     if (error && (error.code === 'PGRST200' || /relationship/i.test(error.message || ''))) {
-      console.warn('getPlayersByCampaignId: schema has no FK to user_profiles, using fallback join');
+      console.warn('⚠️ getPlayersByCampaignId: schema has no FK to user_profiles, using fallback join');
       // fallback handled below
     } else {
-      console.error('Erro ao buscar jogadores da campanha com join:', error);
+      console.error('❌ Erro ao buscar jogadores da campanha com join:', error);
       return [];
     }
   } catch (e) {
     // Em runtime, se algo inesperado ocorreu, seguimos para o fallback
-    console.warn('getPlayersByCampaignId: unexpected error when trying join, falling back', e);
+    console.warn('⚠️ getPlayersByCampaignId: unexpected error when trying join, falling back', e);
   }
 
   // ----- Fallback: manual join -----
+  console.log('🔄 Usando fallback manual join...');
+  
   const { data: players, error: playersError } = await supabase
     .from('campaign_players')
     .select(`
@@ -129,12 +135,19 @@ export async function getPlayersByCampaignId(campaignId: string): Promise<any[]>
     .eq('campaign_id', campaignId);
 
   if (playersError) {
-    console.error('Erro ao buscar campaign_players (fallback):', playersError);
+    console.error('❌ Erro ao buscar campaign_players (fallback):', playersError);
     return [];
   }
 
+  console.log('📦 Campaign players encontrados:', players?.length || 0);
+
   const playerIds = (players || []).map((p: any) => p.player_id).filter(Boolean);
-  if (playerIds.length === 0) return players || [];
+  if (playerIds.length === 0) {
+    console.log('⚠️ Nenhum player_id encontrado');
+    return players || [];
+  }
+
+  console.log('👥 Buscando perfis para:', playerIds);
 
   const { data: profiles, error: profilesError } = await supabase
     .from('user_profiles')
@@ -142,10 +155,12 @@ export async function getPlayersByCampaignId(campaignId: string): Promise<any[]>
     .in('user_id', playerIds);
 
   if (profilesError) {
-    console.error('Erro ao buscar user_profiles (fallback):', profilesError);
+    console.error('❌ Erro ao buscar user_profiles (fallback):', profilesError);
     // Mesmo sem perfis, retornamos os links básicos
     return players || [];
   }
+
+  console.log('👤 Perfis encontrados:', profiles?.length || 0);
 
   const profileMap = new Map((profiles || []).map((pr: any) => [pr.user_id, pr]));
 
@@ -154,6 +169,7 @@ export async function getPlayersByCampaignId(campaignId: string): Promise<any[]>
     user_profiles: profileMap.get(p.player_id) ?? null,
   }));
 
+  console.log('✅ Dados mesclados:', merged);
   return merged;
 }
 

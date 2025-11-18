@@ -223,17 +223,24 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
 
   console.log("5. DASHBOARD: Componente está renderizando com esta lista de players:", players); // LOG 5
 
+  // Verificar se o usuário atual é o GM da campanha
+  const isGameMaster = currentUserId && campaign && campaign.gm_id === currentUserId;
+  console.log('🎮 Verificação de GM:', { currentUserId, campaignGmId: campaign?.gm_id, isGameMaster });
+
   return (
     <div>
       <header style={headerStyles}>
-        <div style={actionBarStyles}>
-          <button onClick={() => setShowCoverModal(true)}>Foto de Capa</button>
-          <button onClick={() => setShowAddAgentModal(true)}>Adicionar Agentes</button>
-          <button onClick={handleCopyInviteLink}>Convidar com Link</button>
-          <button onClick={() => setShowEditModal(true)}>Editar Campanha</button>
-          <button onClick={() => alert('Funcionalidade de Criar Combate ainda não implementada')}>Criar Combate</button>
-          <button onClick={() => navigate(`/masterscreen/${campaign.id}`)}>Escudo do Mestre</button>
-        </div>
+        {/* Mostrar botões de mestre apenas se o usuário for o GM */}
+        {isGameMaster && (
+          <div style={actionBarStyles}>
+            <button onClick={() => setShowCoverModal(true)}>Foto de Capa</button>
+            <button onClick={() => setShowAddAgentModal(true)}>Adicionar Agentes</button>
+            <button onClick={handleCopyInviteLink}>Convidar com Link</button>
+            <button onClick={() => setShowEditModal(true)}>Editar Campanha</button>
+            <button onClick={() => alert('Funcionalidade de Criar Combate ainda não implementada')}>Criar Combate</button>
+            <button onClick={() => navigate(`/masterscreen/${campaign.id}`)}>Escudo do Mestre</button>
+          </div>
+        )}
 
         <div>
           <h1 style={{ fontSize: 28, margin: '8px 0' }}>{campaign.name}</h1>
@@ -285,7 +292,7 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
                   agent={p.agents.data}
                   onOpen={() => navigate(`/campaign/${p.campaign_id}/agent/${p.agent_id}`)}
                   onEdit={() => navigate(`/campaign/${p.campaign_id}/agent/${p.agent_id}`)}
-                  onRemove={() => handleRemoveParticipant(p.id)}
+                  onRemove={isGameMaster ? () => handleRemoveParticipant(p.id) : undefined}
                 />
               );
             })}
@@ -304,7 +311,7 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
                 createdAt={undefined}
                 onOpen={() => navigate(`/campaign/${p.campaign_id}/player/${p.player_id}`)}
                 onEdit={() => navigate(`/campaign/${p.campaign_id}/player/${p.player_id}`)}
-                onRemove={() => handleRemoveParticipant(p.id)}
+                onRemove={isGameMaster ? () => handleRemoveParticipant(p.id) : undefined}
               />
             ))}
           </section>
