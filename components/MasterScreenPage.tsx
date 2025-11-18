@@ -287,16 +287,15 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
   };
   const masterId = campaign.gm_id;
 
+  // GM vê TODOS os personagens, apenas filtra NPCs se hideAgents estiver ativo
   const visibleCharacters = characters.filter(p => {
+    const hasCharacter = !!p?.agents?.data?.character;
+    if (!hasCharacter) return false; // Ignora participantes sem personagem
+    
     const isNpc = p.player_id === null;
-    if (hideAgents && isNpc) return false;
-    // Enforce privacy: only GM or owner can view private sheets
-    const isPrivate = p?.agents?.is_private === true;
-    if (!isPrivate) return true;
-    const viewerId = currentUserId;
-    const ownerId = p?.agents?.user_id || null;
-    const gmId = campaign?.gm_id || null;
-    return viewerId && (viewerId === ownerId || viewerId === gmId);
+    if (hideAgents && isNpc) return false; // Filtro de NPCs
+    
+    return true; // GM vê todos os outros
   });
 
   const handleLogout = async () => {

@@ -113,15 +113,15 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
   };
 
   return (
-    <div className="mini-sheet" style={{ '--character-color': character.pathwayColor || '#8a2be2' } as React.CSSProperties}>
+    <div className="mini-sheet" style={{ '--character-color': character.pathwayColor || '#8a2be2', padding: '8px', gap: '6px' } as React.CSSProperties}>
 
-      <div className="msc-header">
-        <div className="msc-avatar" style={{ backgroundImage: `url(${avatarUrl || ''})` }}>
+      <div className="msc-header" style={{ gap: '8px', marginBottom: '4px' }}>
+        <div className="msc-avatar" style={{ backgroundImage: `url(${avatarUrl || ''})`, width: '40px', height: '40px', minWidth: '40px' }}>
           {!avatarUrl && <span>{character.name?.charAt(0) || '?'}</span>}
         </div>
-        <div className="msc-info">
-          <h4>{character.name || 'Sem Nome'}</h4>
-          <span>
+        <div className="msc-info" style={{ minWidth: 0 }}>
+          <h4 style={{ fontSize: '14px', margin: '0 0 2px 0' }}>{character.name || 'Sem Nome'}</h4>
+          <span style={{ fontSize: '11px', opacity: 0.8 }}>
             {(() => {
               if (character.pathways?.primary) return character.pathways.primary;
               if (Array.isArray(character.pathway)) return character.pathway[0] || 'Sem Caminho';
@@ -132,13 +132,13 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
         </div>
       </div>
 
-      <div className="msc-resources-container">
+      <div className="msc-resources-container" style={{ gap: '4px', marginBottom: '4px' }}>
         <ResourceBar label="PV" value={character.vitality} max={character.maxVitality} color="red" />
         <ResourceBar label="SAN" value={character.sanity} max={character.maxSanity} color="purple" />
         <ResourceBar label="PE" value={character.spirituality} max={character.maxSpirituality} color="blue" />
       </div>
 
-      <div className="msc-combat-grid">
+      <div className="msc-combat-grid" style={{ gap: '4px', marginBottom: '4px' }}>
         <StatBox label="Defesa" value={defesa} />
         <StatBox label="Absorção" value={absorcao} />
         <StatBox label="Iniciativa" value={iniciativa} />

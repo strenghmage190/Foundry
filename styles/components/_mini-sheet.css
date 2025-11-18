@@ -6,45 +6,45 @@
   background: #212124;
   border: 1px solid #3d3d3d;
   border-radius: 8px;
-  padding: 0.75rem;
+  padding: 0.5rem;
   font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* Espaçamento reduzido */
-  width: 250px; /* Ainda mais compacto */
+  gap: 0.4rem;
+  width: 240px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
-.msc-header { display: flex; align-items: center; gap: 0.75rem; }
+.msc-header { display: flex; align-items: center; gap: 0.5rem; }
 .msc-avatar {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   background-color: #333; background-size: cover; background-position: center;
   flex-shrink: 0; border: 2px solid var(--character-color, #6f42c1);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; font-weight: bold; color: #fff;
+  font-size: 1.1rem; font-weight: bold; color: #fff;
 }
-.msc-info h4 { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; }
-.msc-info span { font-size: 0.6rem; color: #888; text-transform: uppercase; }
+.msc-info h4 { margin: 0; font-size: 0.9rem; font-weight: 600; color: #fff; }
+.msc-info span { font-size: 0.55rem; color: #888; text-transform: uppercase; }
 
 /* --- Barras de Recurso --- */
 .msc-resources-container {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 .msc-resource-bar {
   display: grid;
-  grid-template-columns: 25px 1fr auto;
+  grid-template-columns: 22px 1fr auto;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   position: relative;
 }
-.msc-resource-bar label { font-size: 0.65rem; font-weight: 600; color: #aaa; }
-.msc-bar-track { height: 14px; background-color: #111; border-radius: 3px; overflow: hidden; }
+.msc-resource-bar label { font-size: 0.6rem; font-weight: 600; color: #aaa; }
+.msc-bar-track { height: 12px; background-color: #111; border-radius: 3px; overflow: hidden; }
 .msc-bar-fill { height: 100%; transition: width 0.3s ease; }
 .msc-bar-value {
-  font-size: 0.7rem; font-weight: 600; color: #ccc; text-align: right;
-  white-space: nowrap; /* Impede que o texto quebre */
+  font-size: 0.65rem; font-weight: 600; color: #ccc; text-align: right;
+  white-space: nowrap;
 }
 /* ... (regras de cor para .red, .purple, .blue) ... */
 .msc-resource-bar.red .msc-bar-fill { background-color: #c62828; }
@@ -56,22 +56,22 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid #333;
-  padding-top: 0.75rem;
+  padding-top: 0.5rem;
 }
 .msc-combat-stat { text-align: center; }
-.msc-combat-stat .value { font-size: 1.4rem; font-weight: 700; color: #fff; }
-.msc-combat-stat .label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
+.msc-combat-stat .value { font-size: 1.2rem; font-weight: 700; color: #fff; }
+.msc-combat-stat .label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
 
 /* --- NOVA SEÇÃO DE STATUS --- */
 .msc-status-section {
   border-top: 1px solid #333;
-  padding-top: 0.75rem;
+  padding-top: 0.5rem;
 }
 .status-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 .status-item .label {
   color: #888;
@@ -80,9 +80,9 @@
   color: #fff;
   font-weight: 600;
   background-color: #c62828; /* Cor de alerta */
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem 0.35rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
 }
 
 /* --- Rodapé --- */
@@ -90,12 +90,12 @@
   background: none; border: none;
   color: #888;
   font-weight: 600; cursor: pointer;
-  padding: 0.25rem; font-size: 0.8rem;
+  padding: 0.25rem; font-size: 0.75rem;
   width: 100%; text-align: center;
   transition: color 0.2s;
   border-top: 1px solid #333;
-  padding-top: 0.75rem;
-  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  margin-top: 0.2rem;
 }
 .msc-footer-link:hover {
   color: var(--character-color, #a978f8);
