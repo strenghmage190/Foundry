@@ -466,15 +466,35 @@ input:checked + .slider:before {
     font-weight: 500;
 }
 
-.particle-tag button {
+.particle-tag button.remove-particle-btn {
     background: none;
     border: none;
     color: #888;
     margin-left: 0.6rem;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.2s ease;
 }
-.particle-tag.active button { color: #fff; }
+
+.particle-tag button.remove-particle-btn:hover {
+    color: #ff4444;
+}
+
+.particle-tag.active button.remove-particle-btn { 
+    color: #fff; 
+}
+
+.particle-tag.active button.remove-particle-btn:hover {
+    color: #ff6666;
+}
+
+.particle-tag.domain-particle {
+    opacity: 0.9;
+    border-color: var(--character-color, #6f42c1);
+}
 
 .particle-details-panel {
     background-color: #151517;

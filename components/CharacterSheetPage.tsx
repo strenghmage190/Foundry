@@ -1865,7 +1865,7 @@ export const CharacterSheetPage = () => {
             handleUpdate({
               learnedParticles: [
                 ...effectiveAgentData.learnedParticles,
-                ...p.map((i) => ({ ...i, id: Date.now() + Math.random() })),
+                ...p.map((i) => ({ ...i, id: Date.now() + Math.random(), isDomain: false })),
               ],
             })
           }

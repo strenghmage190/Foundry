@@ -6,7 +6,7 @@ interface ArcaneDeconstructionModalProps {
     isOpen: boolean;
     onClose: () => void;
     agent: AgentData;
-    onUpdate: (updatedAgent: AgentData) => void;
+    onUpdate: (update: Partial<AgentData>) => void;
     addLogEntry: (log: Omit<ToastData, 'id'>) => void;
 }
 
@@ -30,17 +30,14 @@ const ArcaneDeconstructionModal: React.FC<ArcaneDeconstructionModalProps> = ({ i
             isDomain: false,
         };
 
-        const updatedAgent: AgentData = {
-            ...agent,
+        onUpdate({
             character: {
                 ...agent.character,
                 paDisponivel: agent.character.paDisponivel - COST,
                 paTotalGasto: agent.character.paTotalGasto + COST,
             },
             learnedParticles: [...agent.learnedParticles, newParticle],
-        };
-
-        onUpdate(updatedAgent);
+        });
         
         addLogEntry({
             type: 'info',
@@ -145,7 +142,7 @@ const ParticleDetailPopup: React.FC<ParticleDetailPopupProps> = ({ particle, onC
 // --- Main Tab Component ---
 interface MagicTabProps {
     agent: AgentData;
-    onUpdate: (updatedAgent: AgentData) => void;
+    onUpdate: (update: Partial<AgentData>) => void;
     onOpenMagicGrimoire: () => void;
     addLogEntry: (log: Omit<ToastData, 'id'>) => void;
 }
@@ -179,22 +176,34 @@ export const MagicTab: React.FC<MagicTabProps> = ({
 
     const handleRitualChange = (id: number, field: keyof Ritual, value: any) => {
         const newRituals = rituais.map(r => r.id === id ? { ...r, [field]: value } : r);
-        onUpdate({ ...agent, rituais: newRituals });
+        onUpdate({ rituais: newRituals });
     };
 
     const handleAddRitual = () => {
         const newRitual: Ritual = { id: Date.now(), name: 'Novo Ritual', description: '' };
-        onUpdate({ ...agent, rituais: [...rituais, newRitual] });
+        onUpdate({ rituais: [...rituais, newRitual] });
     };
 
     const handleDeleteRitual = (id: number) => {
         const newRituals = rituais.filter(r => r.id !== id);
-        onUpdate({ ...agent, rituais: newRituals });
+        onUpdate({ rituais: newRituals });
     };
     
     const handleDeleteParticle = (id: number) => {
+        console.log('Tentando deletar partícula:', id);
+        console.log('Partículas antes:', learnedParticles);
+        const particleToDelete = learnedParticles.find(p => p.id === id);
+        console.log('Partícula a deletar:', particleToDelete);
+        
+        if (particleToDelete?.isDomain) {
+            console.warn('Tentativa de deletar partícula de domínio bloqueada');
+            return;
+        }
+        
         const newParticles = learnedParticles.filter(p => p.id !== id);
-        onUpdate({ ...agent, learnedParticles: newParticles });
+        console.log('Partículas depois:', newParticles);
+        console.log('Chamando onUpdate com:', { learnedParticles: newParticles });
+        onUpdate({ learnedParticles: newParticles });
     };
 
     return (
@@ -241,23 +250,32 @@ export const MagicTab: React.FC<MagicTabProps> = ({
                                     {items.length === 0 ? (
                                         <span className="empty-group">— nenhum —</span>
                                     ) : (
-                                        items.map(particle => (
+                                        items.map(particle => {
+                                            const isDomainParticle = particle.isDomain === true;
+                                            return (
                                             <div
                                                 key={particle.id}
-                                                className={`particle-tag`}
-                                                title={particle.description}
+                                                className={`particle-tag ${isDomainParticle ? 'domain-particle' : ''}`}
+                                                title={isDomainParticle ? `${particle.description}\n\n⚠️ Partículas de domínio não podem ser removidas` : particle.description}
                                                 onClick={() => setSelectedParticle(particle)}
                                             >
                                                 <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteParticle(particle.id); }}
-                                                    disabled={particle.isDomain}
-                                                    aria-label={`Remover ${particle.name}`}
-                                                >
-                                                    ×
-                                                </button>
+                                                {!isDomainParticle && (
+                                                    <button
+                                                        className="remove-particle-btn"
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            console.log('Clicou para remover:', particle.name, particle.id, 'isDomain:', particle.isDomain);
+                                                            handleDeleteParticle(particle.id); 
+                                                        }}
+                                                        aria-label={`Remover ${particle.name}`}
+                                                        title="Remover partícula"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
                                             </div>
-                                        ))
+                                        )})
                                     )}
                                 </div>
                             </div>
