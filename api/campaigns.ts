@@ -7,10 +7,11 @@ import { Campaign, CampaignPlayer } from '../types';
  * Cria uma nova campanha no banco de dados Supabase.
  */
 export async function createCampaign(name: string, masterId: string): Promise<Campaign> {
-  // Gera um código de convite único (UUID) para a campanha
-  const inviteCode = (globalThis as any).crypto?.randomUUID
-    ? (globalThis as any).crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  // Gera um UUID válido
+  const inviteCode = crypto.randomUUID();
+  
+  console.log('🆕 Criando campanha com invite_code:', inviteCode);
+  
   const { data, error } = await supabase
     .from('campaigns')
     .insert({
@@ -221,18 +222,26 @@ export async function linkPlayerCharacter(campaignId: string, playerId: string, 
  * Busca uma única campanha pelo seu CÓDIGO DE CONVITE.
  */
 export async function getCampaignByInviteCode(code: string): Promise<Campaign | null> {
+  console.log('📡 API: Buscando campanha com invite_code:', code);
+  
+  // Tenta buscar diretamente como string (o Supabase faz cast automático para UUID)
   const { data, error } = await supabase
     .from('campaigns')
     .select('*')
     .eq('invite_code', code)
-    .single();
+    .maybeSingle(); // Usa maybeSingle em vez de single para não dar erro se não achar
 
   if (error) {
-    if (error.code !== 'PGRST116') {
-      console.error('Erro ao buscar campanha por código de convite:', error);
-    }
+    console.error('❌ Erro ao buscar campanha por código de convite:', error);
     return null;
   }
+  
+  if (!data) {
+    console.log('⚠️ Nenhuma campanha encontrada com código:', code);
+    return null;
+  }
+  
+  console.log('✅ Campanha encontrada:', data);
   return data as Campaign | null;
 }
 
@@ -258,9 +267,9 @@ export async function updateCampaign(campaignId: string, updates: Partial<Campai
  * Gera e define um novo invite_code para a campanha (se estiver vazio ou por regeneração).
  */
 export async function generateInviteCode(campaignId: string): Promise<Campaign> {
-  const code = (globalThis as any).crypto?.randomUUID
-    ? (globalThis as any).crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  // Gera um UUID válido
+  const code = crypto.randomUUID();
+  console.log('🔄 Gerando novo invite_code:', code, 'para campanha:', campaignId);
   return updateCampaign(campaignId, { invite_code: code } as any);
 }
 

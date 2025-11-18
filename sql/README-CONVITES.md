@@ -23,7 +23,32 @@ DROP POLICY IF EXISTS "Campaigns: select by invite_code" ON public.campaigns;
 ## Como aplicar:
 1. Acesse seu projeto no [Supabase Dashboard](https://app.supabase.com)
 2. Vá em **SQL Editor** no menu lateral
-3. Cole e execute o SQL acima
+3. Execute os arquivos SQL **NA ORDEM** abaixo:
+
+### Passo 1: Verificar estrutura (opcional, mas recomendado)
+```sql
+-- Execute: sql/verify_campaign_players.sql
+-- Isto mostrará se a tabela existe e está configurada
+```
+
+### Passo 2: Criar/verificar tabela campaign_players
+```sql
+-- Execute: sql/create_campaign_players_table.sql
+-- Cria a tabela se não existir
+```
+
+### Passo 3: Aplicar políticas de campanhas
+```sql
+-- Execute: sql/campaign_invite_policies.sql
+-- Permite ver campanhas via convite
+```
+
+### Passo 4: Aplicar políticas de jogadores
+```sql
+-- Execute: sql/campaign_players_policies.sql
+-- Permite jogadores entrarem e vincularem personagens
+```
+
 4. Teste novamente o link de convite
 
 ## Verificação
@@ -34,7 +59,18 @@ Após aplicar, teste criando um novo convite:
 4. Faça login com outro usuário
 5. O convite deve funcionar ✅
 
+## ⚠️ IMPORTANTE: Execute AMBOS os arquivos SQL
+
+### 1. Políticas de Campanhas (obrigatório)
+Arquivo: `campaign_invite_policies.sql`
+- Permite que jogadores vejam campanhas através do código de convite
+
+### 2. Políticas de Jogadores (obrigatório)
+Arquivo: `campaign_players_policies.sql`  
+- Permite que jogadores se adicionem às campanhas
+- Permite que jogadores vinculem seus personagens
+- Permite que o GM gerencie jogadores
+
 ## Políticas Relacionadas
 Veja também:
-- `sql/campaign_invite_policies.sql` - Políticas completas de convite
-- `sql/create_campaigns_table.sql` - Políticas básicas da tabela
+- `sql/create_campaigns_table.sql` - Políticas básicas da tabela campaigns
