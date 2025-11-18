@@ -13,14 +13,21 @@ update public.campaigns
 -- Allow SELECT of campaigns with an invite_code by any authenticated user
 -- This is necessary for the InvitePage to resolve /invite/:code.
 -- If you want to restrict exposure, consider exposing only specific columns via a view.
-create policy if not exists "Campaigns: select by invite_code"
+
+-- First drop if exists (in case of recreation)
+drop policy if exists "Campaigns: select by invite_code" on public.campaigns;
+
+-- Then create the policy
+create policy "Campaigns: select by invite_code"
   on public.campaigns
   for select
   to authenticated
   using (invite_code is not null);
 
 -- Optional: prevent UPDATE to invite_code except by GM
-create policy if not exists "Campaigns: update by gm"
+drop policy if exists "Campaigns: update by gm" on public.campaigns;
+
+create policy "Campaigns: update by gm"
   on public.campaigns
   for update
   to authenticated
