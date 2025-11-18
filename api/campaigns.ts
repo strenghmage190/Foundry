@@ -198,6 +198,8 @@ export async function addPlayerToCampaign(campaignId: string, playerId: string):
  * Vincula um AGENTE (NPC) existente a uma campanha.
  */
 export async function linkAgentToCampaign(campaignId: string, agentId: string): Promise<any> {
+  console.log('📡 API: Vinculando agente (NPC):', { campaignId, agentId });
+  
   const { data, error } = await supabase
     .from('campaign_players')
     .insert({
@@ -209,9 +211,11 @@ export async function linkAgentToCampaign(campaignId: string, agentId: string): 
     .single();
 
   if (error) {
-    console.error('Erro ao vincular agente à campanha:', error);
+    console.error('❌ Erro ao vincular agente à campanha:', error);
     throw error;
   }
+  
+  console.log('✅ Agente vinculado com sucesso:', data);
   return data;
 }
 

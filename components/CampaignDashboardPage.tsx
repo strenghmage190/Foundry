@@ -201,11 +201,12 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
   };
 
   // 👇 2. MODIFIQUE O HANDLER PARA CHAMAR A NOVA FUNÇÃO
-  const handleAgentAdded = () => {
-    console.log("2. DASHBOARD: A função handleAgentAdded foi chamada."); // LOG 2
+  const handleAgentAdded = async () => {
+    console.log("🔄 DASHBOARD: Agente adicionado, recarregando lista...");
     setShowAddAgentModal(false);
-    loadPlayers(campaign!.id); // <-- AQUI ESTÁ A MÁGICA!
-    alert('Agente adicionado com sucesso!'); // Mova o alerta para cá
+    if (campaign?.id) {
+      await loadPlayers(campaign.id);
+    }
   };
 
   const handleRemoveParticipant = async (linkId: string) => {
@@ -230,15 +231,11 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
   return (
     <div>
       <header style={headerStyles}>
-        {/* Mostrar botões de mestre apenas se o usuário for o GM */}
+        {/* Mostrar apenas Adicionar Agentes e Convidar com Link para o GM */}
         {isGameMaster && (
           <div style={actionBarStyles}>
-            <button onClick={() => setShowCoverModal(true)}>Foto de Capa</button>
             <button onClick={() => setShowAddAgentModal(true)}>Adicionar Agentes</button>
             <button onClick={handleCopyInviteLink}>Convidar com Link</button>
-            <button onClick={() => setShowEditModal(true)}>Editar Campanha</button>
-            <button onClick={() => alert('Funcionalidade de Criar Combate ainda não implementada')}>Criar Combate</button>
-            <button onClick={() => navigate(`/masterscreen/${campaign.id}`)}>Escudo do Mestre</button>
           </div>
         )}
 
@@ -266,17 +263,9 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
           <section style={gridStyle}>
             {players.length === 0 && <div style={{ padding: 12 }}>Nenhum agente (NPC) adicionado.</div>}
 
-            {/* 👇👇👇 MODIFICAÇÃO AQUI 👇👇👇 */}
+            {/* Mostrar TODOS os personagens, mas controlar acesso ao abrir */}
             {players
               .filter(p => p.agents)
-              .filter(p => {
-                const isPrivate = p?.agents?.is_private === true;
-                if (!isPrivate) return true;
-                const viewerId = currentUserId;
-                const ownerId = p?.agents?.user_id || null;
-                const gmId = campaign?.gm_id || null;
-                return viewerId && (viewerId === ownerId || viewerId === gmId);
-              })
               .map(p => {
               // Safety guard: if no agents data, skip rendering
               if (!p.agents) {
@@ -286,12 +275,26 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
 
               console.log('CampaignDashboardPage: Rendering agent', { name: p.agents.data.character?.name, avatarUrl: p.agents.data.character?.avatarUrl });
 
+              // Verificar se pode acessar a ficha
+              const isPrivate = p?.agents?.is_private === true;
+              const ownerId = p?.agents?.user_id || null;
+              const gmId = campaign?.gm_id || null;
+              const canAccess = !isPrivate || (currentUserId && (currentUserId === ownerId || currentUserId === gmId));
+
+              const handleOpen = () => {
+                if (canAccess) {
+                  navigate(`/campaign/${p.campaign_id}/agent/${p.agent_id}`);
+                } else {
+                  alert('Esta ficha é privada. Apenas o dono e o mestre podem visualizá-la.');
+                }
+              };
+
               return (
                 <CharacterCard
                   key={p.id}
                   agent={p.agents.data}
-                  onOpen={() => navigate(`/campaign/${p.campaign_id}/agent/${p.agent_id}`)}
-                  onEdit={() => navigate(`/campaign/${p.campaign_id}/agent/${p.agent_id}`)}
+                  onOpen={handleOpen}
+                  onEdit={canAccess ? () => navigate(`/campaign/${p.campaign_id}/agent/${p.agent_id}`) : undefined}
                   onRemove={isGameMaster ? () => handleRemoveParticipant(p.id) : undefined}
                 />
               );

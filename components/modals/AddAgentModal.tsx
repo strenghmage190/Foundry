@@ -40,12 +40,18 @@ const AddAgentModal: React.FC<Props> = ({ campaignId, onClose, onAgentAdded }) =
 
   const handleAddAgent = async () => {
     if (!selectedAgentId) return;
+    
+    console.log('🎭 Tentando adicionar agente:', { campaignId, selectedAgentId });
+    
     try {
       await linkAgentToCampaign(campaignId, selectedAgentId);
-      console.log("1. MODAL: Sucesso na API! Chamando onAgentAdded..."); // LOG 1
-      onAgentAdded(); // Garanta que não está passando nenhum parâmetro
-    } catch (error) {
-      alert('Erro ao adicionar o agente.');
+      console.log("✅ MODAL: Sucesso na API! Chamando onAgentAdded..."); 
+      alert('Agente adicionado com sucesso!');
+      onAgentAdded();
+      onClose();
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar agente:', error);
+      alert(`Erro ao adicionar o agente: ${error?.message || 'Erro desconhecido'}`);
     }
   };
 
