@@ -1,0 +1,178 @@
+/* Resets e Configurações Globais */
+:root {
+    --bg-color: #1a1a1a;
+    --text-color: #dcdcdc;
+    --primary-accent: #9b59b6;
+    --secondary-accent: #8e44ad;
+    --title-font: 'Cinzel', serif;
+    --body-font: 'Roboto', sans-serif;
+    --border-color: #333;
+    --formula-color: #888;
+    --dice-color: #e6b325;
+}
+
+body {
+    margin: 0;
+    padding: 2rem;
+    font-family: var(--body-font);
+    background-color: #0e0e0e;
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Estilo do Modal Principal */
+.character-sheet-modal {
+    width: 100%;
+    max-width: 800px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(155, 89, 182, 0.2);
+    overflow: hidden;
+}
+
+/* Cabeçalho do Modal */
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background-color: #222;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sheet-header h2 {
+    font-family: var(--body-font);
+    font-weight: 400;
+    font-size: 1rem;
+    margin: 0;
+    color: var(--primary-accent);
+}
+
+.close-btn {
+    background-color: var(--primary-accent);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 0.5rem 1.5rem;
+    font-family: var(--body-font);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.close-btn:hover {
+    background-color: var(--secondary-accent);
+}
+
+/* Conteúdo Principal */
+.sheet-content {
+    padding: 1.5rem 2rem;
+}
+
+/* Bloco de Identidade */
+.identity-block h1 {
+    font-family: var(--title-font);
+    font-size: 3rem;
+    margin: 0;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.identity-block h3 {
+    font-family: var(--title-font);
+    font-size: 1.25rem;
+    margin: 0.25rem 0;
+    color: var(--text-color);
+    font-weight: 400;
+}
+
+.identity-block p {
+    color: var(--formula-color);
+    margin: 0;
+}
+
+/* Divisores de Seção */
+.section-divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-color), transparent);
+    margin: 2rem 0;
+}
+
+/* Estilos gerais para títulos de seção */
+.stat-block h2,
+.attack-block h2,
+.powers-block h2 {
+    font-family: var(--title-font);
+    color: var(--primary-accent);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+/* Status de Combate */
+.stat-block ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    line-height: 1.8;
+}
+
+.stat-block strong {
+    font-weight: 500;
+    color: #fff;
+}
+
+.formula {
+    color: var(--formula-color);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* Ataques e Poderes */
+.attack-item, .power-item {
+    margin-bottom: 1.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--border-color);
+}
+
+.attack-item h4, .power-item h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.attack-item p, .power-item p {
+    margin: 0.25rem 0;
+    line-height: 1.6;
+}
+
+.dice-roll {
+    color: var(--dice-color);
+    font-weight: bold;
+}
+
+.qualities {
+    font-style: italic;
+    font-size: 0.9em;
+    color: var(--formula-color);
+}
+
+.tag {
+    background-color: #333;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 400;
+    font-family: var(--body-font);
+}

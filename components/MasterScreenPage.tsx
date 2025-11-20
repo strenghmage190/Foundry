@@ -7,6 +7,7 @@ import { getCampaignById, getPlayersByCampaignId, getCampaignsByMasterId } from 
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
 import type { Campaign, Character } from '../types';
 import CharacterStatusCard from './CharacterStatusCard';
+import CharacterOverviewModal from './CharacterOverviewModal';
 import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import DiceLogEntry from './DiceLogEntry';
 
@@ -148,25 +149,16 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
         console.log(`STATUS DA INSCRIÇÃO REALTIME: ${status}`);
       });
 
+    // cleanup function for the realtime channel
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        console.warn('Erro ao remover canal realtime:', e);
+      }
     };
   }, [campaign]);
 
-  // =======================================================
-  // 2. LÓGICA DE RETORNO ANTECIPADO (DEPOIS DOS HOOKS)
-  // =======================================================
-  if (loading) return <div className="loading-state">Carregando Escudo do Mestre...</div>;
-  if (!campaign) return <div className="empty-state">Nenhuma campanha encontrada.</div>;
-
-
-  // =======================================================
-  // 3. FUNÇÕES HANDLER E RETORNO FINAL
-  // =======================================================
-
-  // ... (todas as suas funções como saveInitiativeState, toggleSelect, rollInitiatives, etc. vêm aqui)
-  // O código deles pode permanecer o mesmo.
-  // ...
   const saveInitiativeState = (order: any[], active: number) => {
     const key = `beyonders_initiative_${campaign.id}`;
     try { localStorage.setItem(key, JSON.stringify({ order, activeIndex: active })); } catch (e) { }
@@ -285,7 +277,7 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
       // TODO: Add toast notification for failure
     }
   };
-  const masterId = campaign.gm_id;
+  const masterId = campaign?.gm_id ?? null;
 
   // GM vê TODOS os personagens, apenas filtra NPCs se hideAgents estiver ativo
   const visibleCharacters = characters.filter(p => {
@@ -297,6 +289,9 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     
     return true; // GM vê todos os outros
   });
+
+  // participante selecionado atualmente (para painel expandido)
+  const selectedParticipant = characters.find(c => c.id === selectedParticipantId) || null;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -332,23 +327,28 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
               <button onClick={() => { setInitiativeOrder([]); setActiveIndex(0); saveInitiativeState([], 0); }}>Limpar Combate</button>
             </div>
           </div>
+          {/* Modal com a ficha completa do participante selecionado */}
+          {selectedParticipant && (
+            <CharacterOverviewModal
+              agentData={selectedParticipant?.agents?.data ?? null}
+              participant={selectedParticipant}
+              campaign={campaign}
+              onClose={() => setSelectedParticipantId(null)}
+            />
+          )}
+
           <div className="ms-character-grid">
             {visibleCharacters.length === 0 ? (
               <div className="ms-empty-state">Nenhum personagem disponível.</div>
             ) : (
-              (() => {
-                const selected = characters.find(c => c.id === selectedParticipantId) || visibleCharacters[0] || null;
-                if (!selected) return <div className="ms-empty-state">Nenhum participante selecionado.</div>;
-
-                const ch = selected;
+              visibleCharacters.map(ch => {
                 const agentData = ch?.agents?.data ?? null;
-
                 if (!agentData) {
                   const profile = ch.user_profiles || null;
                   const displayName = profile?.displayName ?? (ch.player_id ? `Player: ${ch.player_id}` : `Link ID: ${ch.id}`);
                   const avatar = profile?.signedAvatarUrl ?? null;
                   return (
-                    <div key={ch.id} style={{ width: '100%' }}>
+                    <div key={ch.id} style={{ width: 280 }}>
                       <div className="ms-profile-card">
                         <div className="char-status-header">
                           <div className="char-avatar">
@@ -384,26 +384,31 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
                   initiative: getInitiativePool(agentData),
                 };
 
+                const isSelected = selectedParticipantId === ch.id;
+                const agentRowId = ch.agent_id ?? (ch.agents && (ch.agents.id || (ch.agents[0] && ch.agents[0].id))) ?? null;
                 return (
-                  <CharacterStatusCard
-                    key={ch.id}
-                    name={character.name || `Participante #${ch.id}`}
-                    avatarUrl={avatar}
-                    path={hasPathway ? pathName : undefined}
-                    sequence={character.sequence}
-                    vitality={character.vitality}
-                    maxVitality={character.maxVitality}
-                    sanity={character.sanity}
-                    maxSanity={character.maxSanity}
-                    spirituality={character.spirituality}
-                    maxSpirituality={character.maxSpirituality}
-                    stats={stats}
-                    weaknesses={weaknesses}
-                    resistances={resistances}
-                    onViewDetails={() => navigate(`/campaign/${campaign.id}/agent/${agentData.id}`)}
-                  />
+                  <div key={ch.id} style={{ width: 280, cursor: 'pointer' }} onClick={() => setSelectedParticipantId(ch.id)}>
+                    <CharacterStatusCard
+                      compact
+                      className={isSelected ? 'selected' : ''}
+                      name={character.name || `Participante #${ch.id}`}
+                      avatarUrl={avatar}
+                      path={hasPathway ? pathName : undefined}
+                      sequence={character.sequence}
+                      vitality={character.vitality}
+                      maxVitality={character.maxVitality}
+                      sanity={character.sanity}
+                      maxSanity={character.maxSanity}
+                      spirituality={character.spirituality}
+                      maxSpirituality={character.maxSpirituality}
+                      stats={stats}
+                      weaknesses={weaknesses}
+                      resistances={resistances}
+                      onViewDetails={() => agentRowId ? navigate(`/campaign/${campaign.id}/agent/${agentRowId}`) : null}
+                    />
+                  </div>
                 );
-              })()
+              })
             )}
           </div>
         </section>

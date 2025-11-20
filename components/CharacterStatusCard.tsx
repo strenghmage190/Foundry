@@ -24,6 +24,8 @@ interface CharacterStatusCardProps {
   maxSanity?: number;
   spirituality?: number;
   maxSpirituality?: number;
+  compact?: boolean;
+  className?: string;
 }
 
 const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
@@ -42,6 +44,8 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
   resistances = [],
   others = [],
   onViewDetails,
+  compact = false,
+  className,
 }) => {
   const [signedAvatar, setSignedAvatar] = useState<string | null>(null);
 
@@ -78,7 +82,7 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
   }, [avatarUrl, name]);
 
   return (
-    <div className="char-status-card">
+    <div className={`char-status-card${compact ? ' compact' : ''}${className ? ' ' + className : ''}`}>
       <header className="char-status-header">
         <div className="char-avatar">
           {signedAvatar ? (

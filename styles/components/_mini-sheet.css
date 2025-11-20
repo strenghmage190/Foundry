@@ -1,10 +1,13 @@
 /* ======================================= */
-/* === Mini Sheet (Final Compacto) === */
+/* === Mini Sheet - Beyonders Premium === */
+/* === Updated: 2025-11-18 17:45 ======== */
 /* ======================================= */
 
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
 .mini-sheet {
-  background: #212124;
-  border: 1px solid #3d3d3d;
+  background: linear-gradient(135deg, #131318 0%, #0f1012 100%);
+  border: 1px solid rgba(255,255,255,0.04);
   border-radius: 8px;
   padding: 0.5rem;
   font-family: 'Inter', sans-serif;
@@ -12,91 +15,330 @@
   flex-direction: column;
   gap: 0.4rem;
   width: 240px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
 }
 
-.msc-header { display: flex; align-items: center; gap: 0.5rem; }
+.mini-sheet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--character-color, #E6B325) 50%, 
+    transparent 100%
+  );
+  opacity: 0.6;
+}
+
+/* ===== CABEÇALHO ===== */
+.msc-header { 
+  display: flex; 
+  align-items: center; 
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(230, 179, 37, 0.08);
+}
+
 .msc-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background-color: #333; background-size: cover; background-position: center;
-  flex-shrink: 0; border: 2px solid var(--character-color, #6f42c1);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; font-weight: bold; color: #fff;
+  width: 42px; 
+  height: 42px; 
+  border-radius: 6px;
+  background-color: #000; 
+  background-size: cover; 
+  background-position: center;
+  flex-shrink: 0; 
+  border: 1px solid rgba(255,255,255,0.04);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-size: 0.95rem; 
+  font-weight: 700; 
+  color: var(--character-color, #E6B325);
+  font-family: 'Cinzel', serif;
 }
-.msc-info h4 { margin: 0; font-size: 0.9rem; font-weight: 600; color: #fff; }
-.msc-info span { font-size: 0.55rem; color: #888; text-transform: uppercase; }
 
-/* --- Barras de Recurso --- */
+.msc-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.msc-name { 
+  margin: 0; 
+  font-size: 0.88rem; 
+  font-weight: 700; 
+  color: #E6B325;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msc-pathway { 
+  font-size: 0.7rem; 
+  color: #aaa;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msc-sequence {
+  font-size: 0.6rem;
+  color: #9a9a9a;
+  font-weight: 500;
+}
+/* ===== GRADE DE ATRIBUTOS DE COMBATE ===== */
+.msc-combat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.msc-combat-stat { 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.35rem 0.25rem;
+  background: transparent;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.03);
+  transition: all 0.12s ease;
+}
+
+.msc-combat-stat:hover {
+  transform: translateY(-1px);
+}
+
+.msc-stat-icon {
+  color: #E6B325;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.msc-stat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.msc-combat-stat .value { 
+  font-size: 1.05rem; 
+  font-weight: 800; 
+  color: #E6B325;
+  font-family: 'Cinzel', serif;
+}
+
+.msc-combat-stat .label { 
+  font-size: 0.58rem; 
+  color: #9a9a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+}
+
+/* ===== BARRAS DE RECURSOS ===== */
 .msc-resources-container {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-}
-.msc-resource-bar {
-  display: grid;
-  grid-template-columns: 22px 1fr auto;
-  align-items: center;
   gap: 0.4rem;
-  position: relative;
 }
-.msc-resource-bar label { font-size: 0.6rem; font-weight: 600; color: #aaa; }
-.msc-bar-track { height: 12px; background-color: #111; border-radius: 3px; overflow: hidden; }
-.msc-bar-fill { height: 100%; transition: width 0.3s ease; }
-.msc-bar-value {
-  font-size: 0.65rem; font-weight: 600; color: #ccc; text-align: right;
-  white-space: nowrap;
-}
-/* ... (regras de cor para .red, .purple, .blue) ... */
-.msc-resource-bar.red .msc-bar-fill { background-color: #c62828; }
-.msc-resource-bar.purple .msc-bar-fill { background-color: var(--character-color, #6a1b9a); }
-.msc-resource-bar.blue .msc-bar-fill { background-color: #1565c0; }
 
-/* --- Stats de Combate (horizontal) --- */
-.msc-combat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  border-top: 1px solid #333;
-  padding-top: 0.5rem;
+.msc-resource-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.msc-combat-stat { text-align: center; }
-.msc-combat-stat .value { font-size: 1.2rem; font-weight: 700; color: #fff; }
-.msc-combat-stat .label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
 
-/* --- NOVA SEÇÃO DE STATUS --- */
-.msc-status-section {
-  border-top: 1px solid #333;
-  padding-top: 0.5rem;
+.msc-resource-icon {
+  color: currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid currentColor;
+  flex-shrink: 0;
 }
-.status-item {
+
+.msc-resource-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.msc-resource-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
-}
-.status-item .label {
-  color: #888;
-}
-.status-item .value {
-  color: #fff;
-  font-weight: 600;
-  background-color: #c62828; /* Cor de alerta */
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  font-size: 0.7rem;
 }
 
-/* --- Rodapé --- */
-.msc-footer-link {
-  background: none; border: none;
-  color: #888;
-  font-weight: 600; cursor: pointer;
-  padding: 0.25rem; font-size: 0.75rem;
-  width: 100%; text-align: center;
-  transition: color 0.2s;
-  border-top: 1px solid #333;
-  padding-top: 0.5rem;
-  margin-top: 0.2rem;
+.msc-resource-bar label { 
+  font-size: 0.65rem; 
+  font-weight: 700; 
+  color: currentColor;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
+.msc-bar-value {
+  font-size: 0.7rem; 
+  font-weight: 600; 
+  color: #fff;
+  font-family: 'Cinzel', serif;
+}
+
+.msc-bar-track { 
+  height: 6px; 
+  background-color: rgba(0, 0, 0, 0.45); 
+  border-radius: 4px; 
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.msc-bar-fill { 
+  height: 100%; 
+  transition: width 0.18s ease;
+  box-shadow: 0 0 6px currentColor;
+  position: relative;
+}
+
+.msc-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.msc-resource-bar.red { color: #e53935; }
+.msc-resource-bar.red .msc-bar-fill { background-color: #c62828; }
+
+.msc-resource-bar.purple { color: var(--character-color, #9c27b0); }
+.msc-resource-bar.purple .msc-bar-fill { background-color: var(--character-color, #7b1fa2); }
+
+.msc-resource-bar.blue { color: #1e88e5; }
+.msc-resource-bar.blue .msc-bar-fill { background-color: #1565c0; }
+
+/* ===== AFIXOS (FRAQUEZAS E RESISTÊNCIAS) ===== */
+.msc-affix-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+
+.msc-assimilation-anchors {
+  display:flex;
+  justify-content:space-between;
+  gap:0.5rem;
+  padding:0 2px;
+  font-size:0.72rem;
+  color:#bdbdbd;
+}
+.msc-assimilation { display:flex; gap:0.25rem; align-items:center; }
+.assim-icon { display:inline-block; background:rgba(255,255,255,0.03); padding:2px 4px; border-radius:3px; }
+.msc-anchors { display:flex; gap:0.25rem; align-items:center; }
+.anchor-icon { display:inline-flex; width:18px; height:18px; align-items:center; justify-content:center; border-radius:3px; background:rgba(255,255,255,0.02); color:#ddd; font-size:0.85rem; }
+.anchor-icon.empty { opacity:0.35; }
+
+.msc-affix-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 3px solid;
+}
+
+.msc-affix-item.weakness {
+  border-left-color: #e53935;
+  background: rgba(229, 57, 53, 0.08);
+}
+
+.msc-affix-item.resistance {
+  border-left-color: #43a047;
+  background: rgba(67, 160, 71, 0.08);
+}
+
+.msc-affix-item.condition {
+  border-left-color: #fb8c00;
+  background: rgba(251, 140, 0, 0.08);
+}
+
+.msc-affix-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.msc-affix-item.weakness .msc-affix-header {
+  color: #ff5252;
+}
+
+.msc-affix-item.resistance .msc-affix-header {
+  color: #66bb6a;
+}
+
+.msc-affix-item.condition .msc-affix-header {
+  color: #ffa726;
+}
+
+.msc-affix-content {
+  font-size: 0.7rem;
+  color: #ccc;
+  line-height: 1.4;
+  padding-left: 1.25rem;
+}
+
+/* ===== RODAPÉ ===== */
+.msc-footer-link {
+  background: transparent;
+  border: none;
+  color: #E6B325;
+  font-weight: 700;
+  font-family: 'Cinzel', serif;
+  cursor: pointer;
+  padding: 0.45rem 0;
+  font-size: 0.85rem;
+  width: 100%;
+  text-align: center;
+  transition: color 0.12s ease;
+  border-radius: 6px;
+  text-transform: none;
+  letter-spacing: 0.6px;
+  margin-top: 0;
+}
+
 .msc-footer-link:hover {
-  color: var(--character-color, #a978f8);
+  color: #fff;
 }
