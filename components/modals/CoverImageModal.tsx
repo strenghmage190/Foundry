@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { uploadAndSetCampaignCover } from '../../api/campaigns';
 import { Campaign } from '../../types';
+import { ImageCropModal } from './ImageCropModal';
 
 interface CoverImageModalProps {
   campaign: Campaign;
@@ -12,14 +13,35 @@ const CoverImageModal: React.FC<CoverImageModalProps> = ({ campaign, onClose, on
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Estado para controlar o modal de crop
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setCurrentCropFile(file);
+      setCropModalOpen(true);
     }
+  };
+
+  const handleCropConfirm = (croppedBlob: Blob) => {
+    // Converte o blob em File
+    const croppedFile = new File([croppedBlob], 'campaign-cover.png', { type: 'image/png' });
+    
+    setSelectedFile(croppedFile);
+    const url = URL.createObjectURL(croppedBlob);
+    setPreviewUrl(url);
+    
+    // Fecha o modal de crop
+    setCropModalOpen(false);
+    setCurrentCropFile(null);
+  };
+
+  const handleCropCancel = () => {
+    setCropModalOpen(false);
+    setCurrentCropFile(null);
   };
 
   const handleSave = async () => {
@@ -46,6 +68,7 @@ const CoverImageModal: React.FC<CoverImageModalProps> = ({ campaign, onClose, on
   };
 
   return (
+    <>
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
@@ -73,6 +96,17 @@ const CoverImageModal: React.FC<CoverImageModalProps> = ({ campaign, onClose, on
         </div>
       </div>
     </div>
+    
+    {/* Modal de Crop de Imagem */}
+    {cropModalOpen && currentCropFile && (
+      <ImageCropModal
+        imageFile={currentCropFile}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+        aspectRatio={16 / 9}
+      />
+    )}
+    </>
   );
 };
 

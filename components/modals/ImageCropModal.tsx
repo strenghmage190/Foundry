@@ -35,20 +35,20 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
     img.onload = () => {
       imageRef.current = img;
       
-      // Calcula zoom inicial para cobrir o container
+      // Calcula zoom inicial para COBRIR o container (não apenas fit)
       if (containerRef.current) {
-        const containerWidth = 300;
-        const containerHeight = 300;
+        const containerWidth = aspectRatio === 16/9 ? 480 : 300;
+        const containerHeight = aspectRatio === 16/9 ? 270 : 300;
         const imageAspect = img.width / img.height;
         const containerAspect = containerWidth / containerHeight;
         
         let initialZoom;
         if (imageAspect > containerAspect) {
-          // Imagem mais larga - fit pela altura
-          initialZoom = containerHeight / img.height;
-        } else {
-          // Imagem mais alta - fit pela largura
+          // Imagem mais larga - fit pela largura para cobrir
           initialZoom = containerWidth / img.width;
+        } else {
+          // Imagem mais alta - fit pela altura para cobrir
+          initialZoom = containerHeight / img.height;
         }
         
         setZoom(initialZoom);
@@ -63,7 +63,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
       }
     };
     img.src = imageUrl;
-  }, [imageUrl]);
+  }, [imageUrl, aspectRatio]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -95,8 +95,8 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
     }
 
     // Mantém o centro da imagem no mesmo lugar ao fazer zoom
-    const containerWidth = 300;
-    const containerHeight = 300;
+    const containerWidth = aspectRatio === 16/9 ? 480 : 300;
+    const containerHeight = aspectRatio === 16/9 ? 270 : 300;
     const centerX = containerWidth / 2;
     const centerY = containerHeight / 2;
     
@@ -122,21 +122,28 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Define o tamanho do canvas para 300x300 (ou o tamanho desejado)
-    const outputSize = 300;
-    canvas.width = outputSize;
-    canvas.height = outputSize;
+    // Define o tamanho do canvas baseado no aspect ratio
+    const outputWidth = aspectRatio === 16/9 ? 1920 : 800;
+    const outputHeight = aspectRatio === 16/9 ? 1080 : 800;
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
+
+    // Calcula a escala para o output (maior resolução)
+    const containerWidth = aspectRatio === 16/9 ? 480 : 300;
+    const containerHeight = aspectRatio === 16/9 ? 270 : 300;
+    const scaleX = outputWidth / containerWidth;
+    const scaleY = outputHeight / containerHeight;
 
     // Limpa o canvas
-    ctx.clearRect(0, 0, outputSize, outputSize);
+    ctx.clearRect(0, 0, outputWidth, outputHeight);
 
-    // Desenha a imagem com o zoom e posição atuais
+    // Desenha a imagem com o zoom e posição atuais, escalado para alta resolução
     ctx.drawImage(
       imageRef.current,
-      position.x,
-      position.y,
-      imageRef.current.width * zoom,
-      imageRef.current.height * zoom
+      position.x * scaleX,
+      position.y * scaleY,
+      imageRef.current.width * zoom * scaleX,
+      imageRef.current.height * zoom * scaleY
     );
 
     // Converte para blob
@@ -205,8 +212,8 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           style={{
-            width: '300px',
-            height: '300px',
+            width: aspectRatio === 16/9 ? '480px' : '300px',
+            height: aspectRatio === 16/9 ? '270px' : '300px',
             margin: '0 auto 20px',
             position: 'relative',
             overflow: 'hidden',

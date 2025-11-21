@@ -247,13 +247,14 @@
 }
 
 .campaign-cover-container {
-  height: 160px;
+  height: 240px;
   width: 100%;
   border-radius: 8px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #1a1a1c;
 }
 
 .campaign-cover-image {
