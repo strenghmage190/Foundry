@@ -522,8 +522,8 @@ export const CharacterSheetPage = () => {
       } = {};
 
       // Gerar URL assinada para o avatar principal do personagem
-      const mainAvatarUrl = agent.character.avatarUrl;
-      console.log('Main Avatar URL from DB:', mainAvatarUrl);
+      // Se character.avatarUrl estiver vazio, usa avatarHealthy como fallback
+      const mainAvatarUrl = agent.character.avatarUrl || agent.customization?.avatarHealthy;
       
       if (mainAvatarUrl && !mainAvatarUrl.startsWith('http')) {
         try {
@@ -532,13 +532,11 @@ export const CharacterSheetPage = () => {
           
           // Se falhar, tenta o bucket 'user-avatars'
           if (error || !data?.signedUrl) {
-            console.log('Tentando bucket user-avatars...');
             const result = await supabase.storage.from('user-avatars').createSignedUrl(mainAvatarUrl, 3600);
             data = result.data;
           }
           
           newSignedUrls.avatarUrl = data?.signedUrl || mainAvatarUrl;
-          console.log('Generated signed URL:', newSignedUrls.avatarUrl);
         } catch (error) {
           console.error('Error generating signed URL for main avatar:', error);
           newSignedUrls.avatarUrl = mainAvatarUrl;
@@ -546,7 +544,6 @@ export const CharacterSheetPage = () => {
       } else {
         // Se já é uma URL completa (http/https), usa diretamente
         newSignedUrls.avatarUrl = mainAvatarUrl || '';
-        console.log('Using direct URL:', newSignedUrls.avatarUrl);
       }
 
       // Gerar URLs assinadas para os avatares de customização
@@ -1599,30 +1596,20 @@ export const CharacterSheetPage = () => {
               className="char-avatar"
               style={{
                 backgroundImage: `url(${
-                  (() => {
-                    const avatarData = {
-                      sanity: effectiveAgentData.character.sanity,
-                      maxSanity: effectiveAgentData.character.maxSanity,
-                      vitality: effectiveAgentData.character.vitality,
-                      maxVitality: effectiveAgentData.character.maxVitality,
-                      avatarUrl: signedAvatarUrls.avatarUrl || effectiveAgentData.character.avatarUrl,
-                      customization: {
-                        avatarHealthy: signedAvatarUrls.avatarHealthy || effectiveAgentData.customization?.avatarHealthy,
-                        avatarInsane: signedAvatarUrls.avatarInsane || effectiveAgentData.customization?.avatarInsane,
-                        avatarHurt: signedAvatarUrls.avatarHurt || effectiveAgentData.customization?.avatarHurt,
-                        avatarDisturbed: signedAvatarUrls.avatarDisturbed || effectiveAgentData.customization?.avatarDisturbed,
-                        useOpenDyslexicFont: effectiveAgentData.customization?.useOpenDyslexicFont || false
-                      }
-                    };
-                    console.log('Avatar Data:', {
-                      signedUrl: signedAvatarUrls.avatarUrl,
-                      originalUrl: effectiveAgentData.character.avatarUrl,
-                      finalUrl: avatarData.avatarUrl
-                    });
-                    const result = getAvatarForSanityAndVitality(avatarData);
-                    console.log('Avatar result:', result);
-                    return result || "";
-                  })()
+                  getAvatarForSanityAndVitality({
+                    sanity: effectiveAgentData.character.sanity,
+                    maxSanity: effectiveAgentData.character.maxSanity,
+                    vitality: effectiveAgentData.character.vitality,
+                    maxVitality: effectiveAgentData.character.maxVitality,
+                    avatarUrl: signedAvatarUrls.avatarUrl || effectiveAgentData.character.avatarUrl || effectiveAgentData.customization?.avatarHealthy,
+                    customization: {
+                      avatarHealthy: signedAvatarUrls.avatarHealthy || effectiveAgentData.customization?.avatarHealthy,
+                      avatarInsane: signedAvatarUrls.avatarInsane || effectiveAgentData.customization?.avatarInsane,
+                      avatarHurt: signedAvatarUrls.avatarHurt || effectiveAgentData.customization?.avatarHurt,
+                      avatarDisturbed: signedAvatarUrls.avatarDisturbed || effectiveAgentData.customization?.avatarDisturbed,
+                      useOpenDyslexicFont: effectiveAgentData.customization?.useOpenDyslexicFont || false
+                    }
+                  }) || ""
                 })`,
               }}
             ></div>
