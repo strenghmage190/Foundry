@@ -29,7 +29,19 @@ const MiniCharacterCard: React.FC<Props> = ({ agent, onOpen, className, combatSu
 
   const avatar = character?.avatarUrl || character?.player || 'https://placehold.co/72x72?text=Avatar';
   const name = character?.name || 'Sem Nome';
-  const path = character?.pathway || character?.player || 'Sem Caminho';
+  
+  // Usa pathwayDisplayName se existir, senão usa pathway normal
+  let pathDisplay = 'Sem Caminho';
+  if (character?.pathwayDisplayName) {
+    pathDisplay = character.pathwayDisplayName;
+  } else if (character?.pathways?.primary) {
+    pathDisplay = character.pathways.primary;
+  } else if (character?.pathway) {
+    pathDisplay = Array.isArray(character.pathway) ? character.pathway[0] : character.pathway;
+  } else {
+    pathDisplay = character?.player || 'Sem Caminho';
+  }
+  
   const nex = (agent as any).nexPercent ?? 0;
 
   const vitality = character?.vitality ?? 0;
@@ -94,7 +106,7 @@ const MiniCharacterCard: React.FC<Props> = ({ agent, onOpen, className, combatSu
         <img src={avatar} alt="avatar" style={{ width: 72, height: 72, borderRadius: 6, objectFit: 'cover', background: '#222' }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{name}</div>
-          <div style={{ fontSize: 12, color: '#aaa' }}>{path}</div>
+          <div style={{ fontSize: 12, color: '#aaa' }}>{pathDisplay}</div>
           <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>NEX: {nex}%</div>
         </div>
       </div>

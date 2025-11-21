@@ -51,6 +51,7 @@ export interface Character {
     primary: string; // Caminho principal
     secondary: string[]; // Caminhos secundários
   };
+  pathwayDisplayName?: string; // Nome alternativo para exibição pública (ex: "Roda da Fortuna" para "Éon Eterno")
   sequence: number;
   player: string;
   avatarUrl: string;

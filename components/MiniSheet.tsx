@@ -132,6 +132,7 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
           <h4 className="msc-name">{character.name || 'Sem Nome'}</h4>
           <div className="msc-pathway">
             {(() => {
+              if (character.pathwayDisplayName) return character.pathwayDisplayName;
               if (character.pathways?.primary) return character.pathways.primary;
               if (Array.isArray(character.pathway)) return character.pathway[0] || 'Sem Caminho';
               return character.pathway || 'Sem Caminho';

@@ -269,6 +269,40 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                 </div>
             )}
 
+            {/* Nome Alternativo para Exibição Pública */}
+            {currentPathwayData?.isSecret && (
+                <div className="pathway-display-name" style={{ 
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    backgroundColor: '#1a1a1c',
+                    border: '1px solid #8b5cf6',
+                    borderRadius: '8px'
+                }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#8b5cf6', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                        🔒 Nome Público do Caminho:
+                    </label>
+                    <input 
+                        type="text"
+                        value={character.pathwayDisplayName || ''}
+                        onChange={(e) => onCharacterChange('pathwayDisplayName', e.target.value)}
+                        placeholder={`Ex: "Roda da Fortuna" ao invés de "${currentPathwayData.pathway}"`}
+                        style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            backgroundColor: '#2a2a2e',
+                            border: '1px solid #444',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            fontSize: '1rem'
+                        }}
+                    />
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#999', fontStyle: 'italic' }}>
+                        Este nome será exibido para outros jogadores na campanha ao invés do nome real do caminho secreto.
+                        Deixe em branco para usar o nome original.
+                    </p>
+                </div>
+            )}
+
             {/* Filtros de Seções */}
             <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
                 {filters.filter(f => f.condition).map(f => (

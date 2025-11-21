@@ -82,6 +82,15 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
   const { pathways } = agent.character;
   const primaryPathway = pathways?.primary;
 
+  // Helper para obter nome de exibição do caminho
+  const getPathwayDisplayName = (pathwayName: string): string => {
+    // Se o caminho primário tem um nome alternativo configurado, usa ele
+    if (pathwayName === primaryPathway && agent.character.pathwayDisplayName) {
+      return agent.character.pathwayDisplayName;
+    }
+    return pathwayName;
+  };
+
   // Filtra caminhos secretos que não pertencem a este agente/usuário
   const visiblePathways = useMemo(() => {
     return allPathways
@@ -173,7 +182,7 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
       
       {primaryPathway && permissions.max_pathways <= 1 && (
         <div className="pathway-tag primary single">
-          <span className="path-name">{primaryPathway}</span>
+          <span className="path-name">{getPathwayDisplayName(primaryPathway)}</span>
           {/* Permitir remover se for único */}
           <button
             style={{ marginLeft: '0.5rem' }}
@@ -191,7 +200,7 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
           {/* Exibe o caminho primário */}
           <div className="pathway-tag primary">
             <span className="star-icon">★</span>
-            <span className="path-name">{primaryPathway}</span>
+            <span className="path-name">{getPathwayDisplayName(primaryPathway)}</span>
             { (pathways?.secondary?.length || 0) === 0 && (
               <div className="tag-actions" style={{ marginLeft: '0.5rem' }}>
                 <button onClick={() => onPathwayToggle(primaryPathway)} className="remove-btn" title="Remover Caminho Principal">×</button>

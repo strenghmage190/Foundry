@@ -30,7 +30,19 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ agent, avatarUrl, 
 
   // Extract values from agent or use fallbacks
   const extractedName = agent?.character?.name || name || '[Sem nome]';
-  const extractedPath = agent?.character?.pathway || path || 'NPC';
+  
+  // Usa pathwayDisplayName se existir, senão usa pathway normal
+  let extractedPath = 'NPC';
+  if (agent?.character?.pathwayDisplayName) {
+    extractedPath = agent.character.pathwayDisplayName;
+  } else if (agent?.character?.pathways?.primary) {
+    extractedPath = agent.character.pathways.primary;
+  } else if (agent?.character?.pathway) {
+    extractedPath = Array.isArray(agent.character.pathway) ? agent.character.pathway[0] : agent.character.pathway;
+  } else if (path) {
+    extractedPath = path;
+  }
+  
   const extractedAvatarUrl = agent?.character?.avatarUrl || avatarUrl || null;
   const extractedCustomization = agent?.customization || customization;
   const extractedSanity = agent?.character?.sanity ?? sanity ?? 0;
