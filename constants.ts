@@ -82,6 +82,7 @@ export const initialCustomizationState: CustomizationSettings = {
 
 
 export const initialAgentData: Omit<AgentData, 'id' | 'lastModified'> = {
+    agent_id: '',
     character: initialCharacterState,
     attributes: initialAttributesState,
     habilidades: initialHabilidadesState,

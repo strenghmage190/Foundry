@@ -5,7 +5,7 @@ import { PlusIcon, MinusIcon } from './icons';
 
 interface PaTrackerProps {
     agent: AgentData;
-    onUpdate: (updatedAgent: AgentData) => void;
+    onUpdate: (updatedAgent: Partial<AgentData>) => void;
     onOpenImprovements: () => void;
     addLiveToast: (toast: Omit<ToastData, 'id'>) => void;
 }
@@ -27,7 +27,6 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
     const updateParentPa = (newValue: number) => {
         if (newValue !== paDisponivel) {
             onUpdate({
-                ...agent,
                 character: {
                     ...character,
                     paDisponivel: newValue
@@ -86,7 +85,7 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
             purifiedDiceThisSequence: (purifiedDiceThisSequence || 0) + 1
         };
 
-        onUpdate({ ...agent, character: updatedCharacter });
+        onUpdate({ character: updatedCharacter });
 
         addLiveToast({
             type: 'success',

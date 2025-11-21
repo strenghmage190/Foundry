@@ -65,7 +65,7 @@ type RollType = "skill" | "absorption";
 interface PathwayManagerProps {
   agent: AgentData;
   permissions: { max_pathways: number; can_create_pathways: boolean };
-  allPathways: { [key: string]: PathwayData };
+  allPathways: PathwayData[];
   onUpdate: (updatedAgent: Partial<AgentData>) => void;
   onPathwayToggle: (pathName: string) => void;
   onSetAsPrimary: (pathName: string) => void;
@@ -82,6 +82,35 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
   const { pathways } = agent.character;
   const primaryPathway = pathways?.primary;
 
+  // Filtra caminhos secretos que não pertencem a este agente/usuário
+  const visiblePathways = useMemo(() => {
+    return allPathways
+      .filter((data) => {
+        // Se não é secreto, sempre mostra
+        if (!data.isSecret) return true;
+        
+        // Se é secreto, verifica permissões específicas do banco
+        const pathwayName = data.pathway.toUpperCase();
+        
+        if (pathwayName.includes('ÉON') || pathwayName.includes('AEON')) {
+          return permissions.can_see_pathway_aeon === true;
+        }
+        
+        if (pathwayName.includes('VÉU') || pathwayName.includes('VEU')) {
+          return permissions.can_see_pathway_veu === true;
+        }
+        
+        // Fallback para arrays de IDs (mantido para compatibilidade)
+        const agentAllowed = data.allowedAgentIds?.includes(agent.id);
+        const userAllowed = data.allowedUserIds?.includes(agent.character.player);
+        return agentAllowed || userAllowed;
+      })
+      .reduce((acc, pathway) => { 
+        acc[pathway.pathway] = pathway; 
+        return acc; 
+      }, {} as { [key: string]: PathwayData });
+  }, [allPathways, agent, permissions]);
+
   const removePathway = (pathName: string) => {
     if (pathName === primaryPathway) {
       alert('Não é possível remover o caminho principal. Mude o primário primeiro.');
@@ -96,7 +125,7 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
   };
   
   // Lista de caminhos disponíveis para adicionar
-  const availablePathways = Object.keys(allPathways).filter(
+  const availablePathways = Object.keys(visiblePathways).filter(
     p => p !== primaryPathway && !pathways?.secondary?.includes(p)
   );
   
@@ -135,7 +164,7 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
             }}
           >
             <option value="">Selecione um caminho...</option>
-            {Object.keys(allPathways).map(p => (
+            {Object.keys(visiblePathways).map(p => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
@@ -145,6 +174,14 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
       {primaryPathway && permissions.max_pathways <= 1 && (
         <div className="pathway-tag primary single">
           <span className="path-name">{primaryPathway}</span>
+          {/* Permitir remover se for único */}
+          <button
+            style={{ marginLeft: '0.5rem' }}
+            onClick={() => onPathwayToggle(primaryPathway)}
+            title="Remover Caminho"
+          >
+            ×
+          </button>
         </div>
       )}
       
@@ -155,6 +192,11 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
           <div className="pathway-tag primary">
             <span className="star-icon">★</span>
             <span className="path-name">{primaryPathway}</span>
+            { (pathways?.secondary?.length || 0) === 0 && (
+              <div className="tag-actions" style={{ marginLeft: '0.5rem' }}>
+                <button onClick={() => onPathwayToggle(primaryPathway)} className="remove-btn" title="Remover Caminho Principal">×</button>
+              </div>
+            )}
           </div>
 
           {/* Exibe os caminhos secundários */}
@@ -488,11 +530,8 @@ export const CharacterSheetPage = () => {
           return;
         }
         if (data && data.length > 0) {
-          const customData = data.reduce((acc: any, path: any) => {
-            acc[path.name] = path.pathway_data;
-            return acc;
-          }, {});
-          setAllPathways(prev => ({ ...prev, ...customData }));
+          const customPathways = data.map((path: any) => path.pathway_data);
+          setAllPathways(prev => [...prev, ...customPathways]);
         }
       } catch (error) {
         console.error('Erro ao buscar caminhos customizados:', error);
@@ -593,10 +632,23 @@ export const CharacterSheetPage = () => {
           addLiveToast({ type: 'failure', title: 'Erro', message: 'Não foi possível atualizar a privacidade.' });
         }
       } else {
-        // Lógica de mesclagem de dados normal (sem upload)
-        setAgent((prev) =>
-          prev ? { ...prev, ...(update as Partial<AgentData>) } : null
-        );
+        // Lógica de mesclagem de dados normal (sem upload) - merge profundo para character
+        setAgent((prev) => {
+          if (!prev) return null;
+          const partial = update as Partial<AgentData>;
+          return {
+            ...prev,
+            ...partial,
+            // Se está atualizando character, faz merge profundo
+            character: partial.character 
+              ? { ...prev.character, ...partial.character }
+              : prev.character,
+            // Se está atualizando attributes, faz merge profundo
+            attributes: partial.attributes
+              ? { ...prev.attributes, ...partial.attributes }
+              : prev.attributes,
+          };
+        });
       }
     },
     [agent, addLiveToast]
@@ -631,6 +683,9 @@ export const CharacterSheetPage = () => {
   const [maintainButtonFeedback, setMaintainButtonFeedback] = useState(false);
   const prevPathwayRef = useRef<string>("");
   const [editingSkillAttr, setEditingSkillAttr] = useState<string | null>(null);
+  // Bônus temporário por perícia (não persiste no banco)
+  const [skillTempBonus, setSkillTempBonus] = useState<Record<string, number>>({});
+  const [compactSkillsView, setCompactSkillsView] = useState<boolean>(false);
 
   const [rollPopover, setRollPopover] = useState<{
     isVisible: boolean;
@@ -641,6 +696,14 @@ export const CharacterSheetPage = () => {
     rollType: RollType;
     meta?: any;
   } | null>(null);
+
+  // Converte array de caminhos em objeto indexado por nome para compatibilidade
+  const allPathwaysMap = useMemo(() => {
+    return allPathways.reduce((acc, pathway) => {
+      acc[pathway.pathway] = pathway;
+      return acc;
+    }, {} as { [key: string]: PathwayData });
+  }, [allPathways]);
 
   const pathwayData = useMemo(() => {
     if (!agent) return null;
@@ -654,8 +717,8 @@ export const CharacterSheetPage = () => {
         ? agent.character.pathway[0] 
         : agent.character.pathway;
     }
-    return pathwayKey ? allPathways[pathwayKey] : null;
-  }, [agent, allPathways]);
+    return pathwayKey ? allPathwaysMap[pathwayKey] : null;
+  }, [agent, allPathwaysMap]);
 
   const formToActivate = useMemo(() => {
     if (!pathwayData?.mythicalForm || !agent) return null;
@@ -679,7 +742,7 @@ export const CharacterSheetPage = () => {
         ? agent.character.pathway[0] 
         : agent.character.pathway;
     }
-    const pathwayData = pathwayKey ? allPathways[pathwayKey] : null;
+    const pathwayData = pathwayKey ? allPathwaysMap[pathwayKey] : null;
     if (!pathwayData) return null;
 
     const { sequence } = agent.character;
@@ -694,6 +757,10 @@ export const CharacterSheetPage = () => {
     const hasFortuneWheel = characterPathways.includes("CAMINHO DA RODA DA FORTUNA");
     const maxLuckPoints = hasFortuneWheel ? getMaxLuckPointsBySequence(sequence) : 0;
 
+    // Calcula Pontos de Estase (Caminho do Éon Eterno)
+    const hasAeonPathway = characterPathways.some(p => p.toUpperCase().includes('ÉON') || p.toUpperCase().includes('AEON'));
+    const maxEstasePoints = hasAeonPathway ? (agent.attributes.vigor || 0) + base.maxSpirituality : 0;
+
     return {
       maxVitality: base.maxVitality,
       maxSpirituality: base.maxSpirituality,
@@ -701,13 +768,23 @@ export const CharacterSheetPage = () => {
       maxSanity: base.maxSanity,
       absorption: base.absorption,
       maxLuckPoints,
+      maxEstasePoints,
     };
-  }, [agent, allPathways]); // Este hook só recalcula quando 'agent' ou 'allPathways' muda
+  }, [agent, allPathwaysMap]); // Este hook só recalcula quando 'agent' ou 'allPathwaysMap' muda
 
   // Agora, usamos os valores calculados diretamente no JSX
   const effectiveAgentData = useMemo(() => {
     if (!agent) return null;
-    if (!derivedStats) return agent;
+    if (!derivedStats) {
+      return {
+        ...agent,
+        character: {
+          ...agent.character,
+          maxEstasePoints: 0,
+          estasePoints: 0,
+        }
+      };
+    }
 
     return {
       ...agent,
@@ -731,6 +808,11 @@ export const CharacterSheetPage = () => {
         luckPoints: Math.min(
           agent.character.luckPoints || 0,
           derivedStats?.maxLuckPoints ?? (agent.character.maxLuckPoints || 0)
+        ),
+        maxEstasePoints: derivedStats.maxEstasePoints || 0,
+        estasePoints: Math.min(
+          agent.character.estasePoints ?? derivedStats.maxEstasePoints ?? 0,
+          derivedStats.maxEstasePoints || 0
         ),
       },
     };
@@ -801,14 +883,19 @@ export const CharacterSheetPage = () => {
   // Funções para gerenciar múltiplos caminhos (primário/secundários)
   const handlePathwayToggle = (pathwayName: string) => {
     const currentPathways = effectiveAgentData.character.pathways;
-    
-    // Se não existe estrutura de pathways, cria uma nova
+
+    // Se não existe estrutura de pathways, cria uma nova com este como primário
     if (!currentPathways || !currentPathways.primary) {
-      handleUpdate({ 
-        character: { 
-          ...effectiveAgentData.character, 
-          pathways: { primary: pathwayName, secondary: [] } 
-        } 
+      handleUpdate({
+        character: {
+          ...effectiveAgentData.character,
+          pathways: { primary: pathwayName, secondary: [] }
+        }
+      });
+      addLiveToast({
+        type: 'success',
+        title: 'Caminho Definido',
+        message: `${pathwayName} definido como caminho primário.`
       });
       return;
     }
@@ -817,23 +904,42 @@ export const CharacterSheetPage = () => {
     const isSecondary = currentPathways.secondary.includes(pathwayName);
 
     if (isPrimary) {
-      // Não permite remover o primário diretamente
-      addLiveToast({
-        type: 'failure',
-        title: 'Ação Inválida',
-        message: 'Não é possível remover o caminho primário. Defina outro como primário primeiro.'
-      });
+      // Novo comportamento: permitir remover se for o único caminho
+      if (currentPathways.secondary.length === 0) {
+        handleUpdate({
+          character: {
+            ...effectiveAgentData.character,
+            pathways: { primary: '', secondary: [] }
+          }
+        });
+        addLiveToast({
+          type: 'success',
+          title: 'Caminho Removido',
+          message: 'Caminho principal removido. Selecione outro para adicionar.'
+        });
+      } else {
+        addLiveToast({
+          type: 'failure',
+          title: 'Ação Inválida',
+          message: 'Defina outro caminho como primário antes de remover este.'
+        });
+      }
       return;
     }
 
     if (isSecondary) {
       // Remove o caminho secundário
       const newSecondary = currentPathways.secondary.filter(p => p !== pathwayName);
-      handleUpdate({ 
-        character: { 
-          ...effectiveAgentData.character, 
-          pathways: { primary: currentPathways.primary, secondary: newSecondary } 
-        } 
+      handleUpdate({
+        character: {
+          ...effectiveAgentData.character,
+          pathways: { primary: currentPathways.primary, secondary: newSecondary }
+        }
+      });
+      addLiveToast({
+        type: 'info',
+        title: 'Caminho Removido',
+        message: `${pathwayName} removido dos secundários.`
       });
     } else {
       // Adiciona novo caminho secundário (verifica limite)
@@ -848,11 +954,16 @@ export const CharacterSheetPage = () => {
       }
 
       const newSecondary = [...currentPathways.secondary, pathwayName];
-      handleUpdate({ 
-        character: { 
-          ...effectiveAgentData.character, 
-          pathways: { primary: currentPathways.primary, secondary: newSecondary } 
-        } 
+      handleUpdate({
+        character: {
+          ...effectiveAgentData.character,
+          pathways: { primary: currentPathways.primary, secondary: newSecondary }
+        }
+      });
+      addLiveToast({
+        type: 'success',
+        title: 'Caminho Adicionado',
+        message: `${pathwayName} adicionado como secundário.`
       });
     }
   };
@@ -1534,6 +1645,28 @@ export const CharacterSheetPage = () => {
                 color="#FFC107"
               />
             )}
+            {(() => {
+              const c = effectiveAgentData.character;
+              let hasAeon = false;
+              if (c.pathways?.primary) {
+                const list = [c.pathways.primary, ...(c.pathways.secondary || [])].filter(Boolean);
+                hasAeon = list.some(p => p.toUpperCase().includes('ÉON') || p.toUpperCase().includes('AEON'));
+              } else if (c.pathway) {
+                const pathStr = Array.isArray(c.pathway) ? c.pathway.join(' ') : c.pathway;
+                hasAeon = pathStr.toUpperCase().includes('ÉON') || pathStr.toUpperCase().includes('AEON');
+              }
+              return hasAeon;
+            })() && (
+              <StatusBar
+                label="Pontos de Estase (PEt)"
+                value={effectiveAgentData.character.estasePoints || 0}
+                max={effectiveAgentData.character.maxEstasePoints || 0}
+                onValueChange={(v) =>
+                  handleCharacterFieldChange("estasePoints", v)
+                }
+                color="#9c27b0"
+              />
+            )}
           </div>
 
           {!isMythicalFormActive &&
@@ -1647,7 +1780,7 @@ export const CharacterSheetPage = () => {
                     handleUpdate({ habilidadesBeyonder: v })
                   }
                   pathwayData={pathwayData}
-                  allPathways={allPathways}
+                  allPathways={allPathwaysMap}
                   sequence={effectiveAgentData.character.sequence}
                   character={effectiveAgentData.character}
                   onCharacterChange={handleCharacterFieldChange}
@@ -1706,101 +1839,177 @@ export const CharacterSheetPage = () => {
           <div className="pericias-section">
             <div className="pericias-header">
               <h3 className="section-title">Perícias</h3>
-              <button
-                onClick={() => setActiveModal("diceRoller")}
-                className="dice-roller-modal-btn-inline"
-                aria-label="Abrir Rolador de Dados"
-              >
-                <DiceIcon />
-              </button>
+              <div className="pericias-actions">
+                <button
+                  onClick={() => setCompactSkillsView(v => !v)}
+                  className="skills-compact-toggle"
+                  title="Alternar modo compacto"
+                >
+                  {compactSkillsView ? 'Expandir' : 'Compactar'}
+                </button>
+                <button
+                  onClick={() => setActiveModal("diceRoller")}
+                  className="dice-roller-modal-btn-inline"
+                  aria-label="Abrir Rolador de Dados"
+                >
+                  <DiceIcon />
+                </button>
+              </div>
             </div>
-            {Object.entries(effectiveAgentData.habilidades).map(
-              ([type, list]) => (
-                <div key={type}>
-                  <h4 className="habilidade-subheader">
-                    {type === "gerais" ? "Gerais" : "Investigativas"}
-                  </h4>
-                  {(list as Habilidade[]).map((skill, index) => {
-                    const attrName = skill.attr.split("/")[0];
-                    const normalizedAttr = normalizeAttributeName(
-                      attrName
-                    ) as keyof Attributes;
-                    const attrValue =
-                      effectiveAgentData.attributes[normalizedAttr] || 0;
-                    const total = skill.points + attrValue;
-                    return (
-                      <div key={skill.name} className="pericia-item-v2">
-                        <label>{skill.name}</label>
-                        <div className="pericia-controls">
-                          <div className="skill-attr-selector-wrapper">
-                            {editingSkillAttr === skill.name ? (
-                              <select
-                                className="skill-attr-select"
-                                value={skill.attr}
-                                onChange={(e) => {
+            {compactSkillsView ? (
+              <div className="skills-compact-wrapper">
+                {Object.entries(effectiveAgentData.habilidades).map(([type, list]) => (
+                  <table className="skills-compact-table" key={type}>
+                    <thead>
+                      <tr>
+                        <th className="col-nome">{type === 'gerais' ? 'Gerais' : 'Investigativas'}</th>
+                        <th>ATR</th>
+                        <th>Bônus</th>
+                        <th>Pts</th>
+                        <th>Total</th>
+                        <th>Roll</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(list as Habilidade[]).map((skill, index) => {
+                        const attrName = skill.attr.split('/')[0];
+                        const normalizedAttr = normalizeAttributeName(attrName) as keyof Attributes;
+                        const attrValue = effectiveAgentData.attributes[normalizedAttr] || 0;
+                        const tempBonus = skillTempBonus[skill.name] || 0;
+                        const total = skill.points + attrValue + tempBonus;
+                        const shortName = skill.name.length > 16 ? skill.name.slice(0,13) + '…' : skill.name;
+                        return (
+                          <tr key={skill.name}>
+                            <td title={skill.name}>{shortName}</td>
+                            <td>
+                              {editingSkillAttr === skill.name ? (
+                                <select
+                                  className="skill-attr-select small"
+                                  value={skill.attr}
+                                  onChange={(e) => {
+                                    const newList = [...(list as Habilidade[])];
+                                    newList[index] = { ...skill, attr: e.target.value };
+                                    handleUpdate({ habilidades: { ...effectiveAgentData.habilidades, [type]: newList } });
+                                    setEditingSkillAttr(null);
+                                  }}
+                                  onBlur={() => setEditingSkillAttr(null)}
+                                  autoFocus
+                                >
+                                  <option value="Força">FOR</option>
+                                  <option value="Destreza">DES</option>
+                                  <option value="Constituição">CON</option>
+                                  <option value="Inteligência">INT</option>
+                                  <option value="Sabedoria">SAB</option>
+                                  <option value="Carisma">CAR</option>
+                                </select>
+                              ) : (
+                                <span className="skill-attr-tag compact" onClick={() => setEditingSkillAttr(skill.name)}>{attrName.substring(0,3).toUpperCase()}</span>
+                              )}
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="skill-temp-bonus compact"
+                                value={tempBonus}
+                                onChange={e => setSkillTempBonus(prev => ({ ...prev, [skill.name]: Number(e.target.value) }))}
+                                title="Bônus Temporário"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="skill-points-input compact"
+                                value={skill.points}
+                                onChange={e => {
                                   const newList = [...(list as Habilidade[])];
-                                  newList[index] = {
-                                    ...skill,
-                                    attr: e.target.value,
-                                  };
-                                  handleUpdate({
-                                    habilidades: {
-                                      ...effectiveAgentData.habilidades,
-                                      [type]: newList,
-                                    },
-                                  });
-                                  setEditingSkillAttr(null);
+                                  newList[index] = { ...skill, points: Number(e.target.value) };
+                                  handleUpdate({ habilidades: { ...effectiveAgentData.habilidades, [type]: newList } });
                                 }}
-                                onBlur={() => setEditingSkillAttr(null)}
-                                autoFocus
+                              />
+                            </td>
+                            <td><span className="skill-total-display small">{total}</span></td>
+                            <td>
+                              <button
+                                className="skill-roll-btn compact"
+                                onClick={(e) => handleRollRequest(e, skill.name, total, 'skill')}
                               >
-                                <option value="Força">FOR</option>
-                                <option value="Destreza">DES</option>
-                                <option value="Constituição">CON</option>
-                                <option value="Inteligência">INT</option>
-                                <option value="Sabedoria">SAB</option>
-                                <option value="Carisma">CAR</option>
-                              </select>
-                            ) : (
-                              <div 
-                                className="skill-attr-tag" 
-                                onClick={() => setEditingSkillAttr(skill.name)}
-                              >
-                                {attrName.substring(0, 3).toUpperCase()}
-                              </div>
-                            )}
+                                <DiceIcon />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ))}
+              </div>
+            ) : (
+              Object.entries(effectiveAgentData.habilidades).map(
+                ([type, list]) => (
+                  <div key={type}>
+                    <h4 className="habilidade-subheader">{type === 'gerais' ? 'Gerais' : 'Investigativas'}</h4>
+                    {(list as Habilidade[]).map((skill, index) => {
+                      const attrName = skill.attr.split('/') [0];
+                      const normalizedAttr = normalizeAttributeName(attrName) as keyof Attributes;
+                      const attrValue = effectiveAgentData.attributes[normalizedAttr] || 0;
+                      const tempBonus = skillTempBonus[skill.name] || 0;
+                      const total = skill.points + attrValue + tempBonus;
+                      const displayName = skill.name.length > 14 ? skill.name.slice(0,11) + '…' : skill.name;
+                      return (
+                        <div key={skill.name} className="pericia-item-v2">
+                          <label title={skill.name}>{displayName}</label>
+                          <div className="pericia-controls">
+                            <div className="skill-attr-selector-wrapper">
+                              {editingSkillAttr === skill.name ? (
+                                <select
+                                  className="skill-attr-select"
+                                  value={skill.attr}
+                                  onChange={(e) => {
+                                    const newList = [...(list as Habilidade[])];
+                                    newList[index] = { ...skill, attr: e.target.value };
+                                    handleUpdate({ habilidades: { ...effectiveAgentData.habilidades, [type]: newList } });
+                                    setEditingSkillAttr(null);
+                                  }}
+                                  onBlur={() => setEditingSkillAttr(null)}
+                                  autoFocus
+                                >
+                                  <option value="Força">FOR</option>
+                                  <option value="Destreza">DES</option>
+                                  <option value="Constituição">CON</option>
+                                  <option value="Inteligência">INT</option>
+                                  <option value="Sabedoria">SAB</option>
+                                  <option value="Carisma">CAR</option>
+                                </select>
+                              ) : (
+                                <div className="skill-attr-tag" onClick={() => setEditingSkillAttr(skill.name)}>{attrName.substring(0,3).toUpperCase()}</div>
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              value={skill.points}
+                              onChange={(e) => {
+                                const newList = [...(list as Habilidade[])];
+                                newList[index] = { ...skill, points: Number(e.target.value) };
+                                handleUpdate({ habilidades: { ...effectiveAgentData.habilidades, [type]: newList } });
+                              }}
+                            />
+                            <input
+                              type="number"
+                              className="skill-temp-bonus"
+                              value={tempBonus}
+                              onChange={(e) => setSkillTempBonus(prev => ({ ...prev, [skill.name]: Number(e.target.value) }))}
+                              title="Bônus Temporário"
+                            />
+                            <div className="skill-total-display">{total}</div>
+                            <button className="skill-roll-btn" onClick={(e) => handleRollRequest(e, skill.name, total, 'skill')}>
+                              <DiceIcon />
+                            </button>
                           </div>
-                          <input
-                            type="number"
-                            value={skill.points}
-                            onChange={(e) => {
-                              const newList = [...(list as Habilidade[])];
-                              newList[index] = {
-                                ...skill,
-                                points: Number(e.target.value),
-                              };
-                              handleUpdate({
-                                habilidades: {
-                                  ...effectiveAgentData.habilidades,
-                                  [type]: newList,
-                                },
-                              });
-                            }}
-                          />
-                          <div className="skill-total-display">{total}</div>
-                          <button
-                            className="skill-roll-btn"
-                            onClick={(e) =>
-                              handleRollRequest(e, skill.name, total, "skill")
-                            }
-                          >
-                            <DiceIcon />
-                          </button>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )
               )
             )}
           </div>
@@ -1882,7 +2091,7 @@ export const CharacterSheetPage = () => {
           onUpdateAgent={handleUpdate}
           addLiveToast={addLiveToast}
           pathwayToImprove={improvingPathway}
-          allPathwaysData={allPathways}
+          allPathwaysData={allPathwaysMap}
         />
       )}
       {activeModal === "addWeapon" && (

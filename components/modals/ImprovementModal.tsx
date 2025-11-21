@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AgentData, Attributes, BeyonderAbility, Antecedente, SequenceAbility, ToastData, Habilidade } from '../../types';
+import { AgentData, Attributes, BeyonderAbility, Antecedente, SequenceAbility, ToastData, Habilidade, PathwayData } from '../../types';
 import { caminhosData } from '../../data/beyonders-data';
 import { initialAgentData } from '../../constants';
 import { getPaRequirement, getSanityLossOnAdvance } from '../../utils/calculations';
@@ -8,13 +8,19 @@ interface ImprovementModalProps {
     isOpen: boolean;
     onClose: () => void;
     agent: AgentData;
-    onUpdateAgent: (updatedAgent: AgentData) => void;
+    onUpdateAgent: (updatedAgent: Partial<AgentData>) => void;
     addLiveToast: (toast: Omit<ToastData, 'id'>) => void;
     pathwayToImprove?: string | null; // Caminho específico para comprar habilidades
     allPathwaysData?: { [key: string]: any }; // Todos os caminhos disponíveis
 }
 
 type ImprovementTab = 'Atributos' | 'Perícias' | 'Habilidades' | 'Antecedentes' | 'Digestão & Avanço';
+
+// Converte caminhosData array em objeto
+const caminhosDataMap = caminhosData.reduce((acc, pathway) => {
+    acc[pathway.pathway] = pathway;
+    return acc;
+}, {} as { [key: string]: PathwayData });
 
 const getAbilityCost = (seqNum: number): number => {
     if (seqNum >= 6 && seqNum <= 9) return 15;
@@ -90,7 +96,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         }
     }, [isOpen, pathwayToImprove, characterPathways, isEligibleForFreebie, primaryPathwayName]);
 
-    const dataSource = allPathwaysData || caminhosData;
+    const dataSource = allPathwaysData || caminhosDataMap;
     const pathwayData = useMemo(() => {
         return activePathway ? dataSource[activePathway] : undefined;
     }, [activePathway, dataSource]);
@@ -145,15 +151,15 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const handleConfirm = () => {
         const newTotalSpent = agent.character.paTotalGasto + paSpent;
         
-        const finalAgentData: AgentData = {
-            ...currentAgent,
+        onUpdateAgent({
             character: {
                 ...currentAgent.character,
                 paDisponivel: availablePA,
                 paTotalGasto: newTotalSpent,
             },
-        };
-        onUpdateAgent(finalAgentData);
+            habilidadesBeyonder: currentAgent.habilidadesBeyonder,
+            attributes: currentAgent.attributes,
+        });
         onClose();
     };
 
@@ -163,15 +169,13 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         if (!abilityToAdd) return;
         
         const newAbility: BeyonderAbility = { ...abilityToAdd, id: Date.now(), acquisitionMethod: 'free', description: abilityToAdd.desc };
-        const updatedAgent: AgentData = {
-            ...agent,
+        onUpdateAgent({
             habilidadesBeyonder: [...agent.habilidadesBeyonder, newAbility],
             character: {
                 ...agent.character,
                 claimedFreeAbilitiesForSequences: [...(agent.character.claimedFreeAbilitiesForSequences || []), agent.character.sequence]
             }
-        };
-        onUpdateAgent(updatedAgent);
+        });
         onClose();
     };
 

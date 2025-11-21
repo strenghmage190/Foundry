@@ -1,0 +1,26 @@
+/* Redesigned Master Screen (tabs + dice log + cards) */
+.master-screen { padding: 1rem; }
+
+.ms-tabs { display:flex; gap:0.8rem; margin-bottom:1rem; flex-wrap:wrap }
+.ms-tabs button { background:rgba(255,255,255,0.04); color:#cfcfcf; padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); font-weight:700; letter-spacing:.5px; cursor:pointer }
+.ms-tabs button.active { background:linear-gradient(90deg,#7b1fa2,#8e43ff); color:#fff; border-color:transparent }
+
+.ms-simple-layout { display:grid; grid-template-columns:300px 1fr; gap:1.2rem; align-items:start }
+
+.ms-dice-log-panel { background:linear-gradient(180deg,#101114,#0c0d0f); padding:0.85rem; border-radius:10px; color:#ddd; min-height:300px }
+.ms-dice-log-panel h4 { margin:0 0 10px 0; font-size:0.9rem; color:#fff }
+.ms-dice-log-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px }
+.ms-dice-log-list li { padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.02) }
+.ms-dice-log-panel .ms-empty-state { border:2px dashed rgba(255,255,255,0.06); padding:22px; border-radius:8px; color:#9b9b9b; font-size:0.8rem }
+
+.ms-cards-area { position:relative }
+.ms-character-grid { display:flex; gap:1rem; flex-wrap:wrap }
+.ms-grid-item { flex:0 0 250px }
+.ms-empty-state { color:#9b9b9b; padding:12px }
+.ms-placeholder { background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; color:#cfcfcf }
+
+@media(max-width:980px){
+  .ms-simple-layout { grid-template-columns:1fr }
+  .ms-dice-log-panel { order:2 }
+  .ms-cards-area { order:1 }
+}

@@ -11,8 +11,8 @@ const getSkillPoints = (agent: AgentData, skillName: string): number => {
 
 const getEquippedArmorBonus = (agent: AgentData): number => {
   const p = agent.protections || [];
-  const eq = p.find((x) => x.isEquipped);
-  return eq?.armorBonus || 0;
+  // Soma o bônus de todas as armaduras equipadas
+  return p.filter(x => x.isEquipped).reduce((total, armor) => total + (armor.armorBonus || 0), 0);
 };
 
 export const getDefense = (agent: AgentData): number => {

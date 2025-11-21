@@ -89,6 +89,11 @@ export interface Character {
   furyPoints?: number;
   luckPoints?: number;
   maxLuckPoints?: number;
+  // Pontos de Estase (Caminho do Éon Eterno)
+  estasePoints?: number;
+  maxEstasePoints?: number;
+  // Correntes de Fado ativas (IDs das correntes)
+  activeCorrentesIds?: number[];
 }
 
 export interface Attack {
@@ -183,6 +188,7 @@ export interface LearnedParticle {
 }
 
 export interface AgentData {
+    agent_id: string;
     id: number;
     lastModified: string;
     // Optional privacy flag mirrored from DB column `agents.is_private`
@@ -319,6 +325,18 @@ export interface PathwayData {
         particulas: DomainParticle[];
     };
     sequences: Record<string, SequenceAbility[]>;
+    // Campos opcionais para caminhos secretos
+    isSecret?: boolean; // se true, não aparece para todos
+    allowedAgentIds?: number[]; // agentes específicos que podem ver
+    allowedUserIds?: string[]; // usuários (supabase auth user id) que podem ver
+    // Correntes de Fado / Correntes específicas de caminhos
+    correntes?: {
+        id: number; // ordem
+        sequence: string; // ex 'Seq. 8'
+        titulo: string; // nome da corrente
+        beneficio: string; // efeito positivo
+        risco: string; // efeito negativo / custo
+    }[];
 }
 
 // Campaign type for campaigns / parties

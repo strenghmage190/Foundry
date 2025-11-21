@@ -31,7 +31,7 @@
   padding: 0.5rem;
   border-radius: 8px;
 }
-.char-status-card.compact .char-avatar { width: 40px; height: 40px; border-radius: 6px; }
+.char-status-card.compact .char-avatar { width: 36px; height: 36px; border-radius: 6px; }
 .char-status-card.compact .char-name { font-size: 0.9rem; }
 .char-status-card.compact .char-path { font-size: 0.65rem; }
 .char-status-card.compact .char-stats { padding: 0.4rem 0; gap: 0.35rem; }
@@ -40,12 +40,12 @@
 .char-status-card.compact .char-bar-track { height: 6px; }
 .char-status-card.compact .char-bar-value { font-size: 0.65rem; }
 .char-status-card.compact .tag { padding: 4px 8px; font-size: 0.72rem; }
-.ms-character-grid { display:flex; gap:0.8rem; flex-wrap:wrap; }
-.ms-character-grid > * { flex: 0 0 280px; }
+.ms-character-grid { display:flex; gap:0.6rem; flex-wrap:wrap; }
+.ms-character-grid > * { flex: 0 0 220px; }
 
 .char-status-header { display:flex; align-items:center; gap:0.6rem; padding-bottom:0.5rem; border-bottom:1px solid rgba(230,179,37,0.06); }
 
-.char-avatar { width:52px; height:52px; border-radius:8px; overflow:hidden; flex-shrink:0; border:2px solid var(--character-color,#E6B325); box-shadow:0 6px 16px rgba(0,0,0,0.5); background:#000; display:flex; align-items:center; justify-content:center; }
+.char-avatar { width:44px; height:44px; border-radius:8px; overflow:hidden; flex-shrink:0; border:2px solid var(--character-color,#E6B325); box-shadow:0 6px 16px rgba(0,0,0,0.5); background:#000; display:flex; align-items:center; justify-content:center; }
 .char-avatar-img{width:100%;height:100%;object-fit:cover}
 .char-avatar-fallback{font-family:'Cinzel',serif;color:var(--character-color,#E6B325);font-size:1.2rem;font-weight:700}
 
@@ -59,17 +59,59 @@
 .stat-value{font-family:'Cinzel',serif;color:#E6B325;font-weight:700;font-size:1.3rem}
 .stat-label{font-size:0.65rem;color:#bdbdbd;font-weight:600;text-transform:uppercase}
 
-.char-resources{display:flex;flex-direction:column;gap:0.6rem;padding-top:0.4rem}
-.char-resource-bar{display:flex;align-items:center;gap:0.5rem}
-.char-resource-icon{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;color:currentColor}
+.char-resources{display:flex;flex-direction:column;gap:0.65rem;padding-top:0.25rem}
+.char-resource-row{display:grid;grid-template-columns:48px 1fr 58px;align-items:center;gap:0.6rem}
+.char-resource-label{font-weight:700;text-transform:uppercase;font-size:0.78rem;letter-spacing:.5px}
 .char-resource-content{flex:1}
-.char-resource-header{display:flex;justify-content:space-between;align-items:center}
-.char-bar-track{height:8px;background:rgba(0,0,0,0.45);border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.04)}
-.char-bar-fill{height:100%;transition:width .3s ease;box-shadow:0 0 8px currentColor}
-.char-bar-value{font-size:0.72rem;color:#fff;font-weight:600}
-.char-resource-bar.red{color:#e53935}.char-resource-bar.red .char-bar-fill{background:#c62828}
-.char-resource-bar.purple{color:var(--character-color,#7b1fa2)}.char-resource-bar.purple .char-bar-fill{background:var(--character-color,#7b1fa2)}
-.char-resource-bar.blue{color:#1e88e5}.char-resource-bar.blue .char-bar-fill{background:#1565c0}
+.char-bar-track{height:16px;background:#0a0a0b;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);position:relative}
+.char-bar-fill{height:100%;transition:width .35s ease;filter:brightness(1.15)}
+.char-bar-text{display:none}
+.char-bar-numbers{text-align:right;font-weight:700;color:#fff;font-size:0.7rem;letter-spacing:.5px}
+.char-resource-bar.red{color:#e53935}
+.char-resource-bar.red .char-bar-fill{background:linear-gradient(90deg,#7d1d1d,#c62828)}
+.char-resource-bar.purple{color:var(--character-color,#7b1fa2)}
+.char-resource-bar.purple .char-bar-fill{background:linear-gradient(90deg,#4d1d66,#8e43ff)}
+.char-resource-bar.orange{color:#f57c00}
+.char-resource-bar.orange .char-bar-fill{background:linear-gradient(90deg,#b25400,#ef6c00)}
+
+/* wrapper for the three resource rows */
+.char-resource-row-wrapper{display:flex;flex-direction:column;gap:0.55rem}
+.char-resource-bar .char-resource-label{color:currentColor}
+
+.char-attributes{display:flex;justify-content:space-between;gap:0.5rem;padding:0.45rem 0;border-top:1px solid rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.02)}
+.attr-item{display:flex;flex-direction:column;align-items:center;min-width:0}
+.attr-value{font-weight:700;color:#ffffff;font-size:1rem}
+.attr-label{font-size:0.65rem;color:#bdbdbd;text-transform:uppercase}
+
+.badge-row{display:flex;gap:0.5rem;align-items:center;margin-left:auto}
+.badge{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:6px;font-size:0.72rem;font-weight:700;color:#fff}
+.badge.nex{background:linear-gradient(90deg,#531c66,#8e43ff);color:#fff}
+.badge.role{background:rgba(255,255,255,0.02);color:#ddd}
+
+/* More compact rules */
+.char-status-card.compact{padding:0.35rem;border-radius:6px}
+.char-status-card.compact .char-avatar{width:32px;height:32px}
+.char-status-card.compact .char-name{font-size:0.95rem}
+.char-status-card.compact .char-path{font-size:0.6rem}
+.char-status-card.compact .char-stats{gap:0.25rem;padding:0.35rem 0}
+.char-status-card.compact .stat-item{padding:0.35rem;border-radius:6px}
+.char-status-card.compact .stat-value{font-size:1rem}
+.char-status-card.compact .char-bar-track{height:5px}
+.char-status-card.compact .char-bar-numbers{font-size:0.62rem}
+.char-status-card.compact .char-bar-value{display:none}
+.char-status-card.compact .char-tags{display:flex;gap:0.25rem;align-items:center}
+.char-status-card.compact .tag-group-label{display:none}
+.char-status-card.compact .tags{gap:0.25rem}
+.char-status-card.compact .tag{padding:4px 6px;font-size:0.68rem;border-radius:6px}
+.char-status-card.compact .char-action{display:flex;justify-content:center;padding-top:0.25rem}
+.char-status-card.compact .char-cta{padding:6px 10px;font-size:0.78rem}
+.char-status-card.compact .char-attributes{padding:0.25rem 0}
+
+/* Hide less-important text on very compact screens */
+@media(max-width:420px){
+  .char-status-card.compact .char-path{display:none}
+  .char-status-card.compact .attr-label{display:none}
+}
 
 .char-tags{display:flex;flex-direction:column;gap:0.5rem;padding-top:0.4rem}
 .tag-group{display:flex;gap:0.6rem;align-items:flex-start}

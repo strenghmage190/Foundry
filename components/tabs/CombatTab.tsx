@@ -9,7 +9,7 @@ const capitalize = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '
 
 interface CombatTabProps {
     agent: AgentData;
-    onUpdate: (updatedAgent: AgentData) => void;
+    onUpdate: (updatedAgent: Partial<AgentData>) => void;
     addLiveToast: (toast: Omit<ToastData, 'id'>) => void;
     addLogEntry: (log: Omit<ToastData, 'id'>) => void;
     onOpenAddWeaponModal: (attack?: Attack) => void;
@@ -29,9 +29,9 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
     const attributes = agent.attributes || ({} as any);
     const habilidades = agent.habilidades || initialHabilidadesState;
 
-    const onAttacksChange = (newAttacks: Attack[]) => onUpdate({ ...agent, attacks: newAttacks });
-    const onProtectionsChange = (newProtections: ProtectionItem[]) => onUpdate({ ...agent, protections: newProtections });
-    const onCharacterChange = (field: keyof AgentData['character'], value: any) => onUpdate({ ...agent, character: { ...character, [field]: value }});
+    const onAttacksChange = (newAttacks: Attack[]) => onUpdate({ attacks: newAttacks });
+    const onProtectionsChange = (newProtections: ProtectionItem[]) => onUpdate({ protections: newProtections });
+    const onCharacterChange = (field: keyof AgentData['character'], value: any) => onUpdate({ character: { ...character, [field]: value }});
 
     const handleDeleteAttack = (id: string) => {
         if (window.confirm("Tem certeza que deseja apagar este ataque?")) {
@@ -46,7 +46,7 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
     const handleEquipProtection = (id: number) => {
         const newProtections = protections.map(p => ({
             ...p,
-            isEquipped: p.id === id ? !p.isEquipped : false // Desequipa outros ao equipar um
+            isEquipped: p.id === id ? !p.isEquipped : p.isEquipped // Permite múltiplas equipadas
         }));
         onProtectionsChange(newProtections);
     };

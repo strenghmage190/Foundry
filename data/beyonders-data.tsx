@@ -21,8 +21,10 @@ import { paragonData } from './pathways/paragon';
 import { trevasData } from './pathways/trevas';
 import { eremitaData } from './pathways/eremita';
 import { rodaDaFortunaData } from './pathways/roda-da-fortuna';
+import { aeonData } from './pathways/aeon';
+import { veuData } from './pathways/veu';
 
-export const beyonderAbilities: PathwayData[] = [
+export const caminhosData: PathwayData[] = [
     toloData,
     erroData,
     portaData,
@@ -45,9 +47,9 @@ export const beyonderAbilities: PathwayData[] = [
     trevasData,
     eremitaData,
     rodaDaFortunaData,
+    aeonData,
+    veuData,
 ];
 
-export const caminhosData: { [key: string]: PathwayData } = beyonderAbilities.reduce((acc, pathway) => {
-    acc[pathway.pathway] = pathway;
-    return acc;
-}, {} as { [key: string]: PathwayData });
+// Alias para compatibilidade
+export const beyonderAbilities = caminhosData;

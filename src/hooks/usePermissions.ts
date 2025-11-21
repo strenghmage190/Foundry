@@ -5,12 +5,16 @@ import { useMyContext } from '../../MyContext';
 interface UserPermissions {
   can_create_pathways: boolean;
   max_pathways: number;
+  can_see_pathway_aeon?: boolean;
+  can_see_pathway_veu?: boolean;
 }
 
 export const usePermissions = () => {
   const [permissions, setPermissions] = useState<UserPermissions>({ 
     can_create_pathways: false, 
-    max_pathways: 1 
+    max_pathways: 1,
+    can_see_pathway_aeon: false,
+    can_see_pathway_veu: false
   });
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +39,9 @@ export const usePermissions = () => {
         if (data) {
           setPermissions({
             can_create_pathways: data.can_create_pathways,
-            max_pathways: data.max_pathways
+            max_pathways: data.max_pathways,
+            can_see_pathway_aeon: data.can_see_pathway_aeon || false,
+            can_see_pathway_veu: data.can_see_pathway_veu || false
           });
         }
       } catch (err) {

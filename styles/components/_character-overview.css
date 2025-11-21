@@ -43,8 +43,8 @@
 .modal-body { padding: 16px 20px; }
 
 .identity-block { display:flex; gap:16px; align-items:center; }
-.avatar-wrap img { width:96px; height:96px; border-radius:8px; object-fit:cover; }
-.avatar-fallback { width:96px; height:96px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#2b2b2b; color:#fff; font-weight:700; }
+.avatar-wrap img { width:72px; height:72px; border-radius:8px; object-fit:cover; }
+.avatar-fallback { width:72px; height:72px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#2b2b2b; color:#fff; font-weight:700; }
 .identity-right h1 { margin:0; font-family:var(--title-font); font-size:28px; }
 .identity-right h3 { margin:6px 0; font-size:14px; color:var(--text-color); }
 .identity-right p { color:var(--formula-color); margin:0; }
@@ -67,9 +67,11 @@
 .status-end { margin-top:12px; }
 .modal-actions { display:flex; justify-content:flex-end; gap:8px; padding:12px 0; }
 .button-secondary { background:var(--primary-accent); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
-.button-primary { background:#2a9d8f; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+.button-primary { background:#8e43ff; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; transition:background .25s ease, box-shadow .25s ease; }
+.button-primary:hover { background:#7a37d8; box-shadow:0 0 0 2px rgba(142,67,255,0.3); }
+.button-primary:active { background:#662bb8; }
 
 @media (max-width:720px) {
   .identity-block { flex-direction:row; }
-  .avatar-wrap img, .avatar-fallback { width:72px; height:72px; }
+  .avatar-wrap img, .avatar-fallback { width:56px; height:56px; }
 }

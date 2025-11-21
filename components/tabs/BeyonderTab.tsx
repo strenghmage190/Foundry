@@ -107,6 +107,7 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
     };
     
     const mecanicaUnica = currentPathwayData?.mecanicaUnica;
+    const correntes = currentPathwayData?.correntes || [];
     const poderesInatos = useMemo(() => {
         if (!currentPathwayData?.poderesInatos) return [];
         return currentPathwayData.poderesInatos
@@ -186,6 +187,7 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
         { key: 'todas' as FilterSection, label: 'Todas', condition: true },
         { key: 'domain' as FilterSection, label: 'Domínio', condition: !!domain },
         { key: 'mecanica' as FilterSection, label: 'Mecânica Única', condition: !!mecanicaUnica },
+        { key: 'correntes' as FilterSection, label: 'Correntes', condition: correntes.length > 0 },
         { key: 'inatos' as FilterSection, label: 'Poderes Inatos', condition: poderesInatos.length > 0 },
         { key: 'mitica' as FilterSection, label: 'Forma Mítica', condition: !!(formaMitica && sequence <= 4) },
         { key: 'adquiridas' as FilterSection, label: 'Habilidades Compráveis', condition: true },
@@ -418,6 +420,63 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                                     <p className="item-description">{item.desc}</p>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Correntes (separado) */}
+            {correntes.length > 0 && (
+                <div className={`accordion-section ${openMainSection === 'correntes' ? 'active' : ''}`}>
+                    <div className="accordion-header" onClick={() => toggleMainSection('correntes')}>
+                        <h4>Correntes de Fado</h4>
+                        <span className="accordion-icon"></span>
+                    </div>
+                    <div className="accordion-content">
+                        <div className="tab-list">
+                            {correntes.map(c => {
+                                const isActive = (character.activeCorrentesIds || []).includes(c.id);
+                                const seqNum = parseInt(c.sequence.match(/\d+/)?.[0] ?? '99');
+                                const isAvailable = seqNum >= sequence;
+                                
+                                return (
+                                    <div key={c.id} className="tab-list-item" style={{
+                                        backgroundColor: isActive ? 'rgba(156, 39, 176, 0.15)' : undefined,
+                                        border: isActive ? '1px solid #9c27b0' : undefined,
+                                        opacity: isAvailable ? 1 : 0.5
+                                    }}>
+                                        <div className="item-header">
+                                            <h5 className="item-header-title">
+                                                {isActive && '✓ '}{c.sequence} - {c.titulo}
+                                            </h5>
+                                            {isAvailable && (
+                                                <button
+                                                    onClick={() => {
+                                                        const currentIds = character.activeCorrentesIds || [];
+                                                        const newIds = isActive 
+                                                            ? currentIds.filter(id => id !== c.id)
+                                                            : [...currentIds, c.id];
+                                                        onCharacterChange('activeCorrentesIds', newIds);
+                                                    }}
+                                                    style={{
+                                                        padding: '0.25rem 0.75rem',
+                                                        fontSize: '0.85rem',
+                                                        backgroundColor: isActive ? '#d32f2f' : '#9c27b0',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {isActive ? 'Desativar' : 'Ativar'}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="item-description"><strong>Benefício:</strong> {c.beneficio}</p>
+                                        <p className="item-description"><strong>Risco:</strong> {c.risco}</p>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

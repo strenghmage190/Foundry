@@ -26,6 +26,15 @@ interface CharacterStatusCardProps {
   maxSpirituality?: number;
   compact?: boolean;
   className?: string;
+  attributes?: {
+    agi?: number;
+    for?: number;
+    int?: number;
+    pre?: number;
+    vig?: number;
+  };
+  nex?: string | number | null;
+  role?: string | null;
 }
 
 const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
@@ -46,6 +55,9 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
   onViewDetails,
   compact = false,
   className,
+  attributes,
+  nex,
+  role,
 }) => {
   const [signedAvatar, setSignedAvatar] = useState<string | null>(null);
 
@@ -104,8 +116,23 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
               'Caminho não selecionado'
             )}
           </div>
+          <div className="badge-row">
+            {nex ? <div className="badge nex">NEX: {nex}</div> : null}
+            {role ? <div className="badge role">{role}</div> : null}
+          </div>
         </div>
       </header>
+
+        {/* Attributes row: AGI FOR INT PRE VIG */}
+        {(attributes || {}).agi !== undefined || (attributes || {}).for !== undefined ? (
+          <section className="char-attributes">
+            <div className="attr-item"><div className="attr-value">{attributes?.agi ?? '-'}</div><div className="attr-label">AGI</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.for ?? '-'}</div><div className="attr-label">FOR</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.int ?? '-'}</div><div className="attr-label">INT</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.pre ?? '-'}</div><div className="attr-label">PRE</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.vig ?? '-'}</div><div className="attr-label">VIG</div></div>
+          </section>
+        ) : null}
 
       <section className="char-stats">
         <div className="stat-item">
@@ -123,57 +150,40 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
       </section>
 
       <section className="char-resources">
-        <ResourceBar label="PV" value={vitality ?? 0} max={maxVitality ?? 1} color="red" />
-        <ResourceBar label="SAN" value={sanity ?? 0} max={maxSanity ?? 1} color="purple" />
-        <ResourceBar label="PE" value={spirituality ?? 0} max={maxSpirituality ?? 1} color="blue" />
+        <div className="char-resource-row-wrapper">
+          <ResourceBar label="PV" value={vitality ?? 0} max={maxVitality ?? 1} color="red" compact={compact} />
+          <ResourceBar label="SAN" value={sanity ?? 0} max={maxSanity ?? 1} color="purple" compact={compact} />
+          <ResourceBar label="PE" value={spirituality ?? 0} max={maxSpirituality ?? 1} color="orange" compact={compact} />
+        </div>
       </section>
 
-      <section className="char-tags">
-        <div className="tag-group">
-          <div className="tag-group-label">Fraquezas</div>
-          <div className="tags">
-            {weaknesses.length === 0 ? <span className="tag empty">Nenhuma</span> : weaknesses.map((w, i) => (
-              <span key={i} className="tag tag-weak">{w}</span>
-            ))}
-          </div>
-        </div>
-
-        <div className="tag-group">
-          <div className="tag-group-label">Resistências</div>
-          <div className="tags">
-            {resistances.length === 0 ? <span className="tag empty">Nenhuma</span> : resistances.map((r, i) => (
-              <span key={i} className="tag tag-resist">{r}</span>
-            ))}
-          </div>
-        </div>
-
-        {others && others.length > 0 && (
-          <div className="tag-group">
-            <div className="tag-group-label">Outros</div>
-            <div className="tags">
-              {others.map((o, i) => <span key={i} className="tag tag-other">{o}</span>)}
-            </div>
-          </div>
-        )}
-      </section>
+      {/* Removido fraquezas/resistências para mini-fichas conforme pedido */}
 
       <div className="char-action">
-        <button className="char-cta" onClick={onViewDetails}>Ver Ficha Completa</button>
+        {compact ? (
+          <button className="char-cta" onClick={onViewDetails}>Ficha</button>
+        ) : (
+          <button className="char-cta" onClick={onViewDetails}>Ver Ficha Completa</button>
+        )}
       </div>
     </div>
   );
 };
 
 // Simple resource bar copied/adapted from MiniSheet
-const ResourceBar: React.FC<{ label: string; value: number; max: number; color: string }> = ({ label, value = 0, max = 1, color }) => {
+const ResourceBar: React.FC<{ label: string; value: number; max: number; color: string; compact?: boolean }> = ({ label, value = 0, max = 1, color, compact=false }) => {
   const percentage = max > 0 ? (value / max) * 100 : 0;
   return (
-    <div className={`char-resource-bar ${color}`}>
-      <label>{label}</label>
-      <div className="char-bar-track">
-        <div className="char-bar-fill" style={{ width: `${percentage}%` }} />
+    <div className={`char-resource-bar ${color} ${compact ? 'compact' : ''}`}>
+      <div className="char-resource-row">
+        <label className="char-resource-label">{label}</label>
+        <div className="char-resource-content">
+          <div className="char-bar-track">
+            <div className="char-bar-fill" style={{ width: `${percentage}%` }} />
+          </div>
+        </div>
+        <div className="char-bar-numbers">{value}/{max}</div>
       </div>
-      <div className="char-bar-value">{value} / {max}</div>
     </div>
   );
 };

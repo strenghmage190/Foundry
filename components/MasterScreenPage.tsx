@@ -7,9 +7,11 @@ import { getCampaignById, getPlayersByCampaignId, getCampaignsByMasterId } from 
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
 import type { Campaign, Character } from '../types';
 import CharacterStatusCard from './CharacterStatusCard';
+import CombatManager from './CombatManager';
 import CharacterOverviewModal from './CharacterOverviewModal';
 import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import DiceLogEntry from './DiceLogEntry';
+import '../styles/components/_master-screen.css';
 
 
 interface MasterScreenPageProps {
@@ -26,15 +28,11 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hideAgents, setHideAgents] = useState(false);
   const [characters, setCharacters] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  
-  const [selectedIds, setSelectedIds] = useState<Record<string | number, boolean>>({});
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | number | null>(null);
-  const [initiativeOrder, setInitiativeOrder] = useState<Array<{ id: string | number; name: string; initiative: number; status?: string }>>([]);
-  const [activeIndex, setActiveIndex] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('AGENTES');
 
   const notesKey = `beyonders_notes_${effectiveCampaignId}`;
 
@@ -110,21 +108,9 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     return () => clearTimeout(t);
   }, [notes, campaign]);
 
-  // Hook para iniciativa
-  useEffect(() => {
-    if (!campaign) return;
-    const key = `beyonders_initiative_${campaign.id}`;
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setInitiativeOrder(parsed.order || []);
-        setActiveIndex(parsed.activeIndex || 0);
-      }
-    } catch (e) { }
-  }, [campaign]);
+  // (Iniciativa removida no redesign)
 
-  // Hook for real-time dice roll logging
+  // Hook for real-time dice roll logging (mantido)
   useEffect(() => {
     if (!campaign) return;
 
@@ -159,63 +145,7 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     };
   }, [campaign]);
 
-  const saveInitiativeState = (order: any[], active: number) => {
-    const key = `beyonders_initiative_${campaign.id}`;
-    try { localStorage.setItem(key, JSON.stringify({ order, activeIndex: active })); } catch (e) { }
-  };
-    const toggleSelect = (id: string | number) => {
-    // Prevent selecting participants that don't have a linked character
-    const participant = characters.find(c => c.id === id);
-    const hasCharacter = !!participant?.agents?.data?.character;
-    if (!hasCharacter) return; // ignore toggles for missing characters
-    setSelectedIds(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const rollInitiatives = () => {
-    const participants = visibleCharacters.filter(ch => selectedIds[ch.id]);
-
-    const rolled = participants
-      .map(ch => {
-        // Pula participantes inválidos
-        if (!ch?.id || !ch?.agents?.data?.character) return null;
-
-        const baseInitiative = ch.agents.data.character.initiative != null ? ch.agents.data.character.initiative : 0;
-        const roll = Math.floor(Math.random() * 20) + 1;
-        const total = roll + baseInitiative;
-        const name = ch.agents.data.character.name || `Participante #${ch.id}`;
-
-        return { id: ch.id, name, initiative: total, status: '' };
-      })
-      .filter(Boolean); // Filtra todos os nulos
-
-    if (rolled.length === 0) {
-      setInitiativeOrder([]);
-      setActiveIndex(0);
-      saveInitiativeState([], 0);
-      return;
-    }
-
-    rolled.sort((a, b) => b.initiative - a.initiative);
-    setInitiativeOrder(rolled as any);
-    setActiveIndex(0);
-    saveInitiativeState(rolled as any, 0);
-  };
-  
-    const nextTurn = () => {
-    setActiveIndex(i => {
-      const next = (i + 1) % initiativeOrder.length; // Volta para o início
-      saveInitiativeState(initiativeOrder, next);
-      return next;
-    });
-  };
-
-  const prevTurn = () => {
-    setActiveIndex(i => {
-      const prev = (i - 1 + initiativeOrder.length) % initiativeOrder.length; // Volta para o final
-      saveInitiativeState(initiativeOrder, prev);
-      return prev;
-    });
-  };
+  // Funções de iniciativa removidas.
 
   const updateAgentCharacter = async (agentId: string, updates: Partial<Character>) => {
     // 1. ATUALIZAÇÃO OTIMISTA DA UI
@@ -279,16 +209,8 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
   };
   const masterId = campaign?.gm_id ?? null;
 
-  // GM vê TODOS os personagens, apenas filtra NPCs se hideAgents estiver ativo
-  const visibleCharacters = characters.filter(p => {
-    const hasCharacter = !!p?.agents?.data?.character;
-    if (!hasCharacter) return false; // Ignora participantes sem personagem
-    
-    const isNpc = p.player_id === null;
-    if (hideAgents && isNpc) return false; // Filtro de NPCs
-    
-    return true; // GM vê todos os outros
-  });
+  // Todos os personagens com ficha (NPCs e PCs)
+  const visibleCharacters = characters.filter(p => !!p?.agents?.data?.character);
 
   // participante selecionado atualmente (para painel expandido)
   const selectedParticipant = characters.find(c => c.id === selectedParticipantId) || null;
@@ -300,34 +222,25 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
 
   return (
     <div className="master-screen">
-      <main className="ms-main-layout">
-        <section className="ms-main-column">
-          <div className="ms-participants-selector">
-            <h4>Selecione os Participantes</h4>
-            <div className="ms-participants-grid">
-                {visibleCharacters.map(ch => {
-                  const hasCharacter = !!ch.agents?.data?.character;
-                  const name = hasCharacter ? ch.agents.data.character.name : (ch.user_profiles?.displayName ?? (ch.player_id ? `Player: ${ch.player_id}` : `Participante #${ch.id}`));
-                  const isSelected = selectedParticipantId === ch.id;
-
-                  return (
-                    <div key={ch.id} className={`ms-participant-tag ${isSelected ? 'selected' : ''}`}>
-                      {hasCharacter ? (
-                        <input type="checkbox" checked={!!selectedIds[ch.id]} onChange={() => toggleSelect(ch.id)} />
-                      ) : (
-                        <div style={{ width: 18 }} />
-                      )}
-                      <span className="ms-participant-name" onClick={() => setSelectedParticipantId(ch.id)}>{name}</span>
-                    </div>
-                  );
-                })}
-            </div>
-            <div className="ms-participants-actions">
-              <button onClick={rollInitiatives} className="button-primary">Rolar Iniciativas!</button>
-              <button onClick={() => { setInitiativeOrder([]); setActiveIndex(0); saveInitiativeState([], 0); }}>Limpar Combate</button>
-            </div>
-          </div>
-          {/* Modal com a ficha completa do participante selecionado */}
+      <nav className="ms-tabs">
+        {['AGENTES','COMBATES','INVESTIGAÇÕES','RELATÓRIOS','DADOS','ANOTAÇÕES'].map(tab => (
+          <button key={tab} className={tab === activeTab ? 'active' : ''} onClick={() => setActiveTab(tab)}>{tab}</button>
+        ))}
+      </nav>
+      <main className="ms-simple-layout">
+        <aside className="ms-dice-log-panel">
+          <h4>Resultados</h4>
+          {diceLog.length === 0 ? (
+            <div className="ms-empty-state small">Nenhuma rolagem.</div>
+          ) : (
+            <ul className="ms-dice-log-list">
+              {diceLog.slice().reverse().map((roll, idx) => (
+                <li key={idx}><DiceLogEntry roll={roll} /></li>
+              ))}
+            </ul>
+          )}
+        </aside>
+        <section className="ms-cards-area">
           {selectedParticipant && (
             <CharacterOverviewModal
               agentData={selectedParticipant?.agents?.data ?? null}
@@ -336,123 +249,72 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
               onClose={() => setSelectedParticipantId(null)}
             />
           )}
-
-          <div className="ms-character-grid">
-            {visibleCharacters.length === 0 ? (
-              <div className="ms-empty-state">Nenhum personagem disponível.</div>
-            ) : (
-              visibleCharacters.map(ch => {
-                const agentData = ch?.agents?.data ?? null;
-                if (!agentData) {
-                  const profile = ch.user_profiles || null;
-                  const displayName = profile?.displayName ?? (ch.player_id ? `Player: ${ch.player_id}` : `Link ID: ${ch.id}`);
-                  const avatar = profile?.signedAvatarUrl ?? null;
+          {activeTab === 'AGENTES' && (
+            <div className="ms-character-grid">
+              {visibleCharacters.length === 0 ? (
+                <div className="ms-empty-state">Nenhum personagem disponível.</div>
+              ) : (
+                visibleCharacters.map(ch => {
+                  const agentData = ch?.agents?.data ?? null;
+                  if (!agentData) return null;
+                  const character = agentData.character || {};
+                  // Mostrar somente avatar do personagem (sem fallback para perfil do usuário)
+                  const avatar = character?.avatarUrl || (agentData?.customization?.avatarHealthy || agentData?.customization?.avatarHurt || agentData?.customization?.avatarDisturbed || agentData?.customization?.avatarInsane) || '';
+                  const pathName = character.pathways?.primary ?? (Array.isArray(character.pathway) ? character.pathway?.[0] : character.pathway) ?? '';
+                  const hasPathway = pathName && pathName.trim() !== '' && pathName !== 'Nenhum caminho selecionado.';
+                  const weaknesses = hasPathway ? [`Vulnerável a ${pathName}`] : [];
+                  const resistances = hasPathway ? [`Afinidade com ${pathName}`] : [];
+                  const stats = {
+                    defense: getDefense(agentData),
+                    absorption: getAbsorptionPool(agentData),
+                    initiative: getInitiativePool(agentData),
+                  };
+                  const isSelected = selectedParticipantId === ch.id;
+                  const agentRowId = ch.agent_id ?? (ch.agents && (ch.agents.id || (ch.agents[0] && ch.agents[0].id))) ?? null;
                   return (
-                    <div key={ch.id} style={{ width: 280 }}>
-                      <div className="ms-profile-card">
-                        <div className="char-status-header">
-                          <div className="char-avatar">
-                            {avatar ? (
-                              <img src={avatar} alt={displayName} className="char-avatar-img" />
-                            ) : (
-                              <div className="char-avatar-fallback">{(displayName || '??').slice(0,2).toUpperCase()}</div>
-                            )}
-                          </div>
-                          <div className="char-identity">
-                            <div className="char-name">{displayName}</div>
-                            <div className="char-path">Sem personagem</div>
-                          </div>
-                        </div>
-                        <div className="char-action">
-                          <button className="char-cta" onClick={() => { if (ch.player_id) navigate(`/profile/${ch.player_id}`); }}>Ver Perfil</button>
-                        </div>
-                      </div>
+                    <div key={ch.id} className="ms-grid-item" onClick={() => setSelectedParticipantId(ch.id)}>
+                      <CharacterStatusCard
+                        compact
+                        className={isSelected ? 'selected' : ''}
+                        name={character.name || `Participante #${ch.id}`}
+                        avatarUrl={avatar}
+                        path={hasPathway ? pathName : undefined}
+                        sequence={character.sequence}
+                        vitality={character.vitality}
+                        maxVitality={character.maxVitality}
+                        sanity={character.sanity}
+                        maxSanity={character.maxSanity}
+                        spirituality={character.spirituality}
+                        maxSpirituality={character.maxSpirituality}
+                        stats={stats}
+                        weaknesses={weaknesses}
+                        resistances={resistances}
+                        attributes={{
+                          agi: character.agi,
+                          for: character.for,
+                          int: character.int,
+                          pre: character.pre,
+                          vig: character.vig,
+                        }}
+                        nex={character.nex}
+                        role={character.role}
+                        onViewDetails={() => agentRowId ? navigate(`/campaign/${campaign.id}/agent/${agentRowId}`) : null}
+                      />
                     </div>
                   );
-                }
-
-                const character = agentData.character || {};
-                const avatar = (character && character.avatarUrl) ? character.avatarUrl : (ch.user_profiles?.signedAvatarUrl ?? null);
-                const pathName = character.pathways?.primary ?? (Array.isArray(character.pathway) ? character.pathway?.[0] : character.pathway) ?? '';
-                const hasPathway = pathName && pathName.trim() !== '' && pathName !== 'Nenhum caminho selecionado.';
-                const weaknesses = hasPathway ? [`Vulnerável a ${pathName}`] : [];
-                const resistances = hasPathway ? [`Afinidade com ${pathName}`] : [];
-
-                const stats = {
-                  defense: getDefense(agentData),
-                  absorption: getAbsorptionPool(agentData),
-                  initiative: getInitiativePool(agentData),
-                };
-
-                const isSelected = selectedParticipantId === ch.id;
-                const agentRowId = ch.agent_id ?? (ch.agents && (ch.agents.id || (ch.agents[0] && ch.agents[0].id))) ?? null;
-                return (
-                  <div key={ch.id} style={{ width: 280, cursor: 'pointer' }} onClick={() => setSelectedParticipantId(ch.id)}>
-                    <CharacterStatusCard
-                      compact
-                      className={isSelected ? 'selected' : ''}
-                      name={character.name || `Participante #${ch.id}`}
-                      avatarUrl={avatar}
-                      path={hasPathway ? pathName : undefined}
-                      sequence={character.sequence}
-                      vitality={character.vitality}
-                      maxVitality={character.maxVitality}
-                      sanity={character.sanity}
-                      maxSanity={character.maxSanity}
-                      spirituality={character.spirituality}
-                      maxSpirituality={character.maxSpirituality}
-                      stats={stats}
-                      weaknesses={weaknesses}
-                      resistances={resistances}
-                      onViewDetails={() => agentRowId ? navigate(`/campaign/${campaign.id}/agent/${agentRowId}`) : null}
-                    />
-                  </div>
-                );
-              })
-            )}
-          </div>
+                })
+              )}
+            </div>
+          )}
+          {activeTab === 'COMBATES' && (
+            <CombatManager agents={visibleCharacters.map(ch => ch.agents?.data).filter(Boolean) as any} />
+          )}
+          {!['AGENTES','COMBATES'].includes(activeTab) && (
+            <div className="ms-placeholder">
+              <p>Seção "{activeTab}" em desenvolvimento.</p>
+            </div>
+          )}
         </section>
-          <aside className="ms-sidebar">
-            <div className="ms-sidebar-widget">
-              <h3>Ordem de Combate</h3>
-              {initiativeOrder.length === 0 ? (
-                <div className="ms-empty-state small">Nenhuma iniciativa rolada.</div>
-              ) : (
-                <>
-                  <ol className="ms-initiative-list">
-                    {initiativeOrder.map((p, idx) => {
-                      if (!p) return null;
-                      return (
-                        <li key={p.id || idx} className={idx === activeIndex ? 'active' : ''}>
-                          <div className="initiative-entry">
-                            <span className="name">{p.name || 'Nome Inválido'}</span>
-                            <span className="value">{p.initiative != null ? p.initiative : 0}</span>
-                          </div>
-                          <div className="status">{p.status || ''}</div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                  <div className="ms-initiative-controls">
-                    <button onClick={prevTurn}>{'<'} Anterior</button>
-                    <button onClick={nextTurn}>Próximo {'>'}</button>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="ms-sidebar-widget">
-              <h3>Log de Dados</h3>
-              {diceLog.length === 0 ? (
-                <div className="ms-empty-state small">Nenhuma rolagem registrada.</div>
-              ) : (
-                <ul className="ms-dice-log-list">
-                  {diceLog.map((roll, idx) => (
-                    <DiceLogEntry key={idx} roll={roll} />
-                  ))}
-                </ul>
-              )}
-            </div>
-          </aside>
       </main>
     </div>
   );
