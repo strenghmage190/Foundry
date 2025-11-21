@@ -13,3 +13,4 @@ export { default as InvitePlayerModal } from './InvitePlayerModal';
 export { default as LinkCharacterModal } from './LinkCharacterModal';
 export { MagicGrimoireModal } from './MagicGrimoireModal';
 export { MythicalFormModal } from './MythicalFormModal';
+export { ImageCropModal } from './ImageCropModal';

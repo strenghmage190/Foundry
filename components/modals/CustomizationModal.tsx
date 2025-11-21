@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AgentData, CustomizationSettings } from '../../types.ts';
 import { supabase } from '../../supabaseClient';
 import { initialAgentData } from '../../constants';
+import { ImageCropModal } from './ImageCropModal';
 
 interface CustomizationModalProps {
     isOpen: boolean;
@@ -23,6 +24,11 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
         avatarDisturbed: '',
         avatarInsane: '',
     });
+    
+    // Estado para controlar o modal de crop
+    const [cropModalOpen, setCropModalOpen] = useState(false);
+    const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
+    const [currentCropField, setCurrentCropField] = useState<AvatarField | null>(null);
 
     // Criamos uma referência para cada input de arquivo
     const fileInputRefs = {
@@ -72,19 +78,39 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
         setSettings(prev => ({ ...prev, [field]: value }));
     };
 
-    // Esta função agora lida com o upload de arquivos
+    // Esta função agora abre o modal de crop
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: AvatarField) => {
         const file = e.target.files?.[0];
         if (file) {
-            // Set preview URL for immediate feedback
-            const objectUrl = URL.createObjectURL(file);
-            setPreviewUrls(prev => ({ ...prev, [field]: objectUrl }));
-
-            // Passa o arquivo para a CharacterSheetPage, que sabe como fazer o upload.
-            // A CharacterSheetPage vai lidar com o upload e depois atualizar a URL.
-            onUpdateAgent({ field, file });
-            // Keep modal open for user to save changes
+            setCurrentCropFile(file);
+            setCurrentCropField(field);
+            setCropModalOpen(true);
         }
+    };
+
+    const handleCropConfirm = (croppedBlob: Blob) => {
+        if (!currentCropField) return;
+        
+        // Converte o blob em File
+        const croppedFile = new File([croppedBlob], `cropped-${currentCropField}.png`, { type: 'image/png' });
+        
+        // Set preview URL for immediate feedback
+        const objectUrl = URL.createObjectURL(croppedBlob);
+        setPreviewUrls(prev => ({ ...prev, [currentCropField]: objectUrl }));
+
+        // Passa o arquivo para a CharacterSheetPage, que sabe como fazer o upload
+        onUpdateAgent({ field: currentCropField, file: croppedFile });
+        
+        // Fecha o modal de crop
+        setCropModalOpen(false);
+        setCurrentCropFile(null);
+        setCurrentCropField(null);
+    };
+
+    const handleCropCancel = () => {
+        setCropModalOpen(false);
+        setCurrentCropFile(null);
+        setCurrentCropField(null);
     };
 
     const handleSave = () => {
@@ -128,6 +154,7 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
     );
 
     return (
+        <>
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
@@ -176,5 +203,16 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({ isOpen, 
                 </div>
             </div>
         </div>
+        
+        {/* Modal de Crop de Imagem */}
+        {cropModalOpen && currentCropFile && (
+            <ImageCropModal
+                imageFile={currentCropFile}
+                onConfirm={handleCropConfirm}
+                onCancel={handleCropCancel}
+                aspectRatio={1}
+            />
+        )}
+    </>
     );
 };
