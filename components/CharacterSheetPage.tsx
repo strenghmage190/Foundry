@@ -433,13 +433,21 @@ const normalizeAttributeName = (name: string): string => {
 export const CharacterSheetPage = () => {
   const { addLiveToast, addLogEntry, logHistory, onRemoveLogEntry } =
     useMyContext();
-  const { permissions, loading: permissionsLoading } = usePermissions();
+  const { permissions: rawPermissions, loading: permissionsLoading } = usePermissions();
+  
+  // Memoize permissions para evitar re-renderizações desnecessárias
+  const permissions = useMemo(() => rawPermissions, [
+    rawPermissions.can_create_pathways,
+    rawPermissions.max_pathways,
+    rawPermissions.can_see_pathway_aeon,
+    rawPermissions.can_see_pathway_veu
+  ]);
+  
   // =======================================================
   // 1. FONTE DA VERDADE E ESTADO PRINCIPAL
   // =======================================================
   const { agentId, campaignId } = useParams<{ agentId: string; campaignId?: string }>();
   const [allPathways, setAllPathways] = useState<typeof caminhosData>(caminhosData);
-  console.log("CharacterSheetPage carregada. AgentID:", agentId, "| CampaignID:", campaignId);
   const navigate = useNavigate();
 
   // ÚNICO estado para os dados do agente
@@ -451,9 +459,11 @@ export const CharacterSheetPage = () => {
 
   // Estado para URLs assinadas dos avatares
   const [signedAvatarUrls, setSignedAvatarUrls] = useState<{
+    avatarUrl?: string;
     avatarHealthy?: string;
     avatarInsane?: string;
     avatarHurt?: string;
+    avatarDisturbed?: string;
   }>({});
 
   // =======================================================
@@ -503,21 +513,42 @@ export const CharacterSheetPage = () => {
     if (!agent) return;
 
     const generateSignedUrls = async () => {
-      const newSignedUrls: { avatarHealthy?: string; avatarInsane?: string; avatarHurt?: string } = {};
+      const newSignedUrls: { 
+        avatarUrl?: string;
+        avatarHealthy?: string; 
+        avatarInsane?: string; 
+        avatarHurt?: string;
+        avatarDisturbed?: string;
+      } = {};
 
-      const avatarFields = ['avatarHealthy', 'avatarInsane', 'avatarHurt'] as const;
+      // Gerar URL assinada para o avatar principal do personagem
+      const mainAvatarUrl = agent.character.avatarUrl;
+      if (mainAvatarUrl && !mainAvatarUrl.startsWith('http')) {
+        try {
+          const { data } = await supabase.storage.from('agent-avatars').createSignedUrl(mainAvatarUrl, 3600);
+          newSignedUrls.avatarUrl = data?.signedUrl || mainAvatarUrl;
+        } catch (error) {
+          console.error('Error generating signed URL for main avatar:', error);
+          newSignedUrls.avatarUrl = mainAvatarUrl;
+        }
+      } else {
+        newSignedUrls.avatarUrl = mainAvatarUrl || '';
+      }
+
+      // Gerar URLs assinadas para os avatares de customização
+      const avatarFields = ['avatarHealthy', 'avatarInsane', 'avatarHurt', 'avatarDisturbed'] as const;
       for (const field of avatarFields) {
         const url = agent.customization?.[field];
-        if (url) {
+        if (url && !url.startsWith('http')) {
           try {
-            const { data } = await supabase.storage.from('agent-avatars').createSignedUrl(url, 3600); // 1 hour
-            newSignedUrls[field] = data?.signedUrl || '';
+            const { data } = await supabase.storage.from('agent-avatars').createSignedUrl(url, 3600);
+            newSignedUrls[field] = data?.signedUrl || url;
           } catch (error) {
             console.error(`Error generating signed URL for ${field}:`, error);
-            newSignedUrls[field] = '';
+            newSignedUrls[field] = url;
           }
         } else {
-          newSignedUrls[field] = '';
+          newSignedUrls[field] = url || '';
         }
       }
 
@@ -530,7 +561,10 @@ export const CharacterSheetPage = () => {
   // =======================================================
   // 2.6. BUSCAR CAMINHOS CUSTOMIZADOS
   // =======================================================
+  const customPathwaysLoaded = useRef(false);
   useEffect(() => {
+    if (customPathwaysLoaded.current) return;
+    
     async function fetchCustomPathways() {
       try {
         const { data, error } = await supabase.from('custom_pathways').select('*');
@@ -541,6 +575,7 @@ export const CharacterSheetPage = () => {
         if (data && data.length > 0) {
           const customPathways = data.map((path: any) => path.pathway_data);
           setAllPathways(prev => [...prev, ...customPathways]);
+          customPathwaysLoaded.current = true;
         }
       } catch (error) {
         console.error('Erro ao buscar caminhos customizados:', error);
@@ -1555,9 +1590,14 @@ export const CharacterSheetPage = () => {
                     maxSanity: effectiveAgentData.character.maxSanity,
                     vitality: effectiveAgentData.character.vitality,
                     maxVitality: effectiveAgentData.character.maxVitality,
-                    avatarUrl: signedAvatarUrls.avatarHealthy || effectiveAgentData.customization?.avatarHealthy,
-                    insaneAvatarUrl: signedAvatarUrls.avatarInsane || effectiveAgentData.customization?.avatarInsane,
-                    deadAvatarUrl: signedAvatarUrls.avatarHurt || effectiveAgentData.customization?.avatarHurt,
+                    avatarUrl: signedAvatarUrls.avatarUrl || effectiveAgentData.character.avatarUrl,
+                    customization: {
+                      avatarHealthy: signedAvatarUrls.avatarHealthy || effectiveAgentData.customization?.avatarHealthy,
+                      avatarInsane: signedAvatarUrls.avatarInsane || effectiveAgentData.customization?.avatarInsane,
+                      avatarHurt: signedAvatarUrls.avatarHurt || effectiveAgentData.customization?.avatarHurt,
+                      avatarDisturbed: signedAvatarUrls.avatarDisturbed || effectiveAgentData.customization?.avatarDisturbed,
+                      useOpenDyslexicFont: effectiveAgentData.customization?.useOpenDyslexicFont || false
+                    }
                   }) || ""
                 })`,
               }}
