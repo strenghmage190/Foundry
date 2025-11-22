@@ -4,6 +4,7 @@ interface ControlTestTrackerProps {
     currentStage: number;
     onStageChange: (stage: number) => void;
     onPerformTest: () => void;
+    anchorBonus?: number;
 }
 
 const stages = [
@@ -13,10 +14,22 @@ const stages = [
     { label: "Estágio 3: A Metamorfose", value: 3 },
 ];
 
-export const ControlTestTracker: React.FC<ControlTestTrackerProps> = ({ currentStage, onStageChange, onPerformTest }) => {
+export const ControlTestTracker: React.FC<ControlTestTrackerProps> = ({ 
+    currentStage, 
+    onStageChange, 
+    onPerformTest,
+    anchorBonus = 0 
+}) => {
     return (
         <div className="control-test-tracker">
-            <h3 className="section-title">Teste de Controle</h3>
+            <div className="control-test-header">
+                <h3 className="section-title">Teste de Controle</h3>
+                {anchorBonus > 0 && (
+                    <div className="control-anchor-bonus">
+                        +{anchorBonus} dado{anchorBonus > 1 ? 's' : ''} (Âncoras)
+                    </div>
+                )}
+            </div>
             <div className="control-stage-selector">
                 {stages.map(stage => (
                     <div key={stage.value} className="stage-option">

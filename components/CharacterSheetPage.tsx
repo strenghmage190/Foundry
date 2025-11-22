@@ -40,6 +40,7 @@ import { CreateMagicAttackModal } from './modals/CreateMagicAttackModal';
 import { AddWeaponModal } from './modals/AddAttackModal';
 import { AddProtectionModal } from './modals/AddBeyonderAbilityModal';
 import { CustomizationModal } from './modals/CustomizationModal';
+import { updateAgentCustomization } from '../api/agents';
 import { DiceRollerModal } from './modals/DiceRollerModal';
 import { MythicalFormModal } from './modals/MythicalFormModal';
 import { DiceIcon, PaletteIcon, FlameIcon } from "./icons.tsx";
@@ -57,7 +58,9 @@ import { NotificationLog } from "./ToastContainer.tsx";
 import { ControlTestTracker } from "./ControlTestTracker.tsx";
 import { AnchorsTracker } from "./AnchorsTracker.tsx";
 import { PaTracker } from "./PaTracker.tsx";
+import { SimplePaTracker } from "./SimplePaTracker.tsx";
 import { computeDerivedFromPrimary, getMaxLuckPointsBySequence } from "../utils/calculations";
+import { countActiveAnchors } from "../utils/anchorUtils";
 
 type RollType = "skill" | "absorption";
 
@@ -405,7 +408,8 @@ type Tab =
   | "MAGIA"
   | "INVENTÁRIO"
   | "HISTÓRICO"
-  | "ANTECEDENTES";
+  | "ANTECEDENTES"
+  | "ÂNCORAS";
 
 const stringToHash = (str: string | undefined) => {
   let hash = 0;
@@ -499,6 +503,9 @@ export const CharacterSheetPage = () => {
         setAgent(null);
       } else {
         const formattedAgent = { ...(data.data as AgentData), id: data.id, isPrivate: !!(data as any).is_private };
+        console.log('[CharacterSheetPage] Loaded agent from DB:', data);
+        console.log('[CharacterSheetPage] Customization in loaded data:', data.data?.customization);
+        console.log('[CharacterSheetPage] Formatted agent customization:', formattedAgent.customization);
         setAgent(formattedAgent);
       }
       setIsLoading(false);
@@ -527,22 +534,13 @@ export const CharacterSheetPage = () => {
       
       if (mainAvatarUrl && !mainAvatarUrl.startsWith('http')) {
         try {
-          // Tenta primeiro o bucket 'agent-avatars'
-          let { data, error } = await supabase.storage.from('agent-avatars').createSignedUrl(mainAvatarUrl, 3600);
-          
-          // Se falhar, tenta o bucket 'user-avatars'
-          if (error || !data?.signedUrl) {
-            const result = await supabase.storage.from('user-avatars').createSignedUrl(mainAvatarUrl, 3600);
-            data = result.data;
-          }
-          
-          newSignedUrls.avatarUrl = data?.signedUrl || mainAvatarUrl;
+          const { data } = supabase.storage.from('agent-avatars').getPublicUrl(mainAvatarUrl);
+          newSignedUrls.avatarUrl = data.publicUrl || mainAvatarUrl;
         } catch (error) {
-          console.error('Error generating signed URL for main avatar:', error);
+          console.warn('CharacterSheetPage: public URL fallback to raw path (main)', error);
           newSignedUrls.avatarUrl = mainAvatarUrl;
         }
       } else {
-        // Se já é uma URL completa (http/https), usa diretamente
         newSignedUrls.avatarUrl = mainAvatarUrl || '';
       }
 
@@ -552,10 +550,10 @@ export const CharacterSheetPage = () => {
         const url = agent.customization?.[field];
         if (url && !url.startsWith('http')) {
           try {
-            const { data } = await supabase.storage.from('agent-avatars').createSignedUrl(url, 3600);
-            newSignedUrls[field] = data?.signedUrl || url;
+            const { data } = supabase.storage.from('agent-avatars').getPublicUrl(url);
+            newSignedUrls[field] = data.publicUrl || url;
           } catch (error) {
-            console.error(`Error generating signed URL for ${field}:`, error);
+            console.warn(`CharacterSheetPage: public URL fallback to raw path (${field})`, error);
             newSignedUrls[field] = url;
           }
         } else {
@@ -601,6 +599,7 @@ export const CharacterSheetPage = () => {
   // Hook para Auto-Save com Debounce
   const debouncedAgent = useDebounce(agent, 1500);
   const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Não salva na montagem inicial ou se não houver dados do agente
@@ -633,10 +632,19 @@ export const CharacterSheetPage = () => {
 
   const handleUpdate = useCallback(
     async (update: Partial<AgentData> | { field: string; file: File }) => {
+      console.log('[CharacterSheetPage] handleUpdate called with:', update);
+      console.log('[CharacterSheetPage] Current agent state:', agent);
       setSaveStatus("não salvo");
 
+      // CRITICAL: Check type FIRST before routing to specific handlers
+      // Only treat as "file" if it ONLY has "file" and "field"
+      const isFileUpdate = update && typeof update === "object" && "file" in update && !("customization" in update) && !("character" in update) && !("attributes" in update);
+      
+      // Only treat as "isPrivate" update if it ONLY has isPrivate
+      const isPrivacyOnlyUpdate = update && typeof update === 'object' && 'isPrivate' in update && Object.keys(update).length === 1;
+
       // Lógica para upload de arquivo
-      if (update && typeof update === "object" && "file" in update) {
+      if (isFileUpdate) {
         const { field, file } = update;
         if (!agent) return;
 
@@ -661,6 +669,20 @@ export const CharacterSheetPage = () => {
             title: "Avatar Atualizado!",
             message: "Sua nova imagem foi salva.",
           });
+          // Persiste imediatamente no banco (salvamento rápido apenas do campo customization)
+          try {
+            if (agent?.id) {
+              const currentData = { ...agent } as any;
+              const updatedCustomization = { ...currentData.customization, [field]: newUrl };
+              currentData.customization = updatedCustomization;
+              const { id, isPrivate, ...dataToSave } = currentData;
+              const { error: persistError } = await supabase.from('agents').update({ data: dataToSave }).eq('id', agent.id);
+              if (persistError) throw persistError;
+            }
+          } catch (persistErr) {
+            console.warn('Falha ao persistir avatar imediatamente:', persistErr);
+            addLiveToast({ type: 'failure', title: 'Persistência Avatar', message: 'Upload ok, mas não salvou no servidor.' });
+          }
         } catch (error) {
           addLiveToast({
             type: "failure",
@@ -672,7 +694,7 @@ export const CharacterSheetPage = () => {
       }
 
       // Se a atualização inclui a privacidade, persista imediatamente no topo (coluna is_private)
-      if (update && typeof update === 'object' && 'isPrivate' in update) {
+      if (isPrivacyOnlyUpdate) {
         const newIsPrivate = (update as any).isPrivate === true;
         try {
           if (agent?.id) {
@@ -686,28 +708,83 @@ export const CharacterSheetPage = () => {
         } catch (e) {
           addLiveToast({ type: 'failure', title: 'Erro', message: 'Não foi possível atualizar a privacidade.' });
         }
-      } else {
-        // Lógica de mesclagem de dados normal (sem upload) - merge profundo para character
-        setAgent((prev) => {
-          if (!prev) return null;
-          const partial = update as Partial<AgentData>;
-          return {
-            ...prev,
-            ...partial,
-            // Se está atualizando character, faz merge profundo
-            character: partial.character 
-              ? { ...prev.character, ...partial.character }
-              : prev.character,
-            // Se está atualizando attributes, faz merge profundo
-            attributes: partial.attributes
-              ? { ...prev.attributes, ...partial.attributes }
-              : prev.attributes,
-          };
-        });
+        return;
       }
+      
+      // Lógica de mesclagem de dados normal (sem upload) - merge profundo para character
+      setAgent((prev) => {
+        if (!prev) return null;
+        const partial = update as Partial<AgentData>;
+        const beforeSeq = prev.character.sequence;
+        const nextCharacter = partial.character
+          ? { ...prev.character, ...partial.character }
+          : prev.character;
+        const nextAttributes = partial.attributes
+          ? { ...prev.attributes, ...partial.attributes }
+          : prev.attributes;
+        const nextCustomization = partial.customization
+          ? { ...prev.customization, ...partial.customization }
+          : prev.customization;
+        const afterSeq = nextCharacter.sequence;
+        
+        console.log('[CharacterSheetPage] setAgent merging data:');
+        console.log('[CharacterSheetPage]   prev.customization:', prev.customization);
+        console.log('[CharacterSheetPage]   partial.customization:', partial.customization);
+        console.log('[CharacterSheetPage]   nextCustomization:', nextCustomization);
+        
+        if (partial.character && 'pathwayColor' in partial.character) {
+          console.log('🎨 Mudando cor:', prev.character.pathwayColor, '=>', partial.character.pathwayColor);
+        }
+        
+        const updatedAgent = {
+          ...prev,
+          ...partial,
+          character: nextCharacter,
+          attributes: nextAttributes,
+          customization: nextCustomization,
+        };
+        
+        console.log('[CharacterSheetPage] New updatedAgent.customization:', updatedAgent.customization);
+        
+        // Marca para salvamento assíncrono debounced se customização ou cor mudou
+        if (partial.character?.pathwayColor || partial.customization) {
+          console.log('[CharacterSheetPage] Setting customizationDirty = true');
+          setCustomizationDirty(true);
+        }
+        
+        return updatedAgent;
+      });
     },
     [agent, addLiveToast]
   );
+
+  // Estado para salvar customização de forma desacoplada
+  const [customizationDirty, setCustomizationDirty] = useState(false);
+  const customizationSaveRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!customizationDirty || !agent?.id) return;
+    
+    // Debounce 300ms (reduzido de 600ms)
+    if (customizationSaveRef.current) window.clearTimeout(customizationSaveRef.current);
+    customizationSaveRef.current = window.setTimeout(async () => {
+      console.log('[CharacterSheetPage] Saving customization (debounce triggered)');
+      console.log('[CharacterSheetPage] agent.customization at debounce time:', agent.customization);
+      setSaveStatus('salvando');
+      const ok = await updateAgentCustomization(agent);
+      if (ok) {
+        setSaveStatus('salvo');
+        console.log('✅ [CharacterSheetPage] Customização salva com sucesso');
+      } else {
+        setSaveStatus('não salvo');
+        console.error('❌ [CharacterSheetPage] Falha ao salvar customização');
+        addLiveToast({ type: 'failure', title: 'Erro ao Salvar', message: 'Falha ao salvar customização.' });
+      }
+      setCustomizationDirty(false);
+    }, 300);
+    return () => {
+      if (customizationSaveRef.current) window.clearTimeout(customizationSaveRef.current);
+    };
+  }, [customizationDirty, agent?.customization, agent?.character?.pathwayColor]);
 
   const [activeTab, setActiveTab] = useState<Tab>("BEYONDER");
 
@@ -740,7 +817,8 @@ export const CharacterSheetPage = () => {
   const [editingSkillAttr, setEditingSkillAttr] = useState<string | null>(null);
   // Bônus temporário por perícia (não persiste no banco)
   const [skillTempBonus, setSkillTempBonus] = useState<Record<string, number>>({});
-  const [compactSkillsView, setCompactSkillsView] = useState<boolean>(false);
+  const [compactSkillsView, setCompactSkillsView] = useState<boolean>(true);
+  const [showAnchorMechanics, setShowAnchorMechanics] = useState<boolean>(false);
 
   const [rollPopover, setRollPopover] = useState<{
     isVisible: boolean;
@@ -760,6 +838,37 @@ export const CharacterSheetPage = () => {
     }, {} as { [key: string]: PathwayData });
   }, [allPathways]);
 
+  // Mapeamento de nomes curtos para nomes completos
+  const pathwayNameMapping: Record<string, string> = {
+    'Tolo': 'CAMINHO DO TOLO',
+    'Porta': 'CAMINHO DA PORTA',
+    'Erro': 'CAMINHO DO ERRO',
+    'Visionário': 'CAMINHO DO VISIONÁRIO',
+    'Sol': 'CAMINHO DO SOL',
+    'Tirano': 'CAMINHO DO TIRANO',
+    'Torre Branca': 'CAMINHO DA TORRE BRANCA',
+    'Enforcado': 'CAMINHO DO ENFORCADO',
+    'Trevas': 'CAMINHO DAS TREVAS',
+    'Morte': 'CAMINHO DA MORTE',
+    'Gigante do Crepúsculo': 'CAMINHO DO GIGANTE DO CREPÚSCULO',
+    'Demônio': 'CAMINHO DO DEMÔNIO',
+    'Padre Vermelho': 'CAMINHO DO PADRE VERMELHO',
+    'Eremita': 'CAMINHO DO EREMITA',
+    'Paragon': 'CAMINHO DO PARAGON',
+    'Mãe': 'CAMINHO DA MÃE',
+    'Lua': 'CAMINHO DA LUA',
+    'Abismo': 'CAMINHO DO ABISMO',
+    'Acorrentado': 'CAMINHO DO ACORRENTADO',
+    'Justiceiro': 'CAMINHO DO JUSTICEIRO',
+    'Imperador Negro': 'CAMINHO DO IMPERADOR NEGRO',
+    'Roda da Fortuna': 'CAMINHO DA RODA DA FORTUNA',
+    // Suporte explícito para Éon Eterno (formas abreviadas / display)
+    'Éon Eterno': 'CAMINHO DO ÉON ETERNO',
+    'Aeon Eterno': 'CAMINHO DO ÉON ETERNO',
+    'Aeon': 'CAMINHO DO ÉON ETERNO',
+    'Éon': 'CAMINHO DO ÉON ETERNO'
+  };
+
   const pathwayData = useMemo(() => {
     if (!agent) return null;
     // Suporte para novo formato (pathways) e antigo (pathway)
@@ -772,14 +881,66 @@ export const CharacterSheetPage = () => {
         ? agent.character.pathway[0] 
         : agent.character.pathway;
     }
+    
+    // Tentar mapear nome curto para nome completo
+    if (pathwayKey && !allPathwaysMap[pathwayKey]) {
+      const mappedKey = pathwayNameMapping[pathwayKey];
+      if (mappedKey && allPathwaysMap[mappedKey]) {
+        pathwayKey = mappedKey;
+      }
+    }
+    
     return pathwayKey ? allPathwaysMap[pathwayKey] : null;
   }, [agent, allPathwaysMap]);
 
   const formToActivate = useMemo(() => {
-    if (!pathwayData?.mythicalForm || !agent) return null;
-    return agent.character.sequence <= 2
-      ? pathwayData.mythicalForm.complete
-      : pathwayData.mythicalForm.incomplete;
+    if (!pathwayData || !agent) return null;
+    // Prioriza novo formato (mythicalForm)
+    if (pathwayData.mythicalForm) {
+      return agent.character.sequence <= 2
+        ? pathwayData.mythicalForm.complete
+        : pathwayData.mythicalForm.incomplete;
+    }
+    // Fallback para formato legado (formaMitica)
+    if ((pathwayData as any).formaMitica) {
+      const legacy = (pathwayData as any).formaMitica as FormaMitica; // usando tipo legado
+      // Parse de bônus de atributos (ex.: "+2 Espiritualidade, +2 Vigor")
+      const attributeBoosts: { [key: string]: number } = {};
+      if (legacy.bonus) {
+        legacy.bonus.split(/[,\.]/).forEach(part => {
+          const m = part.trim().match(/([+-]?\d+)\s+([A-Za-zÀ-ÿ]+)/);
+          if (m) {
+            const rawAttr = m[2];
+            const value = parseInt(m[1], 10);
+            const normalized = normalizeAttributeName(rawAttr).toLowerCase();
+            // Mapeia para chaves de atributos válidas
+            const map: Record<string, string> = {
+              'força': 'forca',
+              'destreza': 'destreza',
+              'vigor': 'vigor',
+              'carisma': 'carisma',
+              'manipulação': 'manipulacao',
+              'autocontrole': 'autocontrole',
+              'percepção': 'percepcao',
+              'inteligência': 'inteligencia',
+              'raciocínio': 'raciocinio',
+              'espiritualidade': 'espiritualidade'
+            };
+            const key = map[normalized];
+            if (key) attributeBoosts[key] = (attributeBoosts[key] || 0) + value;
+          }
+        });
+      }
+      // Converte poderes legados para abilities
+      const abilities = (legacy.poderes || []).map(p => ({ name: `${p.tipo}: ${p.nome}`, desc: p.desc }));
+      const stage: MythicalFormStage = {
+        tempHpBonus: 0,
+        attributeBoosts,
+        abilities
+      };
+      return stage; // Usa mesma "stage" para qualquer sequência (sem versões incompleta/complete distintas no legado)
+    }
+    return null;
   }, [pathwayData, agent]);
 
   // =======================================================
@@ -797,6 +958,15 @@ export const CharacterSheetPage = () => {
         ? agent.character.pathway[0] 
         : agent.character.pathway;
     }
+    
+    // Tentar mapear nome curto para nome completo
+    if (pathwayKey && !allPathwaysMap[pathwayKey]) {
+      const mappedKey = pathwayNameMapping[pathwayKey];
+      if (mappedKey && allPathwaysMap[mappedKey]) {
+        pathwayKey = mappedKey;
+      }
+    }
+    
     const pathwayData = pathwayKey ? allPathwaysMap[pathwayKey] : null;
     if (!pathwayData) return null;
 
@@ -809,6 +979,10 @@ export const CharacterSheetPage = () => {
     } else if (agent.character.pathway) {
       characterPathways = Array.isArray(agent.character.pathway) ? agent.character.pathway : [agent.character.pathway];
     }
+    
+    // Mapear nomes curtos para nomes completos
+    characterPathways = characterPathways.map(p => pathwayNameMapping[p] || p);
+    
     const hasFortuneWheel = characterPathways.includes("CAMINHO DA RODA DA FORTUNA");
     const maxLuckPoints = hasFortuneWheel ? getMaxLuckPointsBySequence(sequence) : 0;
 
@@ -900,6 +1074,7 @@ export const CharacterSheetPage = () => {
     "INVENTÁRIO",
     "HISTÓRICO",
     "ANTECEDENTES",
+    "ÂNCORAS",
   ];
 
   const handleCharacterFieldChange = (field: keyof Character, value: any) => {
@@ -916,11 +1091,30 @@ export const CharacterSheetPage = () => {
       updatedCharacter.maxAssimilationDice =
         (effectiveAgentData.character.maxAssimilationDice || 0) + 4;
 
+      // Calcular a Espiritualidade correta baseada na sequência
+      const sequencesWithEspIncrement = [5, 3, 2, 1];
+      const currentSeq = effectiveAgentData.character.sequence;
+      const newSeq = value;
+      
+      // Contar quantos incrementos devem existir
+      const incrementsNeeded = sequencesWithEspIncrement.filter(s => s >= newSeq && s < 9).length;
+      const newEspiritualidade = 1 + incrementsNeeded;
+      
+      // Atualizar atributos também
+      handleUpdate({ 
+        character: updatedCharacter,
+        attributes: {
+          ...effectiveAgentData.attributes,
+          espiritualidade: newEspiritualidade
+        }
+      });
+
       addLiveToast({
         type: "success",
         title: "Avanço de Sequência!",
-        message: `Você avançou para a Sequência ${value}. Ganhou 4 Dados de Assimilação.`,
+        message: `Você avançou para a Sequência ${value}. Ganhou 4 Dados de Assimilação. Espiritualidade: ${newEspiritualidade}`,
       });
+      return;
     }
 
     handleUpdate({ character: updatedCharacter });
@@ -1217,17 +1411,25 @@ export const CharacterSheetPage = () => {
 
   const handleControlTest = () => {
     const { autocontrole } = effectiveAgentData.attributes;
-    const { willpower, controlStage } = effectiveAgentData.character;
-    const pool = autocontrole + willpower;
+    const { willpower, controlStage, anchors } = effectiveAgentData.character;
+    
+    // Calcular bônus de âncoras (Resiliência Mental)
+    const anchorBonus = countActiveAnchors(anchors || []);
+    
+    const basePool = autocontrole + willpower;
+    const pool = basePool + anchorBonus;
     const difficulty = 6 + (controlStage || 0);
     const { rolls, successes } = rollDice(pool, difficulty);
 
     const resultType = successes > 0 ? "success" : "failure";
     const title = "Teste de Controle";
     const message = `${successes} sucesso(s)!`;
-    const details = `Parada: ${pool} (Autocontrole ${autocontrole} + Vontade ${willpower})\nDificuldade: ${difficulty}\nRolagem: [${rolls.join(
-      ", "
-    )}]`;
+    
+    let details = `Parada: ${pool} (Autocontrole ${autocontrole} + Vontade ${willpower}`;
+    if (anchorBonus > 0) {
+      details += ` + ${anchorBonus} Âncora${anchorBonus > 1 ? 's' : ''}`;
+    }
+    details += `)\nDificuldade: ${difficulty}\nRolagem: [${rolls.join(", ")}]`;
 
     addLiveToast({ type: resultType, title, message });
     addLogEntry({ type: resultType, title, message, details });
@@ -1729,20 +1931,27 @@ export const CharacterSheetPage = () => {
             )}
           </div>
 
-          {!isMythicalFormActive &&
-            effectiveAgentData.character.sequence <= 4 &&
-            pathwayData?.mythicalForm && (
-              <div className="mythical-form-trigger-container">
-                <button
-                  id="mythical-form-trigger-btn"
-                  onClick={() => setActiveModal("mythicalForm")}
-                  aria-label="Ativar Forma Mítica"
-                  title="Ativar Forma Mítica"
-                >
-                  <FlameIcon />
-                </button>
-              </div>
-            )}
+          {( (pathwayData?.mythicalForm || (pathwayData as any)?.formaMitica) && !isMythicalFormActive ) && (
+            <div className="mythical-form-trigger-container">
+              <button
+                id="mythical-form-trigger-btn"
+                onClick={() => effectiveAgentData.character.sequence <= 4 && setActiveModal("mythicalForm")}
+                aria-label="Ativar Forma Mítica"
+                title={
+                  effectiveAgentData.character.sequence <= 4
+                    ? "Ativar Forma Mítica"
+                    : "Forma Mítica desbloqueia na Sequência 4 ou menor"
+                }
+                disabled={effectiveAgentData.character.sequence > 4}
+                className={effectiveAgentData.character.sequence > 4 ? "locked" : ""}
+              >
+                <FlameIcon />
+              </button>
+              {effectiveAgentData.character.sequence > 4 && (
+                <p className="locked-hint">Disponível ao atingir Sequência 4</p>
+              )}
+            </div>
+          )}
 
           <SanityTracker
             sanity={effectiveAgentData.character.sanity}
@@ -1784,18 +1993,6 @@ export const CharacterSheetPage = () => {
               onAttributeChange={handleAttributeChange}
             />
           )}
-
-          <AnchorsTracker
-            anchors={effectiveAgentData.character.anchors}
-            onAnchorsChange={(v) => handleCharacterFieldChange("anchors", v)}
-            onInvokeAnchor={handleInvokeAnchor}
-          />
-          <PaTracker
-            agent={effectiveAgentData}
-            onUpdate={handleUpdate}
-            onOpenImprovements={() => setActiveModal("improvement")}
-            addLiveToast={addLiveToast}
-          />
         </div>
 
         <div className="sheet-col-middle">
@@ -1890,6 +2087,74 @@ export const CharacterSheetPage = () => {
                   agent={effectiveAgentData}
                   onUpdate={handleUpdate}
                 />
+              </div>
+              <div
+                style={{
+                  display: activeTab === "ÂNCORAS" ? "block" : "none",
+                }}
+              >
+                <div className="ancoras-tab-content">
+                  <div className="ancoras-description">
+                    <h3 className="ancoras-title">⚓ Âncoras: Segurando a Humanidade</h3>
+                    <p className="ancoras-intro">Para não se tornar um monstro, o Beyonder precisa de âncoras — conexões com sua humanidade, sua vida mortal e sua sanidade.</p>
+                    
+                    <button 
+                      className="toggle-mechanics-btn"
+                      onClick={() => setShowAnchorMechanics(prev => !prev)}
+                    >
+                      {showAnchorMechanics ? '▼' : '▶'} Explicação sobre Âncoras
+                    </button>
+
+                    {showAnchorMechanics && (
+                      <div className="ancoras-mechanics-section">
+                        <h4 className="mechanics-subtitle">📖 Mecânica da Âncora</h4>
+                        <div className="mechanics-list">
+                          <div className="mechanic-item">
+                            <strong>O Pilar do Eu (A Convicção):</strong> O princípio ou crença que o personagem preza ("Devo proteger os inocentes.").
+                          </div>
+                          <div className="mechanic-item">
+                            <strong>A Âncora (O Símbolo):</strong> A personificação física daquele Pilar (uma pessoa, um lugar, um grupo).
+                          </div>
+                          <div className="mechanic-item">
+                            Um personagem começa com <strong>1 Âncora</strong> e pode desenvolver até <strong>3</strong>.
+                          </div>
+                        </div>
+                        
+                        <h4 className="mechanics-subtitle benefits">✨ Benefícios da Âncora</h4>
+                        <div className="mechanics-list">
+                          <div className="mechanic-item benefit">
+                            <strong>Resiliência Mental (Passivo):</strong> Por cada Âncora que possui, você ganha +1 na sua parada de dados em testes para resistir à perda de Sanidade causada por influências sobrenaturais graduais.
+                          </div>
+                          <div className="mechanic-item benefit">
+                            <strong>Reafirmar a Humanidade (Ativo):</strong> Uma vez por sessão, ao falhar em um teste de Vontade ou Sanidade, você pode gastar 1 Ponto de Vontade para invocar uma Âncora. Você pode então rolar novamente o teste com um bônus de +2 dados.
+                          </div>
+                        </div>
+                        
+                        <h4 className="mechanics-subtitle risks">⚠️ O Risco das Âncoras</h4>
+                        <div className="mechanics-list">
+                          <div className="mechanic-item risk">
+                            <strong>Âncora em Perigo:</strong> Enquanto sua Âncora está sob ameaça crível, você sofre uma penalidade de -1 dado em todos os testes para resistir à perda de controle.
+                          </div>
+                          <div className="mechanic-item risk">
+                            <strong>Danificando uma Âncora:</strong> Imediatamente após o evento, você deve fazer um teste de Vontade (Dificuldade 6). Se falhar, sofre 1 Nível de Degradação de Sanidade.
+                          </div>
+                          <div className="mechanic-item risk">
+                            <strong>Destruindo uma Âncora:</strong> Você sofre uma perda imediata e permanente de 2 Níveis de Degradação de Sanidade, sem teste. Aquele espaço de Âncora fica "queimado" e precisa de um arco de história para ser recuperado.
+                          </div>
+                          <div className="mechanic-item risk">
+                            <strong>Agir Contra seu Próprio Pilar:</strong> Você imediatamente sofre 1d3 Níveis de Degradação de Sanidade.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <AnchorsTracker
+                    anchors={effectiveAgentData.character.anchors}
+                    onAnchorsChange={(v) => handleCharacterFieldChange("anchors", v)}
+                    onInvokeAnchor={handleInvokeAnchor}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -2004,11 +2269,19 @@ export const CharacterSheetPage = () => {
                 ))}
               </div>
             ) : (
-              Object.entries(effectiveAgentData.habilidades).map(
-                ([type, list]) => (
-                  <div key={type}>
-                    <h4 className="habilidade-subheader">{type === 'gerais' ? 'Gerais' : 'Investigativas'}</h4>
-                    {(list as Habilidade[]).map((skill, index) => {
+              // Check if habilidades has the expected structure
+              effectiveAgentData.habilidades && 
+              typeof effectiveAgentData.habilidades === 'object' &&
+              (effectiveAgentData.habilidades.gerais || effectiveAgentData.habilidades.investigativas) ? (
+                Object.entries(effectiveAgentData.habilidades).map(
+                  ([type, list]) => {
+                    // Ensure list is an array
+                    if (!Array.isArray(list)) return null;
+                    
+                    return (
+                      <div key={type}>
+                        <h4 className="habilidade-subheader">{type === 'gerais' ? 'Gerais' : 'Investigativas'}</h4>
+                        {list.map((skill, index) => {
                       const attrName = skill.attr.split('/') [0];
                       const normalizedAttr = normalizeAttributeName(attrName) as keyof Attributes;
                       const attrValue = effectiveAgentData.attributes[normalizedAttr] || 0;
@@ -2069,49 +2342,30 @@ export const CharacterSheetPage = () => {
                       );
                     })}
                   </div>
+                    );
+                  }
                 )
+              ) : (
+                <div style={{ padding: '1rem', color: '#8896a8', textAlign: 'center' }}>
+                  Nenhuma habilidade cadastrada
+                </div>
               )
             )}
           </div>
-          <div className="assimilation-dice-tracker">
-            <h3 className="section-title">Dados de Assimilação</h3>
-            <div className="pa-display">
-              <div className="pa-box">
-                <div className="pa-box-value">
-                  <input
-                    type="number"
-                    value={effectiveAgentData.character.assimilationDice}
-                    onChange={(e) =>
-                      handleCharacterFieldChange(
-                        "assimilationDice",
-                        Number(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-                <div className="pa-box-label">Atuais</div>
-              </div>
-              <div className="pa-box">
-                <div className="pa-box-value">
-                  <input
-                    type="number"
-                    value={effectiveAgentData.character.maxAssimilationDice}
-                    onChange={(e) =>
-                      handleCharacterFieldChange(
-                        "maxAssimilationDice",
-                        Number(e.target.value)
-                      )
-                    }
-                  />
-                </div>
-                <div className="pa-box-label">Máximos</div>
-              </div>
-            </div>
-          </div>
+          
+          <SimplePaTracker 
+            pa={effectiveAgentData.character.pa || 0} 
+            paGasto={effectiveAgentData.character.paTotalGasto || 0}
+            sequence={effectiveAgentData.character.sequence || 9}
+            onPaChange={(val) => handleCharacterFieldChange('pa', val)}
+            onOpenImprovements={() => setActiveModal('improvement')}
+          />
+
           <ControlTestTracker
             currentStage={effectiveAgentData.character.controlStage}
             onStageChange={(v) => handleCharacterFieldChange("controlStage", v)}
             onPerformTest={handleControlTest}
+            anchorBonus={countActiveAnchors(effectiveAgentData.character.anchors || [])}
           />
           <NotificationLog toasts={logHistory} onRemove={onRemoveLogEntry} />
         </div>

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AgentListPage } from './components/AgentListPage';
 import { CharacterSheetPage } from './components/CharacterSheetPage';
+import { CharacterCreationWizard } from './components/CharacterCreationWizard';
 import { Header } from './components/Header';
 import UserProfilePage from './components/UserProfilePage';
 import CampaignsListPage from './components/CampaignsListPage';
@@ -42,56 +43,6 @@ const AppContent = () => {
             }
         }, []);
 
-    // A função handleAddAgent agora só precisa navegar
-    const handleAddAgent = useCallback(async () => {
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-            alert("Você precisa estar logado para criar um agente!");
-            return;
-        }
-
-        const tempName = `Agente_${Date.now()}`;
-                // Attempt to use profile avatar as default for new agents
-                let defaultAvatar = '';
-                try {
-                    const dbProfile = await getUserProfile(user.id);
-                    if (dbProfile?.avatarPath) {
-                        const signed = await getSignedAvatarUrl(dbProfile.avatarPath, 'user-avatars');
-                        defaultAvatar = signed || '';
-                    }
-                } catch (e) {
-                    console.warn('Could not resolve user profile avatar for new agent', e);
-                }
-
-                const newAgentBase = {
-            ...JSON.parse(JSON.stringify(initialAgentData)),
-            lastModified: new Date().toISOString(),
-            character: {
-                ...(initialAgentData.character || {}),
-                name: tempName,
-                                avatarUrl: defaultAvatar,
-            },
-        };
-
-        const { data: insertedData, error } = await supabase
-            .from("agents")
-            .insert({
-                data: newAgentBase,
-                user_id: user.id,
-            })
-            .select("data, id")
-            .single();
-
-        if (error) {
-            console.error("Erro ao adicionar agente:", error.message);
-        } else if (insertedData) {
-            // Após criar, navega para a ficha do novo agente
-            navigate(`/agent/${insertedData.id}`);
-        }
-    }, [navigate]);
-
     return (
         <div className="app-container">
             <LiveToastContainer toasts={liveToasts} onRemove={removeLiveToast} />
@@ -103,8 +54,11 @@ const AppContent = () => {
             <main className="main-content">
                 <Routes>
                     {/* Rota Padrão e Lista de Agentes */}
-                    <Route path="/" element={<AgentListPage onAdd={handleAddAgent} />} />
-                    <Route path="/agents" element={<AgentListPage onAdd={handleAddAgent} />} />
+                    <Route path="/" element={<AgentListPage />} />
+                    <Route path="/agents" element={<AgentListPage />} />
+
+                    {/* Rota de Criação de Personagem */}
+                    <Route path="/create-character" element={<CharacterCreationWizard />} />
 
                     {/* 👇 ROTA DA FICHA - SEM PASSAR PROPS 👇 */}
                     {/* A ficha buscará seus próprios dados usando o ID da URL */}

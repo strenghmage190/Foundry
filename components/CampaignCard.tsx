@@ -18,17 +18,15 @@ const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkChar
 
   useEffect(() => {
     const coverPath = campaign.cover_image_url;
-
     if (coverPath && !coverPath.startsWith('http')) {
-      // É um path, precisamos gerar uma URL assinada
-      supabase.storage.from('campaign-covers').createSignedUrl(coverPath, 3600) // 1 hora de validade
-        .then(({ data, error }) => {
-          if (data) {
-            setCoverImageUrl(data.signedUrl);
-          }
-        });
+      try {
+        const { data } = supabase.storage.from('campaign-covers').getPublicUrl(coverPath);
+        setCoverImageUrl(data.publicUrl || coverPath);
+      } catch (e) {
+        console.warn('CampaignCard: public URL fallback to raw path', e);
+        setCoverImageUrl(coverPath);
+      }
     } else {
-      // Já é uma URL completa ou está vazio
       setCoverImageUrl(coverPath || null);
     }
   }, [campaign.cover_image_url]);

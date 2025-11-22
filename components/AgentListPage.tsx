@@ -6,11 +6,7 @@ import CharacterCard from './CharacterCard';
 import { supabase } from '../supabaseClient';
 import { useMyContext } from '../MyContext';
 
-interface AgentListPageProps {
-    onAdd: () => void;
-}
-
-export const AgentListPage: React.FC<AgentListPageProps> = ({ onAdd }) => {
+export const AgentListPage: React.FC = () => {
     const navigate = useNavigate();
     const { addLiveToast } = useMyContext();
     const [agents, setAgents] = useState<AgentData[]>([]);
@@ -124,7 +120,7 @@ export const AgentListPage: React.FC<AgentListPageProps> = ({ onAdd }) => {
         <div className="agent-list-page">
             <div className="page-header">
                 <h1>Selecione um Agente</h1>
-                <button className="button-primary" onClick={onAdd}>+ Novo Agente</button>
+                <button className="button-primary" onClick={() => navigate('/create-character')}>+ Novo Agente</button>
             </div>
             {agents.length > 0 ? (
                 <div className="agent-grid">

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AgentData, Antecedente, Afiliacao } from '../../types';
+import React, { useState } from "react";
+import type { AgentData, Antecedente, Afiliacao } from "../../types";
 
 interface Props {
   agent: AgentData;
@@ -27,35 +27,37 @@ export const AntecedentesTab: React.FC<Props> = ({ agent, onUpdate }) => {
   
   const antecedentes = agent.antecedentes || [];
   const afiliacoes = agent.afiliacoes || [];
+  const backgrounds = agent.backgrounds || null;
+  const character = agent.character || {};
 
+  // Calculate points from old system (customizable antecedentes)
   const totalPointsSpent = antecedentes.reduce((sum, ant) => sum + (ant.points || 0), 0);
   const pointsAvailable = 5 - totalPointsSpent;
 
   const availableOptions = ANTECEDENTES_BASE.filter(base => !antecedentes.some(a => a.id === base.id));
 
-  console.log("Debug Antecedentes:", { antecedentes, pointsAvailable, availableOptions, selectedToAdd });
 
   const handleAddAntecedente = () => {
-    if (!selectedToAdd || pointsAvailable < 1) return;
-    
+    if (!selectedToAdd || pointsAvailable < 1) {
+      return;
+    }
     if (selectedToAdd === 'CREATE_NEW') {
       setIsCreatingCustom(true);
       setSelectedToAdd('');
       return;
     }
-    
     const base = ANTECEDENTES_BASE.find(b => b.id === selectedToAdd);
     if (base && !antecedentes.some(a => a.id === base.id)) {
       const newAnte: Antecedente = { ...base, points: 1, description: '', details: '' };
-      console.log("Adicionando antecedente:", newAnte);
       onUpdate({ antecedentes: [...antecedentes, newAnte] });
     }
     setSelectedToAdd('');
   };
 
   const handleAddCustomAntecedente = () => {
-    if (!newAnteName.trim() || pointsAvailable < 1) return;
-    
+    if (!newAnteName.trim() || pointsAvailable < 1) {
+      return;
+    }
     const customAnte: Antecedente = {
       id: `custom-${Date.now()}`,
       name: newAnteName.trim(),
@@ -63,8 +65,6 @@ export const AntecedentesTab: React.FC<Props> = ({ agent, onUpdate }) => {
       details: '',
       points: 1
     };
-    
-    console.log("Adicionando antecedente personalizado:", customAnte);
     onUpdate({ antecedentes: [...antecedentes, customAnte] });
     setNewAnteName('');
     setNewAnteDesc('');
@@ -110,8 +110,119 @@ export const AntecedentesTab: React.FC<Props> = ({ agent, onUpdate }) => {
 
   return (
     <div className="antecedentes-tab">
+      {/* Linhagem e Afiliação da Criação */}
+      {(character.bloodline || character.affiliation) && (
+        <>
+          <div className="tab-header">
+            <h3>Linhagem & Afiliação (da Criação)</h3>
+            <div className="info-text">Definidos na criação do personagem</div>
+          </div>
+          
+          <div className="character-origin-display">
+            {character.bloodline && character.bloodline !== 'Nenhuma' && (
+              <div className="origin-item bloodline">
+                <label>🩸 Linhagem</label>
+                <strong>{character.bloodline}</strong>
+                {character.bloodlineCost > 0 && (
+                  <span className="cost-badge">Custo: {character.bloodlineCost} PB</span>
+                )}
+              </div>
+            )}
+            
+            {character.affiliation && character.affiliation !== 'Nenhum' && (
+              <div className="origin-item affiliation">
+                <label>🏛️ Afiliação</label>
+                <strong>{character.affiliation}</strong>
+                {character.affiliationStatus > 0 && (
+                  <div className="status-display">
+                    <span>Status: {character.affiliationStatus}</span>
+                    <div className="points-dots readonly">
+                      {[1, 2, 3, 4, 5].map(p => (
+                        <span key={p} className={`dot ${p <= character.affiliationStatus ? 'filled' : ''}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    
+      {/* Backgrounds from Character Creation (Read-only display) */}
+      {backgrounds && (
+        <>
+          <div className="tab-header">
+            <h3>Antecedentes Base (da Criação)</h3>
+            <div className="info-text">Definidos na criação do personagem</div>
+          </div>
+          
+          <div className="backgrounds-display">
+            {backgrounds.aliados > 0 && (
+              <div className="background-item-display">
+                <label>Aliados</label>
+                <div className="points-dots readonly">
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <span key={p} className={`dot ${p <= backgrounds.aliados ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="description-text">Amigos e contatos que o ajudarão quando precisar</span>
+              </div>
+            )}
+            
+            {backgrounds.recursos > 0 && (
+              <div className="background-item-display">
+                <label>Recursos</label>
+                <div className="points-dots readonly">
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <span key={p} className={`dot ${p <= backgrounds.recursos ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="description-text">Riqueza, propriedades e bens materiais</span>
+              </div>
+            )}
+            
+            {backgrounds.contatos > 0 && (
+              <div className="background-item-display">
+                <label>Contatos</label>
+                <div className="points-dots readonly">
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <span key={p} className={`dot ${p <= backgrounds.contatos ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="description-text">Fontes de informação e conhecimento</span>
+              </div>
+            )}
+            
+            {backgrounds.mentor > 0 && (
+              <div className="background-item-display">
+                <label>Mentor</label>
+                <div className="points-dots readonly">
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <span key={p} className={`dot ${p <= backgrounds.mentor ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="description-text">Um professor ou guia poderoso</span>
+              </div>
+            )}
+            
+            {backgrounds.status > 0 && (
+              <div className="background-item-display">
+                <label>Status (Hierarquia)</label>
+                <div className="points-dots readonly">
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <span key={p} className={`dot ${p <= backgrounds.status ? 'filled' : ''}`} />
+                  ))}
+                </div>
+                <span className="description-text">Posição social e influência</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      
       <div className="tab-header">
-        <h3>Antecedentes (Pontos)</h3>
+        <h3>Antecedentes Adicionais (Pontos)</h3>
         <div className="points-tracker">
           Pontos Disponíveis: <span>{pointsAvailable} / 5</span>
         </div>

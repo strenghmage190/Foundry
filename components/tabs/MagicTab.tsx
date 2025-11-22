@@ -125,11 +125,50 @@ interface ParticleDetailPopupProps {
 
 const ParticleDetailPopup: React.FC<ParticleDetailPopupProps> = ({ particle, onClose }) => {
     if (!particle) return null;
+    
+    // Determine acquisition badge
+    let acquisitionBadge = '';
+    let acquisitionLabel = '';
+    if (particle.isDomain || particle.acquisitionMethod === 'innate') {
+        acquisitionBadge = '⚡';
+        acquisitionLabel = 'Inata do Caminho';
+    } else if (particle.acquisitionMethod === 'universal') {
+        acquisitionBadge = '🌐';
+        acquisitionLabel = 'Universal';
+    } else if (particle.acquisitionMethod === 'study') {
+        acquisitionBadge = '📚';
+        acquisitionLabel = 'Estudada';
+    } else if (particle.acquisitionMethod === 'revelation') {
+        acquisitionBadge = '✨';
+        acquisitionLabel = 'Revelação Arcana';
+    }
+    
     return (
         <div className="modal-backdrop" onClick={onClose}>
             <div className="particle-popup" onClick={(e) => e.stopPropagation()}>
                 <h3 style={{ color: 'var(--character-color, #a978f8)', margin: 0 }}>{particle.name}</h3>
                 <span className="particle-type">{particle.type} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                {acquisitionLabel && (
+                    <div className="particle-acquisition-info">
+                        <span className="acquisition-badge">{acquisitionBadge}</span>
+                        <span className="acquisition-label">{acquisitionLabel}</span>
+                    </div>
+                )}
+                {particle.associatedSkill && (
+                    <p className="particle-metadata">
+                        <strong>Habilidade:</strong> {particle.associatedSkill}
+                    </p>
+                )}
+                {particle.arcanaName && (
+                    <p className="particle-metadata">
+                        <strong>Arcana:</strong> {particle.arcanaName}
+                    </p>
+                )}
+                {particle.isCorrupted && (
+                    <div className="corruption-warning">
+                        ⚠️ <strong>PARTÍCULA CORROMPIDA</strong> - Usar esta partícula pode causar efeitos adversos!
+                    </div>
+                )}
                 <p className="particle-description">{particle.description}</p>
                 <div className="popup-actions">
                     <button onClick={onClose} className="button-primary">Fechar</button>
@@ -158,7 +197,15 @@ export const MagicTab: React.FC<MagicTabProps> = ({
     const [selectedParticle, setSelectedParticle] = useState<LearnedParticle | null>(null);
 
     const groupedParticles = useMemo(() => {
-        const groups: Record<string, LearnedParticle[]> = {
+        // Group by acquisition method for new system
+        const innateParticles = learnedParticles.filter(p => p.acquisitionMethod === 'innate' || p.isDomain);
+        const universalParticles = learnedParticles.filter(p => p.acquisitionMethod === 'universal');
+        const studiedParticles = learnedParticles.filter(p => p.acquisitionMethod === 'study');
+        const revelationParticles = learnedParticles.filter(p => p.acquisitionMethod === 'revelation');
+        
+        // Legacy particles without acquisition method - keep old grouping for backwards compatibility
+        const legacyParticles = learnedParticles.filter(p => !p.acquisitionMethod && !p.isDomain);
+        const legacy: Record<string, LearnedParticle[]> = {
             'Função': [],
             'Objeto': [],
             'Característica': [],
@@ -166,12 +213,19 @@ export const MagicTab: React.FC<MagicTabProps> = ({
             'Criador': [],
             'Outro': [],
         };
-        learnedParticles.forEach(p => {
+        legacyParticles.forEach(p => {
             const t = p.type || 'Outro';
-            if (!groups[t]) groups[t] = [];
-            groups[t].push(p);
+            if (!legacy[t]) legacy[t] = [];
+            legacy[t].push(p);
         });
-        return groups;
+        
+        return {
+            innate: innateParticles,
+            universal: universalParticles,
+            studied: studiedParticles,
+            revelation: revelationParticles,
+            legacy
+        };
     }, [learnedParticles]);
 
     const handleRitualChange = (id: number, field: keyof Ritual, value: any) => {
@@ -241,31 +295,147 @@ export const MagicTab: React.FC<MagicTabProps> = ({
                     </div>
                 </div>
                 <div className="magic-section-content">
-                    {/* Single-column list with popup for details */}
-                    <div className="particles-list-container">
-                        {Object.entries(groupedParticles).map(([groupName, items]) => (
-                            <div key={groupName} className="particle-group">
-                                <h4>{groupName}</h4>
-                                <div className="particles-grid">
-                                    {items.length === 0 ? (
-                                        <span className="empty-group">— nenhum —</span>
-                                    ) : (
-                                        items.map(particle => {
-                                            const isDomainParticle = particle.isDomain === true;
-                                            return (
-                                            <div
-                                                key={particle.id}
-                                                className={`particle-tag ${isDomainParticle ? 'domain-particle' : ''}`}
-                                                title={isDomainParticle ? `${particle.description}\n\n⚠️ Partículas de domínio não podem ser removidas` : particle.description}
-                                                onClick={() => setSelectedParticle(particle)}
+                    {/* Innate Domain Particles */}
+                    {groupedParticles.innate.length > 0 && (
+                        <div className="particle-acquisition-section">
+                            <h4 className="acquisition-title">⚡ Partículas Inatas do Caminho</h4>
+                            <p className="acquisition-desc">Obtidas ao beber a poção de Sequência 9</p>
+                            <div className="particles-grid">
+                                {groupedParticles.innate.map((particle, idx) => (
+                                    <div
+                                        key={particle.id ?? `${particle.name}-${idx}`}
+                                        className="particle-tag domain-particle"
+                                        title={`${particle.description}\n\n⚠️ Partículas inatas não podem ser removidas`}
+                                        onClick={() => setSelectedParticle(particle)}
+                                    >
+                                        <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Universal Particles */}
+                    {groupedParticles.universal.length > 0 && (
+                        <div className="particle-acquisition-section">
+                            <h4 className="acquisition-title">🌐 Partículas Universais</h4>
+                            <p className="acquisition-desc">Obtidas através de habilidades investigativas (cada 3 pontos = 1 partícula)</p>
+                            <div className="particles-grid">
+                                {groupedParticles.universal.map((particle, idx) => (
+                                    <div
+                                        key={particle.id ?? `${particle.name}-${idx}`}
+                                        className="particle-tag universal-particle"
+                                        title={`${particle.description}${particle.associatedSkill ? `\n\nHabilidade: ${particle.associatedSkill}` : ''}`}
+                                        onClick={() => setSelectedParticle(particle)}
+                                    >
+                                        <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                                        {particle.associatedSkill && <span className="particle-source">({particle.associatedSkill})</span>}
+                                        <button
+                                            className="remove-particle-btn"
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                handleDeleteParticle(particle.id); 
+                                            }}
+                                            aria-label={`Remover ${particle.name}`}
+                                            title="Remover partícula"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Studied Particles */}
+                    {groupedParticles.studied.length > 0 && (
+                        <div className="particle-acquisition-section">
+                            <h4 className="acquisition-title">📚 Grimório do Estudioso</h4>
+                            <p className="acquisition-desc">Aprendidas através de estudo (10 PA + 1 semana + teste Int+Oculto)</p>
+                            <div className="particles-grid">
+                                {groupedParticles.studied.map((particle, idx) => {
+                                    const isCorrupted = particle.isCorrupted === true;
+                                    return (
+                                        <div
+                                            key={particle.id ?? `${particle.name}-${idx}`}
+                                            className={`particle-tag studied-particle ${isCorrupted ? 'corrupted-particle' : ''}`}
+                                            title={`${particle.description}${isCorrupted ? '\n\n⚠️ CORROMPIDA - Usá-la causa efeitos adversos!' : ''}`}
+                                            onClick={() => setSelectedParticle(particle)}
+                                        >
+                                            <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                                            {isCorrupted && <span className="corruption-badge">⚠️</span>}
+                                            <button
+                                                className="remove-particle-btn"
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    handleDeleteParticle(particle.id); 
+                                                }}
+                                                aria-label={`Remover ${particle.name}`}
+                                                title="Remover partícula"
                                             >
-                                                <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
-                                                {!isDomainParticle && (
+                                                ×
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Revelation Particles */}
+                    {groupedParticles.revelation.length > 0 && (
+                        <div className="particle-acquisition-section">
+                            <h4 className="acquisition-title">✨ Revelações Arcanas</h4>
+                            <p className="acquisition-desc">Reveladas através de Arcanas ao atingir 100% de digestão (Seq 8, 7, 5, 2)</p>
+                            <div className="particles-grid">
+                                {groupedParticles.revelation.map((particle, idx) => (
+                                    <div
+                                        key={particle.id ?? `${particle.name}-${idx}`}
+                                        className="particle-tag revelation-particle"
+                                        title={`${particle.description}${particle.arcanaName ? `\n\nArcana: ${particle.arcanaName}` : ''}`}
+                                        onClick={() => setSelectedParticle(particle)}
+                                    >
+                                        <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
+                                        {particle.arcanaName && <span className="particle-source">({particle.arcanaName})</span>}
+                                        <button
+                                            className="remove-particle-btn"
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                handleDeleteParticle(particle.id); 
+                                            }}
+                                            aria-label={`Remover ${particle.name}`}
+                                            title="Remover partícula"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Legacy particles (backwards compatibility) */}
+                    {Object.keys(groupedParticles.legacy).some(key => groupedParticles.legacy[key].length > 0) && (
+                        <div className="particle-acquisition-section legacy-section">
+                            <h4 className="acquisition-title">📜 Sistema Antigo</h4>
+                            <p className="acquisition-desc">Partículas do sistema anterior (migre-as para os novos métodos de aquisição)</p>
+                            {Object.entries(groupedParticles.legacy).map(([groupName, items]) => (
+                                items.length > 0 && (
+                                    <div key={groupName} className="particle-group">
+                                        <h5>{groupName}</h5>
+                                        <div className="particles-grid">
+                                            {items.map((particle, idx) => (
+                                                <div
+                                                    key={particle.id ?? `${particle.name}-${idx}`}
+                                                    className="particle-tag legacy-particle"
+                                                    title={particle.description}
+                                                    onClick={() => setSelectedParticle(particle)}
+                                                >
+                                                    <span>{particle.name} {particle.palavra ? `(${particle.palavra})` : ''}</span>
                                                     <button
                                                         className="remove-particle-btn"
                                                         onClick={(e) => { 
                                                             e.stopPropagation(); 
-                                                            console.log('Clicou para remover:', particle.name, particle.id, 'isDomain:', particle.isDomain);
                                                             handleDeleteParticle(particle.id); 
                                                         }}
                                                         aria-label={`Remover ${particle.name}`}
@@ -273,19 +443,20 @@ export const MagicTab: React.FC<MagicTabProps> = ({
                                                     >
                                                         ×
                                                     </button>
-                                                )}
-                                            </div>
-                                        )})
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                        {learnedParticles.length === 0 && (
-                            <p className="empty-state-text">Nenhuma partícula aprendida.</p>
-                        )}
-                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                            ))}
+                        </div>
+                    )}
 
-                    {/* When a particle is selected show popup (we keep selection for keyboard/nav too) */}
+                    {learnedParticles.length === 0 && (
+                        <p className="empty-state-text">Nenhuma partícula aprendida.</p>
+                    )}
+
+                    {/* When a particle is selected show popup */}
                     <ParticleDetailPopup particle={selectedParticle} onClose={() => setSelectedParticle(null)} />
                 </div>
             </div>

@@ -51,13 +51,13 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
 
     const safeCharacter = agent?.character || initialAgentData.character;
     const safeHabilidadesBeyonder = agent?.habilidadesBeyonder || [];
-    const { paDisponivel, paTotalGasto, sequence } = safeCharacter;
+    const { pa, paTotalGasto, sequence } = safeCharacter;
     const isEligibleForFreebie = !(safeCharacter.claimedFreeAbilitiesForSequences?.includes(safeCharacter.sequence));
     
-    // Updated Digestion Logic
+    // Updated Digestion Logic - total accumulated PA (available + spent)
     const targetPa = getPaRequirement(sequence);
-    const digestaoProgressoAtual = (paTotalGasto || 0) + (paDisponivel || 0);
-    const canAdvance = digestaoProgressoAtual >= targetPa;
+    const digestaoProgressoAtual = (paTotalGasto || 0) + (pa || 0);
+    const canAdvance = digestaoProgressoAtual >= targetPa && sequence > 1;
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
     
     const hasChanges = paSpent > 0;
@@ -112,7 +112,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         }
     }, [isOpen, agent, isEligibleForFreebie]);
     
-    const availablePA = (safeCharacter.paDisponivel || 0) - paSpent;
+    const availablePA = (safeCharacter.pa || 0) - paSpent;
 
     const handleAdvanceSequence = () => {
         if (!canAdvance) return;
@@ -123,26 +123,39 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
 
         const newMaxSanity = agent.character.maxSanity - sanityLoss;
         
-        const updatedAgent: AgentData = {
-            ...agent,
+        // Espiritualidade aumenta apenas em sequências específicas (6→5, 4→3, 3→2, 2→1)
+        const newSeq = currentSeq - 1;
+        const sequencesWithEspIncrement = [5, 3, 2, 1];
+        const shouldIncrementEsp = sequencesWithEspIncrement.includes(newSeq);
+        
+        const updateData: any = {
             character: {
-                ...agent.character,
-                sequence: currentSeq - 1,
+                sequence: newSeq,
                 assimilationDice: agent.character.assimilationDice + 4,
                 maxAssimilationDice: agent.character.maxAssimilationDice + 4,
                 paTotalGasto: 0,
                 purifiedDiceThisSequence: 0,
                 maxSanity: newMaxSanity,
                 sanity: Math.min(newMaxSanity, agent.character.sanity),
-                claimedFreeAbilitiesForSequences: agent.character.claimedFreeAbilitiesForSequences?.filter(s => s !== currentSeq -1) || []
-            },
+                claimedFreeAbilitiesForSequences: agent.character.claimedFreeAbilitiesForSequences || []
+            }
         };
-        onUpdateAgent(updatedAgent);
         
+        if (shouldIncrementEsp) {
+            const currentEspiritualidade = agent.attributes?.espiritualidade || 1;
+            updateData.attributes = {
+                ...agent.attributes,
+                espiritualidade: currentEspiritualidade + 1
+            };
+        }
+        
+        onUpdateAgent(updateData);
+        
+        const espMessage = shouldIncrementEsp ? ' e +1 Espiritualidade' : '';
         addLiveToast({
             type: 'success',
             title: 'Avanço de Sequência!',
-            message: `Você avançou para a Sequência ${currentSeq - 1}! Ganhou 4 Dados de Assimilação.`
+            message: `Você avançou para a Sequência ${newSeq}! Ganhou 4 Dados de Assimilação${espMessage}.`
         });
         
         onClose();
@@ -154,7 +167,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         onUpdateAgent({
             character: {
                 ...currentAgent.character,
-                paDisponivel: availablePA,
+                pa: availablePA,
                 paTotalGasto: newTotalSpent,
             },
             habilidadesBeyonder: currentAgent.habilidadesBeyonder,
@@ -468,9 +481,9 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                         <div>
                             <h4>Progresso da Digestão (Lei de Atuação)</h4>
                             <p className="item-description" style={{marginBottom: '1.5rem', background: 'var(--background-color)', padding: '1rem'}}>
-                                O progresso da digestão reflete o total de Pontos de Atuação (PA) acumulados nesta Sequência (gastos + disponíveis). Ele é usado para determinar quando você pode purificar dados e avançar para a próxima Sequência.
+                                O progresso da digestão reflete o total de Pontos de Atuação (PA) acumulados nesta Sequência (disponível + gasto). Ele é usado para determinar quando você pode purificar dados e avançar para a próxima Sequência.
                             </p>
-                            <div className="digestion-tracker" style={{padding: '1rem', border: '1px solid var(--border-color)', background: 'var(--background-color)'}}>
+                            <div className="digestion-tracker" style={{padding: '1rem', border: '1px solid var(--border-color)', background: 'var(--background-color)', marginBottom: '1.5rem'}}>
                                 <h4 className="digestion-title">Digestão da Poção (Seq. {agent.character.sequence})</h4>
                                 <div className="status-bar-track digestion-bar" style={{marginTop: '0.5rem'}}>
                                     <div className="status-bar-fill" style={{ width: `${progressPercent}%`, backgroundColor: 'var(--character-color, var(--accent-color))' }} role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}></div>
@@ -481,24 +494,49 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                                 </div>
                             </div>
 
-                            {canAdvance && (
-                                <div className="advancement-section">
-                                    <h4>Avanço Disponível!</h4>
+                            {canAdvance ? (
+                                <div className="advancement-section" style={{background: 'rgba(76, 175, 80, 0.1)', border: '2px solid #4caf50', padding: '1.5rem', borderRadius: '8px'}}>
+                                    <h4 style={{color: '#4caf50', marginTop: 0}}>✓ Avanço Disponível!</h4>
                                     <p>Você digeriu completamente a poção da Sequência {agent.character.sequence}.</p>
-                                    <button onClick={handleAdvanceSequence}>
+                                    <p style={{fontSize: '0.9rem', color: '#aaa', marginBottom: '1rem'}}>
+                                        Avançar irá resetar seu progresso de digestão e adicionar 4 Dados de Assimilação.
+                                    </p>
+                                    <button onClick={handleAdvanceSequence} style={{width: '100%', padding: '1rem', fontSize: '1.1rem', background: '#4caf50'}}>
                                         Avançar para Sequência {agent.character.sequence - 1}
                                     </button>
+                                </div>
+                            ) : (
+                                <div style={{padding: '1rem', background: 'rgba(255, 152, 0, 0.1)', border: '1px solid #ff9800', borderRadius: '8px', textAlign: 'center'}}>
+                                    <p style={{margin: 0, color: '#ff9800'}}>
+                                        Continue acumulando PA para completar a digestão<br/>
+                                        Progresso atual: {digestaoProgressoAtual}/{targetPa} PA ({progressPercent.toFixed(1)}%)
+                                    </p>
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
                  <div className="modal-footer">
-                    {isEligibleForFreebie && activeTab === 'Habilidades' ? (
-                        <button onClick={handleConfirmFreeChoice} disabled={!selectedFreeAbilityName}>Confirmar Escolha Gratuita</button>
-                    ) : (
-                        <button onClick={handleConfirm} disabled={!hasChanges}>Confirmar e Gastar {paSpent} PA</button>
-                    )}
+                    {(() => {
+                        if (isEligibleForFreebie && activeTab === 'Habilidades') {
+                            return <button onClick={handleConfirmFreeChoice} disabled={!selectedFreeAbilityName}>Confirmar Escolha Gratuita</button>;
+                        }
+                        if (activeTab.includes('Digestão') || activeTab.includes('Avanço')) {
+                            if (canAdvance) {
+                                return (
+                                    <button onClick={handleAdvanceSequence} className="advance-sequence-btn">
+                                        🎉 Avançar para Sequência {agent.character.sequence - 1}
+                                    </button>
+                                );
+                            }
+                            return (
+                                <div style={{textAlign: 'center', padding: '1rem', color: 'var(--secondary-text-color)', width: '100%'}}>
+                                    Continue acumulando PA para completar a digestão ({digestaoProgressoAtual}/{targetPa})
+                                </div>
+                            );
+                        }
+                        return <button onClick={handleConfirm} disabled={!hasChanges}>Confirmar e Gastar {paSpent} PA</button>;
+                    })()}
                  </div>
             </div>
         </div>

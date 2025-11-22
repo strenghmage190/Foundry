@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useCallback,
   useState,
+  useEffect,
 } from "react";
 import { ToastData } from "./types"; // Ajuste o caminho conforme necessário
 
@@ -15,6 +16,8 @@ interface MyContextProps {
   onRemoveLogEntry: (id: number) => void;
   liveToasts: ToastData[];
   removeLiveToast: (id: number) => void;
+  highlightColor: string;
+  updateHighlightColor: (color: string) => void;
 }
 
 const MyContext = createContext<MyContextProps | undefined>(undefined);
@@ -36,6 +39,31 @@ export const MyContextProvider: React.FC<MyContextProviderProps> = ({
 }) => {
   const [liveToasts, setLiveToasts] = useState<ToastData[]>([]);
   const [logHistory, setLogHistory] = useState<ToastData[]>([]);
+  const [highlightColor, setHighlightColor] = useState<string>(() => {
+    try {
+      const raw = localStorage.getItem('userProfile');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return parsed?.highlightColor || '#8b5cf6';
+      }
+    } catch {}
+    return '#8b5cf6';
+  });
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--focus', highlightColor);
+    root.style.setProperty('--save', highlightColor);
+    root.style.setProperty('--save-hover', highlightColor);
+  }, [highlightColor]);
+
+  const updateHighlightColor = useCallback((color: string) => {
+    setHighlightColor(color);
+    try {
+      const raw = localStorage.getItem('userProfile');
+      const parsed = raw ? JSON.parse(raw) : {};
+      localStorage.setItem('userProfile', JSON.stringify({ ...parsed, highlightColor: color }));
+    } catch {}
+  }, []);
 
   const removeLogEntry = useCallback((id: number) => {
     setLogHistory((prev) => prev.filter((t) => t.id !== id));
@@ -68,6 +96,8 @@ export const MyContextProvider: React.FC<MyContextProviderProps> = ({
     onRemoveLogEntry: removeLogEntry,
     liveToasts,
     removeLiveToast,
+    highlightColor,
+    updateHighlightColor,
   };
 
   return <MyContext.Provider value={value}>{children}</MyContext.Provider>;

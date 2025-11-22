@@ -67,7 +67,7 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
 
     // --- NEW Digestion & Purification Logic ---
     const targetPa = paRequirementsBySequence[sequence] || 999;
-    // The total progress is the sum of PA spent in the sequence and the PA currently available.
+    // The total progress is the sum of PA available and PA spent in the sequence
     const digestaoProgressoAtual = (paTotalGasto || 0) + (paDisponivel || 0);
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
     
@@ -92,7 +92,7 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
             title: 'Dado Purificado!',
             message: `Um Dado de Assimilação foi purificado. Restam ${assimilationDice - 1}.`
         });
-    }, [canPurify, character, agent, onUpdate, addLiveToast, assimilationDice, purifiedDiceThisSequence]);
+    }, [canPurify, character, onUpdate, addLiveToast, assimilationDice, purifiedDiceThisSequence]);
     
     return (
         <div className="pa-tracker-section">

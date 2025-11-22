@@ -72,6 +72,8 @@ export interface Character {
   maxWillpower: number;
   sanity: number;
   maxSanity: number;
+  pa: number;
+  maxPa: number;
   paDisponivel: number;
   paTotalGasto: number;
   purifiedDiceThisSequence: number;
@@ -95,6 +97,13 @@ export interface Character {
   maxEstasePoints?: number;
   // Correntes de Fado ativas (IDs das correntes)
   activeCorrentesIds?: number[];
+  // Linhagem e Afiliação (novo sistema)
+  bloodline?: string; // Nome da linhagem escolhida
+  bloodlineCost?: number; // Custo em PB da linhagem
+  affiliation?: string; // Nome da organização/afiliação
+  affiliationStatus?: number; // Nível de status na organização (1-5)
+  origin?: string; // Origem do personagem
+  concept?: string; // Conceito do personagem
 }
 
 export interface Attack {
@@ -178,14 +187,25 @@ export interface Antecedente {
     details?: string;
 }
 
+export interface BackgroundValues {
+    aliados: number;
+    recursos: number;
+    contatos: number;
+    mentor: number;
+    status: number;
+}
+
 export interface LearnedParticle {
     id: number;
-    type: string;
+    type: string; // "Universal" ou "Domínio"
     palavra?: string;
     name: string;
     description: string;
-
     isDomain?: boolean;
+    isCorrupted?: boolean; // Para partículas corrompidas (falha crítica ao estudar)
+    acquisitionMethod?: 'innate' | 'study' | 'revelation' | 'universal'; // Inclui método universal
+    associatedSkill?: string; // Habilidade investigativa associada (para partículas universais)
+    arcanaName?: string; // Nome do Arcano Pessoal (para partículas de revelação)
 }
 
 export interface AgentData {
@@ -208,6 +228,7 @@ export interface AgentData {
     afiliacoes: Afiliacao[];
     learnedParticles: LearnedParticle[];
     customization: CustomizationSettings;
+    backgrounds?: BackgroundValues; // Novo sistema de antecedentes
 }
 
 export interface RollResult {
@@ -382,4 +403,5 @@ export interface UserProfile {
     pronouns: string;
     useOpenDyslexicFont: boolean;
     avatarPath: string | null;
+    highlightColor: string;
 }

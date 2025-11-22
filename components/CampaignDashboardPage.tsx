@@ -149,28 +149,18 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
 
   // 👇👇👇 NOVO useEffect PARA GERAR A URL ASSINADA 👇👇👇
   useEffect(() => {
-    // Se não houver campanha ou a URL da imagem estiver vazia, não faz nada.
     if (!campaign?.cover_image_url) {
       setCoverImageUrl(null);
       return;
     }
-
-    async function createSignedUrl() {
-      const { data, error } = await supabase.storage
-        .from('campaign-covers')
-        .createSignedUrl(campaign.cover_image_url, 3600); // 3600 segundos = 1 hora de validade
-
-      if (error) {
-        // Se o objeto não for encontrado, apenas não definimos a imagem
-        console.error(`Erro ao criar URL assinada para ${campaign.cover_image_url}:`, error);
-        setCoverImageUrl(null); // Garante que o placeholder seja exibido
-      } else {
-        setCoverImageUrl(data.signedUrl);
-      }
+    try {
+      const { data } = supabase.storage.from('campaign-covers').getPublicUrl(campaign.cover_image_url);
+      setCoverImageUrl(data.publicUrl || campaign.cover_image_url);
+    } catch (e) {
+      console.warn('CampaignDashboardPage: public URL fallback to raw path (cover)', e);
+      setCoverImageUrl(campaign.cover_image_url);
     }
-
-    createSignedUrl();
-  }, [campaign]); // Roda sempre que os dados da campanha mudarem
+  }, [campaign]);
 
   if (loading) return <div style={{ padding: 20 }}>Carregando campanha...</div>;
   if (!campaign) return <div style={{ padding: 20 }}>Campanha não encontrada.</div>;

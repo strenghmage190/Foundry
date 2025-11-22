@@ -24,10 +24,13 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
 
   useEffect(() => {
     if (avatarPath && !avatarPath.startsWith('http')) {
-      supabase.storage.from('agent-avatars').createSignedUrl(avatarPath, 3600)
-        .then(({ data }) => {
-          if (data) setAvatarUrl(data.signedUrl);
-        });
+      try {
+        const { data } = supabase.storage.from('agent-avatars').getPublicUrl(avatarPath);
+        setAvatarUrl(data.publicUrl || avatarPath);
+      } catch (e) {
+        console.warn('MiniSheet: public avatar URL fallback to raw path', e);
+        setAvatarUrl(avatarPath);
+      }
     } else {
       setAvatarUrl(avatarPath || null);
     }
