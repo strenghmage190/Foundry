@@ -7,6 +7,7 @@ import { getSignedAvatarUrl } from '../utils/avatarUtils';
 import { usePermissions } from '../src/hooks/usePermissions';
 import { BLOODLINES } from '../data/bloodlines-data';
 import { AFFILIATIONS } from '../data/affiliations-data';
+import { getParticleType } from '../data/magic-particles';
 import '../styles/components/_character-creation-wizard.css';
 
 interface AttributeScores {
@@ -49,33 +50,34 @@ interface DomainParticle {
     pathway: string;
     particle: string;
     word: string;
+    type?: string; // Tipo específico: Função, Objeto, Característica
 }
 
 const DOMAIN_PARTICLES: Record<string, DomainParticle> = {
-    'CAMINHO DO TOLO': { pathway: 'CAMINHO DO TOLO', particle: 'Apatē', word: 'Falha' },
-    'CAMINHO DA PORTA': { pathway: 'CAMINHO DA PORTA', particle: 'Pylē', word: 'Porta' },
-    'CAMINHO DO VISIONÁRIO': { pathway: 'CAMINHO DO VISIONÁRIO', particle: 'Placidus', word: 'Placidez' },
-    'CAMINHO DO SOL': { pathway: 'CAMINHO DO SOL', particle: 'Helios', word: 'Sol' },
-    'CAMINHO DO TIRANO': { pathway: 'CAMINHO DO TIRANO', particle: 'Keraunos', word: 'Tempestade' },
-    'CAMINHO DA TORRE BRANCA': { pathway: 'CAMINHO DA TORRE BRANCA', particle: 'Logos', word: 'Lógica/Razão' },
-    'CAMINHO DO ENFORCADO': { pathway: 'CAMINHO DO ENFORCADO', particle: 'Anker', word: 'Ancorar' },
-    'CAMINHO DAS TREVAS': { pathway: 'CAMINHO DAS TREVAS', particle: 'Nyx', word: 'Noite' },
-    'CAMINHO DA MORTE': { pathway: 'CAMINHO DA MORTE', particle: 'Thanatos', word: 'Morte' },
-    'CAMINHO DO GIGANTE DO CREPÚSCULO': { pathway: 'CAMINHO DO GIGANTE DO CREPÚSCULO', particle: 'Machē', word: 'Combate' },
-    'CAMINHO DO DEMÔNIO': { pathway: 'CAMINHO DO DEMÔNIO', particle: 'Pathos', word: 'Desejo' },
-    'CAMINHO DO PADRE VERMELHO': { pathway: 'CAMINHO DO PADRE VERMELHO', particle: 'Pyrrhos', word: 'Fogo do Ardíl' },
-    'CAMINHO DO EREMITA': { pathway: 'CAMINHO DO EREMITA', particle: 'Mysterion', word: 'Segredo' },
-    'CAMINHO DO PARAGON': { pathway: 'CAMINHO DO PARAGON', particle: 'Schema', word: 'Diagrama' },
-    'CAMINHO DA MÃE': { pathway: 'CAMINHO DA MÃE', particle: 'Zoe', word: 'Vida' },
-    'CAMINHO DA LUA': { pathway: 'CAMINHO DA LUA', particle: 'Selene', word: 'Lua' },
-    'CAMINHO DO ABISMO': { pathway: 'CAMINHO DO ABISMO', particle: 'Miasma', word: 'Corrupção' },
-    'CAMINHO DO ACORRENTADO': { pathway: 'CAMINHO DO ACORRENTADO', particle: 'Allax', word: 'Mutação' },
-    'CAMINHO DO JUSTICEIRO': { pathway: 'CAMINHO DO JUSTICEIRO', particle: 'Lex', word: 'Lei' },
-    'CAMINHO DO IMPERADOR NEGRO': { pathway: 'CAMINHO DO IMPERADOR NEGRO', particle: 'Lacuna', word: 'Brecha' },
-    'CAMINHO DA RODA DA FORTUNA': { pathway: 'CAMINHO DA RODA DA FORTUNA', particle: 'Fatum', word: 'Destino' },
-    'CAMINHO DO ERRO': { pathway: 'CAMINHO DO ERRO', particle: 'Nihil', word: 'Vazio/Lacuna' },
-    'CAMINHO DO ÉON ETERNO': { pathway: 'CAMINHO DO ÉON ETERNO', particle: 'Fatum', word: 'Fado/Sentença' },
-    'CAMINHO DO VÉU': { pathway: 'CAMINHO DO VÉU', particle: 'Caligo', word: 'Névoa' }
+    'CAMINHO DO TOLO': { pathway: 'CAMINHO DO TOLO', particle: 'Apatē', word: 'Falha', type: 'Função' },
+    'CAMINHO DA PORTA': { pathway: 'CAMINHO DA PORTA', particle: 'Pylē', word: 'Porta', type: 'Objeto' },
+    'CAMINHO DO VISIONÁRIO': { pathway: 'CAMINHO DO VISIONÁRIO', particle: 'Placidus', word: 'Placidez', type: 'Função' },
+    'CAMINHO DO SOL': { pathway: 'CAMINHO DO SOL', particle: 'Helios', word: 'Sol', type: 'Objeto' },
+    'CAMINHO DO TIRANO': { pathway: 'CAMINHO DO TIRANO', particle: 'Keraunos', word: 'Tempestade', type: 'Objeto' },
+    'CAMINHO DA TORRE BRANCA': { pathway: 'CAMINHO DA TORRE BRANCA', particle: 'Logos', word: 'Lógica/Razão', type: 'Característica' },
+    'CAMINHO DO ENFORCADO': { pathway: 'CAMINHO DO ENFORCADO', particle: 'Anker', word: 'Ancorar', type: 'Função' },
+    'CAMINHO DAS TREVAS': { pathway: 'CAMINHO DAS TREVAS', particle: 'Nyx', word: 'Noite', type: 'Característica' },
+    'CAMINHO DA MORTE': { pathway: 'CAMINHO DA MORTE', particle: 'Thanatos', word: 'Morte', type: 'Característica' },
+    'CAMINHO DO GIGANTE DO CREPÚSCULO': { pathway: 'CAMINHO DO GIGANTE DO CREPÚSCULO', particle: 'Machē', word: 'Combate', type: 'Objeto' },
+    'CAMINHO DO DEMÔNIO': { pathway: 'CAMINHO DO DEMÔNIO', particle: 'Pathos', word: 'Desejo', type: 'Característica' },
+    'CAMINHO DO PADRE VERMELHO': { pathway: 'CAMINHO DO PADRE VERMELHO', particle: 'Pyrrhos', word: 'Fogo do Ardíl', type: 'Característica' },
+    'CAMINHO DO EREMITA': { pathway: 'CAMINHO DO EREMITA', particle: 'Mysterion', word: 'Segredo', type: 'Objeto' },
+    'CAMINHO DO PARAGON': { pathway: 'CAMINHO DO PARAGON', particle: 'Schema', word: 'Diagrama', type: 'Objeto' },
+    'CAMINHO DA MÃE': { pathway: 'CAMINHO DA MÃE', particle: 'Zoe', word: 'Vida', type: 'Característica' },
+    'CAMINHO DA LUA': { pathway: 'CAMINHO DA LUA', particle: 'Selene', word: 'Lua', type: 'Objeto' },
+    'CAMINHO DO ABISMO': { pathway: 'CAMINHO DO ABISMO', particle: 'Miasma', word: 'Corrupção', type: 'Característica' },
+    'CAMINHO DO ACORRENTADO': { pathway: 'CAMINHO DO ACORRENTADO', particle: 'Allax', word: 'Mutação', type: 'Função' },
+    'CAMINHO DO JUSTICEIRO': { pathway: 'CAMINHO DO JUSTICEIRO', particle: 'Lex', word: 'Lei', type: 'Objeto' },
+    'CAMINHO DO IMPERADOR NEGRO': { pathway: 'CAMINHO DO IMPERADOR NEGRO', particle: 'Lacuna', word: 'Brecha', type: 'Função' },
+    'CAMINHO DA RODA DA FORTUNA': { pathway: 'CAMINHO DA RODA DA FORTUNA', particle: 'Fatum', word: 'Destino', type: 'Característica' },
+    'CAMINHO DO ERRO': { pathway: 'CAMINHO DO ERRO', particle: 'Nihil', word: 'Vazio/Lacuna', type: 'Objeto' },
+    'CAMINHO DO ÉON ETERNO': { pathway: 'CAMINHO DO ÉON ETERNO', particle: 'Fatum', word: 'Fado/Sentença', type: 'Característica' },
+    'CAMINHO DO VÉU': { pathway: 'CAMINHO DO VÉU', particle: 'Caligo', word: 'Névoa', type: 'Característica' }
 };
 
 interface UniversalParticle {
@@ -695,14 +697,14 @@ export const CharacterCreationWizard: React.FC = () => {
                     name: domainParticle.particle,
                     word: domainParticle.word,
                     domain: selectedPathway,
-                    type: 'domain',
+                    type: domainParticle.type || 'Função', // Use o tipo específico da partícula de domínio
                     acquisitionMethod: 'innate'
                 },
                 ...selectedUniversalParticles.map(p => ({
                     name: p.name,
                     word: p.word,
                     domain: 'Universal',
-                    type: 'universal',
+                    type: getParticleType(p.name) || 'Função', // Procura o tipo da partícula na base de dados
                     category: p.category,
                     acquisitionMethod: 'universal'
                 }))

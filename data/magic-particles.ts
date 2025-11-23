@@ -50,3 +50,65 @@ export const ALL_PARTICLES: Record<string, MagicParticle[]> = {
   Complemento: COMPLEMENTOS,
   Criador: CRIADORES,
 };
+
+// Helper function to find the type of a particle by its name
+export function getParticleType(particleName: string): string | undefined {
+  // First, try to find in ALL_PARTICLES (magic-particles.ts format)
+  for (const [type, particles] of Object.entries(ALL_PARTICLES)) {
+    if (particles.some(p => p.name === particleName)) {
+      return type;
+    }
+  }
+  
+  // If not found, try to find in magicData (which uses 'nome' field)
+  // We need to import magicData, but to avoid circular dependencies, we'll use a different approach
+  // Instead, we'll check common patterns
+  
+  // Fallback: these are the universal particles that might not be found in magic-particles.ts
+  // So we try to infer from the name
+  const universalParticleMap: Record<string, string> = {
+    // Funções universais
+    'Aprisionar': 'Função',
+    'Enfraquecer': 'Função',
+    'Invocar/Criar': 'Função',
+    'Revelar': 'Função',
+    'Transportar': 'Função',
+    'Restaurar': 'Função',
+    'Alterar': 'Função',
+    'Controlar': 'Função',
+    'Destruir': 'Função',
+    'Marcar': 'Função',
+    'Corromper': 'Função',
+    'Juntar/Conectar': 'Função',
+    
+    // Objetos universais
+    'Pessoa': 'Objeto',
+    'Animal': 'Objeto',
+    'Inanimado': 'Objeto',
+    'Vegetação': 'Objeto',
+    'Elemento': 'Objeto',
+    'Alma': 'Objeto',
+    'Informação': 'Objeto',
+    'Abstrato': 'Objeto',
+    'Cadáver': 'Objeto',
+    'Construção': 'Objeto',
+    'Espírito': 'Objeto',
+    'Sonho': 'Objeto',
+    'Lugar/Terreno': 'Objeto',
+    
+    // Características universais
+    'Fogo': 'Característica',
+    'Água': 'Característica',
+    'Ar': 'Característica',
+    'Terra': 'Característica',
+    'Luz': 'Característica',
+    'Escuridão': 'Característica',
+    'Mente': 'Característica',
+    'Corpo': 'Característica',
+    'Adivinhação': 'Característica',
+    'Corrupção': 'Característica',
+    'Destino': 'Característica',
+  };
+  
+  return universalParticleMap[particleName];
+}

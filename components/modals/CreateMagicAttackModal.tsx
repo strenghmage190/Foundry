@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AgentData, Attack, Attributes, LearnedParticle } from '../../types.ts';
 import { magicData } from '../../data/magic-data.tsx';
-import { FUNCOES, OBJETOS, CARACTERISTICAS, COMPLEMENTOS, CRIADORES, MagicParticle } from '../../data/magic-particles';
+import { FUNCOES, OBJETOS, CARACTERISTICAS, COMPLEMENTOS, CRIADORES, MagicParticle, getParticleType } from '../../data/magic-particles';
 
 interface CreateMagicAttackModalProps {
     isOpen: boolean;
@@ -23,6 +23,51 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
     // New state for demigod attribute selection
     const [selectedRelevantAttribute, setSelectedRelevantAttribute] = useState<keyof Attributes>('espiritualidade');
 
+    // Check if modal is open before processing
+    if (!isOpen) return null;
+
+    const { character, attributes } = agent;
+    const isDemigod = character.sequence <= 4;
+
+    // Use learnedParticles prop when provided, otherwise fallback to agent.learnedParticles
+    let effectiveLearned = (Array.isArray(learnedParticles) && learnedParticles.length > 0)
+        ? learnedParticles
+        : (agent?.learnedParticles || []);
+
+    // MIGRATION: Convert old type format (domain, universal) to new format (Função, Objeto, Característica)
+    effectiveLearned = effectiveLearned.map((p: any) => {
+        // If type is already correct (Função, Objeto, Característica), keep it
+        if (p.type === 'Função' || p.type === 'Objeto' || p.type === 'Característica') {
+            return p;
+        }
+
+        // If type is old format (domain, universal), try to map it
+        if (p.type === 'domain' || p.type === 'universal') {
+            // Try to find the type by looking up the particle name
+            const particleType = getParticleType(p.name);
+            if (particleType) {
+                return { ...p, type: particleType };
+            }
+            // Fallback: guess based on common patterns
+            console.warn(`[MIGRATION] Could not determine type for particle: ${p.name}`);
+            return p;
+        }
+
+        return p;
+    });
+
+    // Filter and log for debugging
+    const learnedFunctions = effectiveLearned.filter((p: any) => p.type === 'Função');
+    const learnedObjects = effectiveLearned.filter((p: any) => p.type === 'Objeto');
+    const learnedCharacteristics = effectiveLearned.filter((p: any) => p.type === 'Característica');
+    // Complements and creators are global and optional
+    const complements = COMPLEMENTOS;
+    const creators = CRIADORES;
+
+    // Diagnostic info
+    const hasAnyParticles = effectiveLearned.length > 0;
+    const hasAnyLearnedParticles = learnedFunctions.length > 0 || learnedObjects.length > 0 || learnedCharacteristics.length > 0;
+
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
@@ -37,34 +82,34 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
     useEffect(() => {
         if (isOpen) {
             try {
-                console.group('CreateMagicAttackModal learnedParticles');
-                console.log('learnedParticles (raw):', learnedParticles);
-                console.log('learnedFunctions:', learnedParticles.filter(p => p.type === 'Função'));
-                console.log('learnedObjects:', learnedParticles.filter(p => p.type === 'Objeto'));
-                console.log('learnedCharacteristics:', learnedParticles.filter(p => p.type === 'Característica'));
+                console.group('CreateMagicAttackModal DEBUG - Detailed');
+                console.log('=== INPUTS ===');
+                console.log('learnedParticles (prop):', learnedParticles);
+                console.log('agent.learnedParticles:', agent?.learnedParticles);
+                
+                console.log('\n=== PROCESSING ===');
+                console.log('Using prop?', Array.isArray(learnedParticles) && learnedParticles.length > 0);
+                console.log('effectiveLearned length:', effectiveLearned.length);
+                console.log('effectiveLearned:', effectiveLearned);
+                
+                console.log('\n=== FILTERED RESULTS ===');
+                console.log('learnedFunctions:', learnedFunctions);
+                console.log('learnedObjects:', learnedObjects);
+                console.log('learnedCharacteristics:', learnedCharacteristics);
+                
+                if (learnedFunctions.length === 0 && learnedObjects.length === 0 && learnedCharacteristics.length === 0) {
+                    console.warn('⚠️ NENHUMA PARTÍCULA ENCONTRADA!');
+                    console.log('Partículas disponíveis no effectiveLearned:');
+                    effectiveLearned.forEach((p, i) => {
+                        console.log(`  [${i}]`, { name: p.name, type: p.type, palavra: p.palavra });
+                    });
+                }
                 console.groupEnd();
             } catch (err) {
                 console.error('Error logging learnedParticles', err);
             }
         }
-    }, [isOpen, learnedParticles]);
-
-    if (!isOpen) return null;
-
-    const { character, attributes } = agent;
-    const isDemigod = character.sequence <= 4;
-
-    // Use learnedParticles prop when provided, otherwise fallback to agent.learnedParticles
-    const effectiveLearned = (Array.isArray(learnedParticles) && learnedParticles.length > 0)
-        ? learnedParticles
-        : (agent?.learnedParticles || []);
-
-    const learnedFunctions = effectiveLearned.filter((p: any) => p.type === 'Função');
-    const learnedObjects = effectiveLearned.filter((p: any) => p.type === 'Objeto');
-    const learnedCharacteristics = effectiveLearned.filter((p: any) => p.type === 'Característica');
-    // Complements and creators are global and optional
-    const complements = COMPLEMENTOS;
-    const creators = CRIADORES;
+    }, [isOpen, learnedParticles, agent?.learnedParticles, effectiveLearned, learnedFunctions, learnedObjects, learnedCharacteristics]);
 
     const getDamageDie = () => {
         if (!selectedCaracteristica) return 'd4';
@@ -134,16 +179,20 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
         <div className="magic-creator-column">
             <h4>{title}</h4>
             <div className="particle-selector">
-                {items.map(item => (
-                    <button 
-                        key={item.id} 
-                        className={`particle-btn ${selected?.id === item.id ? 'active' : ''}`}
-                        onClick={() => setter(item.id === selected?.id ? null : item)}
-                        title={item.description}
-                    >
-                        {item.name} {item.palavra ? `(${item.palavra})` : ''}
-                    </button>
-                ))}
+                {items.map((item, idx) => {
+                    // Use name + type as unique key since id might not be reliable
+                    const isSelected = selected && selected.name === item.name && selected.type === item.type;
+                    return (
+                        <button 
+                            key={`${item.type}-${item.name}-${idx}`}
+                            className={`particle-btn ${isSelected ? 'active' : ''}`}
+                            onClick={() => setter(isSelected ? null : item)}
+                            title={item.description}
+                        >
+                            {item.name} {item.palavra ? `(${item.palavra})` : ''}
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );
@@ -175,9 +224,20 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
                 </div>
 
                 <div className={`magic-creator-grid ${'extended'}`}>
-                    {learnedFunctions.length === 0 && learnedObjects.length === 0 && learnedCharacteristics.length === 0 ? (
+                    {!hasAnyLearnedParticles ? (
                         <div style={{ gridColumn: '1 / -1', padding: '1rem 0', color: 'var(--secondary-text-color)' }}>
-                            Nenhuma partícula aprendida encontrada. Abra o Grimório e adicione partículas para que apareçam aqui.
+                            {hasAnyParticles ? (
+                                <>
+                                    <p>⚠️ Partículas encontradas, mas nenhuma com tipo válido:</p>
+                                    <ul style={{ fontSize: '0.85rem', marginLeft: '1rem' }}>
+                                        {effectiveLearned.map((p: any, i) => (
+                                            <li key={i}>{p.name} (type: {p.type || 'undefined'})</li>
+                                        ))}
+                                    </ul>
+                                </>
+                            ) : (
+                                <p>Nenhuma partícula aprendida encontrada. Abra o Grimório e adicione partículas para que apareçam aqui.</p>
+                            )}
                         </div>
                     ) : null}
 
