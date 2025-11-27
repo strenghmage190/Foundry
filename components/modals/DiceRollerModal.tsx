@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ToastData, AgentData } from '../../types';
+import { rollGeneralAction } from '../../utils/beyondersRules';
 import { DiceIcon } from '../icons';
 
 interface DiceRollerModalProps {
@@ -25,6 +26,8 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
     const [lastResult, setLastResult] = useState<RollResultDisplay | null>(null);
     
     const modalContentRef = useRef<HTMLDivElement>(null);
+    const assimilationInputRef = useRef<HTMLInputElement>(null);
+    const soulInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -34,6 +37,28 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
             setLastResult(null);
         }
     }, [isOpen]);
+
+    // Previne scroll wheel de alterar valores dos inputs de dados
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            e.preventDefault();
+        };
+
+        const inputs = [assimilationInputRef.current, soulInputRef.current];
+        inputs.forEach(input => {
+            if (input) {
+                input.addEventListener('wheel', handleWheel, { passive: false });
+            }
+        });
+
+        return () => {
+            inputs.forEach(input => {
+                if (input) {
+                    input.removeEventListener('wheel', handleWheel);
+                }
+            });
+        };
+    }, []);
 
     useEffect(() => {
         const handleEsc = (event: KeyboardEvent) => {
@@ -56,52 +81,10 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
             return;
         }
 
-        const soulRolls = Array.from({ length: soulDice }, () => Math.floor(Math.random() * 10) + 1);
-        const assimilationRolls = Array.from({ length: assimilationDice }, () => Math.floor(Math.random() * 10) + 1);
-
-        let madnessTriggers = 0;
-        const soulSuccessContributions: number[] = [];
-        const assimilationSuccessContributions: number[] = [];
-
-        soulRolls.forEach(roll => {
-            if (roll >= 6 && roll <= 9) soulSuccessContributions.push(1);
-            else if (roll === 10) soulSuccessContributions.push(2);
-        });
-
-        assimilationRolls.forEach(roll => {
-            if (roll === 1) {
-                madnessTriggers++;
-            } else if (roll >= 6 && roll <= 9) {
-                assimilationSuccessContributions.push(2);
-            } else if (roll === 10) {
-                assimilationSuccessContributions.push(3);
-            }
-        });
-        
-        const soulSuccesses = soulSuccessContributions.reduce((a, b) => a + b, 0);
-        const assimilationSuccesses = assimilationSuccessContributions.reduce((a, b) => a + b, 0);
-
-        const allSuccessContributions = [...soulSuccessContributions, ...assimilationSuccessContributions];
-        let totalSuccesses = allSuccessContributions.reduce((acc, val) => acc + val, 0);
-        
-        let madnessMessage = '';
-        let successesCancelled = 0;
-        const cancelledValues: number[] = [];
-
-        if (madnessTriggers > 0) {
-            allSuccessContributions.sort((a, b) => b - a); 
-            for (let i = 0; i < madnessTriggers; i++) {
-                if (i < allSuccessContributions.length) {
-                    const cancelled = allSuccessContributions[i];
-                    totalSuccesses -= cancelled;
-                    successesCancelled += cancelled;
-                    cancelledValues.push(cancelled);
-                }
-            }
-            madnessMessage = `⚠️ Intrusão de Loucura! (${madnessTriggers}) O poder se rebelou.`;
-        }
-        
-        const finalSuccesses = Math.max(0, totalSuccesses);
+        // NOVO: Usar o sistema de regras de Beyonders
+        const rollResult = rollGeneralAction(soulDice, assimilationDice, 6);
+        const { soulRolls, assimilationRolls, totalSuccesses, soulSuccesses, assimilationSuccesses, madnessTriggers, madnessMessage, isBotch } = rollResult;
+        const finalSuccesses = totalSuccesses;
         
         // --- Build the detailed log message ---
         const breakdownLines = [];
@@ -114,7 +97,7 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
 
         if (madnessTriggers > 0) {
             breakdownLines.push(`---`);
-            breakdownLines.push(`Intrusão de Loucura (${madnessTriggers}x '1') cancela ${successesCancelled} do(s) maior(es) sucesso(s): [${cancelledValues.join(', ')}].`);
+            breakdownLines.push(`Intrusão de Loucura (${madnessTriggers}x '1') cancelada.`);
         }
         breakdownLines.push(`Total Final: ${finalSuccesses} sucesso(s).`);
         const details = breakdownLines.join('\n');
@@ -166,11 +149,11 @@ export const DiceRollerModal: React.FC<DiceRollerModalProps> = ({ isOpen, onClos
                 <div className="will-roll-form">
                     <div className="form-group">
                         <label htmlFor="soul-dice-input">Dados da Alma (Brancos)</label>
-                        <input id="soul-dice-input" type="number" min="0" value={soulDice} onChange={e => setSoulDice(Math.max(0, parseInt(e.target.value) || 0))} />
+                        <input id="soul-dice-input" ref={soulInputRef} type="number" min="0" value={soulDice} onChange={e => setSoulDice(Math.max(0, parseInt(e.target.value) || 0))} />
                     </div>
                      <div className="form-group">
                         <label htmlFor="assimilation-dice-input">Dados de Assimilação (Pretos)</label>
-                        <input id="assimilation-dice-input" type="number" min="0" value={assimilationDice} onChange={e => setAssimilationDice(Math.max(0, parseInt(e.target.value) || 0))} />
+                        <input id="assimilation-dice-input" ref={assimilationInputRef} type="number" min="0" value={assimilationDice} onChange={e => setAssimilationDice(Math.max(0, parseInt(e.target.value) || 0))} />
                         <span className="assimilation-available">Disponível: {agentData?.character?.assimilationDice ?? 0}</span>
                     </div>
                     <button onClick={handleRoll} className="roll-btn">

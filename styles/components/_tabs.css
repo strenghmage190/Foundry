@@ -30,15 +30,23 @@
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
     opacity: 0.7;
-    transition: opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    transition: opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.tabs-nav button:hover:not(.active) {
+    opacity: 1;
+    color: var(--character-color, var(--accent-color));
+    border-bottom-color: var(--character-color, var(--accent-color));
 }
 
 .tabs-nav button.active {
-    color: var(--character-color, var(--accent-color));
+    color: var(--character-contrast-color, #fff);
+    background-color: var(--character-color, var(--accent-color));
     border-bottom-color: var(--character-color, var(--accent-color));
     font-weight: bold;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
     opacity: 1;
+    border-radius: 6px 6px 0 0;
 }
 
 .tab-content {
@@ -70,15 +78,16 @@
     font-family: var(--font-title);
 }
 
-.filter-btn:hover {
+.filter-btn:hover:not(.active) {
     background-color: #333;
-    border-color: #555;
+    border-color: var(--character-color, #555);
+    color: var(--character-color, #aaa);
 }
 
 .filter-btn.active {
     background-color: var(--character-color);
     border-color: var(--character-color);
-    color: #fff;
+    color: var(--character-contrast-color, #fff);
     font-weight: bold;
 }
 

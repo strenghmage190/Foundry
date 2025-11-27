@@ -396,9 +396,24 @@
 
 .pa-tracker { display: flex; flex-direction: column; gap: 1.5rem; }
 .digestion-tracker { display: flex; flex-direction: column; gap: 0.5rem; }
-.digestion-title { font-size: 1rem; font-weight: 600; color: var(--secondary-text-color); }
+.digestion-title { 
+  font-size: 1rem; 
+  font-weight: 600; 
+  color: #fff; 
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+  position: relative;
+}
 .digestion-bar { height: 12px; }
-.digestion-info { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--secondary-text-color); }
+.digestion-info { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 0.85rem; 
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 2;
+}
 
 .control-test-header {
   display: flex;

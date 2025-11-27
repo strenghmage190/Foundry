@@ -5,6 +5,7 @@ import { SettingsIcon } from './icons.tsx';
 import CharacterCard from './CharacterCard';
 import { supabase } from '../supabaseClient';
 import { useMyContext } from '../MyContext';
+import { reviveInfinityInObject } from '../utils/serializationUtils';
 
 export const AgentListPage: React.FC = () => {
     const navigate = useNavigate();
@@ -31,10 +32,15 @@ export const AgentListPage: React.FC = () => {
             if (error) {
                 console.error("Erro ao buscar agentes:", error.message);
             } else if (data) {
-                const formattedAgents = data.map((item) => ({
-                    ...(item.data as AgentData),
-                    id: item.id,
-                }));
+                const formattedAgents = data.map((item) => {
+                    const agentData = item.data as AgentData;
+                    // Revive Infinity values that were serialized as "∞_INFINITY"
+                    const revivedAgentData = reviveInfinityInObject(agentData);
+                    return {
+                        ...revivedAgentData,
+                        id: item.id,
+                    };
+                });
                 setAgents(formattedAgents);
             }
         }

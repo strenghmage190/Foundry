@@ -77,8 +77,9 @@ export interface Character {
   paDisponivel: number;
   paTotalGasto: number;
   purifiedDiceThisSequence: number;
-  assimilationDice: number;
+  assimilationDice: number; // Infinito por padrão (loucura - o padrão)
   maxAssimilationDice: number;
+  soulDice: number; // Brancos: ganhos apenas por purificação
   defense: number;
   absorption: number;
   initiative: number;

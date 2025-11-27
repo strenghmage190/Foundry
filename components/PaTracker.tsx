@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AgentData, ToastData } from '../types';
 import { paRequirementsBySequence } from '../constants';
 import { PlusIcon, MinusIcon } from './icons';
+import { autoPurifyAllSoulDice } from '../utils/beyondersRules';
 
 interface PaTrackerProps {
     agent: AgentData;
@@ -13,10 +14,38 @@ interface PaTrackerProps {
 export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImprovements, addLiveToast }) => {
     if (!agent || !agent.character) return null;
     const { character } = agent;
-    const { paDisponivel, paTotalGasto, sequence, purifiedDiceThisSequence, assimilationDice } = character;
+    const { paDisponivel, paTotalGasto, sequence, purifiedDiceThisSequence, assimilationDice, soulDice } = character;
 
     // State for local editing of available PA
     const [currentPa, setCurrentPa] = useState(paDisponivel || 0);
+
+    // Auto-purify soul dice whenever it changes
+    useEffect(() => {
+        if ((soulDice || 0) > 0) {
+            const { newSoulDice, newAssimilationDice, message } = autoPurifyAllSoulDice(
+                soulDice || 0,
+                assimilationDice || 0
+            );
+
+            if (newSoulDice === 0 && newAssimilationDice !== assimilationDice) {
+                onUpdate({
+                    character: {
+                        ...character,
+                        soulDice: newSoulDice,
+                        assimilationDice: newAssimilationDice
+                    }
+                });
+
+                if (message) {
+                    addLiveToast({
+                        type: 'success',
+                        title: 'Purificação Automática! ✨',
+                        message
+                    });
+                }
+            }
+        }
+    }, [soulDice, assimilationDice, character, onUpdate, addLiveToast]); // Monitor soulDice changes
 
     // Sync local state with parent prop
     useEffect(() => {
@@ -71,29 +100,6 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
     const digestaoProgressoAtual = (paTotalGasto || 0) + (paDisponivel || 0);
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
     
-    // A purification chance is granted at each 25% milestone of the digestion target.
-    const totalPurificationMilestones = targetPa > 0 ? Math.floor(progressPercent / 25) : 0;
-    const purificationsAvailable = totalPurificationMilestones - (purifiedDiceThisSequence || 0);
-    const canPurify = purificationsAvailable > 0 && (assimilationDice || 0) > 0;
-
-    const handlePurify = useCallback(() => {
-        if (!canPurify) return;
-
-        const updatedCharacter = {
-            ...character,
-            assimilationDice: (assimilationDice || 0) - 1,
-            purifiedDiceThisSequence: (purifiedDiceThisSequence || 0) + 1
-        };
-
-        onUpdate({ character: updatedCharacter });
-
-        addLiveToast({
-            type: 'success',
-            title: 'Dado Purificado!',
-            message: `Um Dado de Assimilação foi purificado. Restam ${assimilationDice - 1}.`
-        });
-    }, [canPurify, character, onUpdate, addLiveToast, assimilationDice, purifiedDiceThisSequence]);
-    
     return (
         <div className="pa-tracker-section">
             <h3 className="section-title">Pontos de Atuação (PA)</h3>
@@ -133,11 +139,6 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
                     <span>{digestaoProgressoAtual} / {targetPa} PA</span>
                     <span>{progressPercent.toFixed(0)}%</span>
                 </div>
-                {purificationsAvailable > 0 && (
-                     <button className="purify-btn" onClick={handlePurify} disabled={!canPurify}>
-                        Purificar Dado ({purificationsAvailable} disponível/is)
-                    </button>
-                )}
             </div>
 
             <button id="spend-pa-btn" onClick={onOpenImprovements}>

@@ -1,9 +1,30 @@
+import { rollGeneralAction, DiceRoll } from './beyondersRules';
+
 export interface RollResult {
     rolls: number[];
     successes: number;
     isBotch: boolean;
 }
 
+/**
+ * NOVO: Usa o sistema de Beyonders com Dados da Alma vs Assimilação
+ * @param soulDiceCount - Quantos dados da Alma (brancos) usar
+ * @param assimilationDiceCount - Quantos dados de Assimilação (pretos) usar
+ * @param difficulty - Dificuldade (padrão 6)
+ * @returns Resultado detalhado da rolagem
+ */
+export const rollDiceWithTypes = (
+    soulDiceCount: number,
+    assimilationDiceCount: number,
+    difficulty: number = 6
+): DiceRoll => {
+    return rollGeneralAction(soulDiceCount, assimilationDiceCount, difficulty);
+};
+
+/**
+ * LEGADO: Mantido para compatibilidade com código antigo
+ * Rola dados simples sem diferenciação entre tipo
+ */
 export const rollDice = (pool: number, difficulty: number = 6): RollResult => {
     if (pool <= 0) {
         return { rolls: [], successes: 0, isBotch: false };

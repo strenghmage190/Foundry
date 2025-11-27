@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCampaignById, getPlayersByCampaignId, getCampaignsByMasterId } from '../api/campaigns';
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
+import { beyondersReplacer, reviveInfinityInObject } from '../utils/serializationUtils';
 import type { Campaign, Character } from '../types';
 import CharacterStatusCard from './CharacterStatusCard';
 import CombatManager from './CombatManager';
@@ -181,10 +182,14 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
         }
       };
 
+      // Handle Infinity serialization
+      const jsonString = JSON.stringify(updatedData, beyondersReplacer);
+      const dataToSaveProcessed = JSON.parse(jsonString);
+
       // Salva o objeto 'data' completo e mesclado
       const { error: updateError } = await supabase
         .from('agents')
-        .update({ data: updatedData })
+        .update({ data: dataToSaveProcessed })
         .eq('id', agentId);
       if (updateError) throw updateError;
 

@@ -160,6 +160,38 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         
         onClose();
     };
+
+    const handleConvertBrancos = () => {
+        // Conversão: 4 Brancos = 1 PA
+        const soulDice = agent.character.soulDice || 0;
+        const whiteDiceToConvert = Math.floor(soulDice / 4);
+        
+        if (whiteDiceToConvert <= 0) {
+            addLiveToast({
+                type: 'warning',
+                title: 'Brancos Insuficientes',
+                message: 'Você precisa de pelo menos 4 Dados Brancos para converter em 1 PA'
+            });
+            return;
+        }
+
+        const newSoulDice = soulDice - (whiteDiceToConvert * 4);
+        const newPaDisponivel = (agent.character.paDisponivel || 0) + whiteDiceToConvert;
+
+        onUpdateAgent({
+            character: {
+                ...agent.character,
+                soulDice: newSoulDice,
+                paDisponivel: newPaDisponivel
+            }
+        });
+
+        addLiveToast({
+            type: 'success',
+            title: 'Brancos Convertidos! ✨',
+            message: `${whiteDiceToConvert * 4} Dados Brancos → ${whiteDiceToConvert} PA! Novos Brancos: ${newSoulDice}`
+        });
+    };
     
     const handleConfirm = () => {
         const newTotalSpent = agent.character.paTotalGasto + paSpent;
@@ -251,7 +283,8 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const availableAbilitiesForPurchase = useMemo(() => {
         if (!pathwayData) return [];
         const ownedAbilityNames = new Set(currentAgent.habilidadesBeyonder.map(a => a.name));
-        return Object.entries(pathwayData.sequences)
+        
+        const sequenceAbilities = Object.entries(pathwayData.sequences)
             .map(([seqKey, abilities]) => {
                 const seqNum = parseInt(seqKey.match(/\d+/)?.[0] ?? '99');
                 if (seqNum < currentAgent.character.sequence) return null;
@@ -264,6 +297,27 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
             })
             .filter(Boolean)
             .sort((a,b) => parseInt(b!.seqName.match(/\d+/)?.[0]!) - parseInt(a!.seqName.match(/\d+/)?.[0]!));
+        
+        // Adicionar poderes de domínio (particulas) se disponíveis - GRATUITOS
+        const domainAbilities: typeof sequenceAbilities = [];
+        if (pathwayData.domain && pathwayData.domain.particulas && Array.isArray(pathwayData.domain.particulas)) {
+            const domainParticles = pathwayData.domain.particulas
+                .filter((particle: any) => !ownedAbilityNames.has(particle.name))
+                .map((particle: any) => ({
+                    name: particle.name,
+                    desc: `${particle.translation} (${particle.type}) - ${particle.conceito}${particle.exemplo ? ` Exemplo: ${particle.exemplo}` : ''}${particle.uso ? ` Uso: ${particle.uso}` : ''}`,
+                    cost: 0 // GRATUITO - Poderes de domínio não custam PA
+                }));
+            
+            if (domainParticles.length > 0) {
+                domainAbilities.push({
+                    seqName: 'Domínio - Partículas Mágicas (GRATUITAS)',
+                    abilities: domainParticles
+                });
+            }
+        }
+        
+        return [...sequenceAbilities, ...domainAbilities];
     }, [pathwayData, currentAgent.character.sequence, currentAgent.habilidadesBeyonder]);
 
     const availableAbilitiesForFreeChoice = useMemo(() => {
@@ -492,6 +546,48 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                                     <span>{digestaoProgressoAtual} / {targetPa} PA</span>
                                     <span>{progressPercent.toFixed(0)}%</span>
                                 </div>
+                            </div>
+
+                            {/* Conversão de Brancos */}
+                            <div style={{padding: '1rem', border: '1px solid #9c27b0', background: 'rgba(156, 39, 176, 0.08)', borderRadius: '8px', marginBottom: '1.5rem'}}>
+                                <h4 style={{color: '#9c27b0', marginTop: 0}}>🤍 Converter Dados Brancos em PA</h4>
+                                <p style={{fontSize: '0.9rem', color: '#aaa', marginBottom: '1rem'}}>
+                                    Você pode converter seus Dados Brancos (Alma) em Pontos de Atuação (PA).<br/>
+                                    <strong>Taxa de conversão: 4 Brancos = 1 PA</strong>
+                                </p>
+                                <div style={{display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem'}}>
+                                    <div style={{flex: 1, background: 'var(--background-color)', padding: '0.75rem', borderRadius: '6px', textAlign: 'center'}}>
+                                        <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#9c27b0'}}>
+                                            {agent.character.soulDice || 0}
+                                        </div>
+                                        <div style={{fontSize: '0.8rem', color: '#aaa'}}>Brancos Disponíveis</div>
+                                    </div>
+                                    <div style={{fontSize: '1.5rem', color: '#9c27b0'}}>→</div>
+                                    <div style={{flex: 1, background: 'var(--background-color)', padding: '0.75rem', borderRadius: '6px', textAlign: 'center'}}>
+                                        <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#4caf50'}}>
+                                            +{Math.floor((agent.character.soulDice || 0) / 4)}
+                                        </div>
+                                        <div style={{fontSize: '0.8rem', color: '#aaa'}}>PA para Ganhar</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={handleConvertBrancos}
+                                    disabled={(agent.character.soulDice || 0) < 4}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        background: (agent.character.soulDice || 0) < 4 ? '#555' : '#9c27b0',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: (agent.character.soulDice || 0) < 4 ? 'not-allowed' : 'pointer',
+                                        fontWeight: '600',
+                                        transition: 'all 0.2s ease',
+                                        opacity: (agent.character.soulDice || 0) < 4 ? 0.6 : 1
+                                    }}
+                                >
+                                    🔄 Converter Brancos em PA
+                                </button>
                             </div>
 
                             {canAdvance ? (

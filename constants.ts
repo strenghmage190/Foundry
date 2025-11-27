@@ -2,15 +2,15 @@ import { AgentData, Character, Attributes, Habilidades, Attack, BeyonderAbility,
 
 // --- CONFIGURAÇÕES GLOBAIS DO JOGO ---
 export const paRequirementsBySequence: { [key: number]: number } = {
-    9: 30,
-    8: 50,
-    7: 65,
-    6: 80,
-    5: 100,
-    4: 150,
-    3: 200,
-    2: 300,
-    1: 500,
+    9: 70,
+    8: 110,
+    7: 150,
+    6: 200,
+    5: 300,
+    4: 450,
+    3: 600,
+    2: 800,
+    1: 1200,
 };
 
 export const initialCharacterState: Character = {
@@ -22,8 +22,9 @@ export const initialCharacterState: Character = {
     pa: 0, maxPa: 100,
     paDisponivel: 0, paTotalGasto: 0,
     purifiedDiceThisSequence: 0,
-    assimilationDice: 0,
-    maxAssimilationDice: 0,
+    assimilationDice: Number.POSITIVE_INFINITY, // Padrão: infinito (loucura)
+    maxAssimilationDice: Number.POSITIVE_INFINITY,
+    soulDice: 0, // Branco: começa com 0, ganha por purificação
     defense: 0, absorption: 0,
     initiative: 0,
     claimedFreeAbilitiesForSequences: [],

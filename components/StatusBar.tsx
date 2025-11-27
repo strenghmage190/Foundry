@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface StatusBarProps {
     label: string;
@@ -10,6 +10,31 @@ interface StatusBarProps {
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, onValueChange, onMaxValueChange, color }) => {
+    const valueInputRef = useRef<HTMLInputElement>(null);
+    const maxValueInputRef = useRef<HTMLInputElement>(null);
+
+    // Previne scroll wheel de alterar valores dos inputs
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            e.preventDefault();
+        };
+
+        const inputs = [valueInputRef.current, maxValueInputRef.current];
+        inputs.forEach(input => {
+            if (input) {
+                input.addEventListener('wheel', handleWheel, { passive: false });
+            }
+        });
+
+        return () => {
+            inputs.forEach(input => {
+                if (input) {
+                    input.removeEventListener('wheel', handleWheel);
+                }
+            });
+        };
+    }, []);
+
     const fillPercentage = max > 0 ? (value / max) * 100 : 0;
 
     return (
@@ -18,6 +43,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, onValue
                 <span className="status-bar-label">{label}</span>
                 <div className="status-bar-values">
                     <input 
+                        ref={valueInputRef}
                         type="number" 
                         className="status-input" 
                         value={value} 
@@ -25,6 +51,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ label, value, max, onValue
                     />
                     <span>/</span>
                     <input 
+                        ref={maxValueInputRef}
                         type="number" 
                         className="status-input" 
                         value={max} 

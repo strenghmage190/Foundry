@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
+import { generateSmartButtonColor } from '../utils/colorUtils';
 
 interface SanityTrackerProps {
     sanity: number;
@@ -9,6 +10,30 @@ interface SanityTrackerProps {
 }
 
 export const SanityTracker: React.FC<SanityTrackerProps> = ({ sanity, maxSanity, onSanityChange, onMaxSanityChange, pathwayColor }) => {
+    const sanityInputRef = useRef<HTMLInputElement>(null);
+    const maxSanityInputRef = useRef<HTMLInputElement>(null);
+
+    // Previne scroll wheel de alterar valores dos inputs
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            e.preventDefault();
+        };
+
+        const inputs = [sanityInputRef.current, maxSanityInputRef.current];
+        inputs.forEach(input => {
+            if (input) {
+                input.addEventListener('wheel', handleWheel, { passive: false });
+            }
+        });
+
+        return () => {
+            inputs.forEach(input => {
+                if (input) {
+                    input.removeEventListener('wheel', handleWheel);
+                }
+            });
+        };
+    }, []);
     
     const handlePointClick = (index: number) => {
         // Clicar em uma caixa define a sanidade para aquele valor
@@ -23,6 +48,7 @@ export const SanityTracker: React.FC<SanityTrackerProps> = ({ sanity, maxSanity,
                 <span className="status-bar-label">Sanidade</span>
                 <div className="status-bar-values">
                     <input
+                        ref={sanityInputRef}
                         type="number"
                         value={sanity}
                         onChange={e => onSanityChange(Number(e.target.value))}
@@ -32,6 +58,7 @@ export const SanityTracker: React.FC<SanityTrackerProps> = ({ sanity, maxSanity,
                     />
                     <span>/</span>
                      <input
+                        ref={maxSanityInputRef}
                         type="number"
                         value={maxSanity}
                         onChange={e => onMaxSanityChange(Number(e.target.value))}
@@ -57,7 +84,7 @@ export const SanityTracker: React.FC<SanityTrackerProps> = ({ sanity, maxSanity,
                         <div 
                             key={index}
                             className={`sanity-point ${status}`}
-                            style={status === 'full' ? { backgroundColor: pathwayColor } : {}}
+                            style={status === 'full' ? { backgroundColor: generateSmartButtonColor(pathwayColor) } : {}}
                             onClick={() => handlePointClick(index)}
                             title={`Sanidade ${pointValue}`}
                         />

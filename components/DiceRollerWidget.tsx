@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ToastData } from '../types';
 import { rollDice } from '../utils/diceRoller';
 import { DiceIcon } from './icons';
@@ -20,6 +20,33 @@ export const DiceRollerWidget: React.FC<DiceRollerWidgetProps> = ({ addToast }) 
     const [numBlackDice, setNumBlackDice] = useState(0);
     
     const [lastResult, setLastResult] = useState<RollResult | null>(null);
+
+    const numDiceRef = useRef<HTMLInputElement>(null);
+    const numBlackDiceRef = useRef<HTMLInputElement>(null);
+    const modifierRef = useRef<HTMLInputElement>(null);
+    const difficultyRef = useRef<HTMLInputElement>(null);
+
+    // Previne scroll wheel de alterar valores dos inputs de números
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent) => {
+            e.preventDefault();
+        };
+
+        const inputs = [numDiceRef.current, numBlackDiceRef.current, modifierRef.current, difficultyRef.current];
+        inputs.forEach(input => {
+            if (input) {
+                input.addEventListener('wheel', handleWheel, { passive: false });
+            }
+        });
+
+        return () => {
+            inputs.forEach(input => {
+                if (input) {
+                    input.removeEventListener('wheel', handleWheel);
+                }
+            });
+        };
+    }, []);
 
     const handleRoll = () => {
         const totalPool = numDice + modifier;
@@ -102,11 +129,12 @@ export const DiceRollerWidget: React.FC<DiceRollerWidgetProps> = ({ addToast }) 
             <div className="dice-roller-form">
                 <div className="form-group">
                     <label>Parada Total</label>
-                    <input type="number" value={numDice} onChange={e => setNumDice(parseInt(e.target.value) || 0)} />
+                    <input ref={numDiceRef} type="number" value={numDice} onChange={e => setNumDice(parseInt(e.target.value) || 0)} />
                 </div>
                 <div className="form-group">
                     <label>🎲 Dados Pretos (Assimilação)</label>
                     <input 
+                        ref={numBlackDiceRef}
                         type="number" 
                         value={numBlackDice} 
                         onChange={e => setNumBlackDice(Math.max(0, parseInt(e.target.value) || 0))} 
@@ -116,11 +144,11 @@ export const DiceRollerWidget: React.FC<DiceRollerWidgetProps> = ({ addToast }) 
                 </div>
                 <div className="form-group">
                     <label>Bônus/Penalidade</label>
-                    <input type="number" value={modifier} onChange={e => setModifier(parseInt(e.target.value) || 0)} />
+                    <input ref={modifierRef} type="number" value={modifier} onChange={e => setModifier(parseInt(e.target.value) || 0)} />
                 </div>
                 <div className="form-group">
                     <label>Dificuldade</label>
-                    <input type="number" value={difficulty} onChange={e => setDifficulty(parseInt(e.target.value) || 1)} min="1" max="10" />
+                    <input ref={difficultyRef} type="number" value={difficulty} onChange={e => setDifficulty(parseInt(e.target.value) || 1)} min="1" max="10" />
                 </div>
                  <button onClick={handleRoll} className="roll-btn">
                     <DiceIcon /> Rolar!

@@ -7,7 +7,7 @@ export const aeonData: PathwayData = {
     pathway: 'CAMINHO DO ÉON ETERNO',
     pvBase: 10, // Versátil (10 / +4)
     pvPorAvanço: 4,
-    peBase: 15, // Híbrido (15 / +5)
+    peBase: 20, // Canalizador (20 / +6)
     pePorAvanço: 5,
     vontadeBonus: 1, // Equilibrado (+1)
     sanidade: 7, // Equilibrado indicado (7)

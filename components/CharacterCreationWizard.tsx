@@ -8,6 +8,7 @@ import { usePermissions } from '../src/hooks/usePermissions';
 import { BLOODLINES } from '../data/bloodlines-data';
 import { AFFILIATIONS } from '../data/affiliations-data';
 import { getParticleType } from '../data/magic-particles';
+import { PATHWAY_DESCRIPTIONS } from '../data/pathway-descriptions';
 import '../styles/components/_character-creation-wizard.css';
 
 interface AttributeScores {
@@ -84,6 +85,7 @@ interface UniversalParticle {
     name: string;
     word: string;
     category: string;
+    type?: string; // Tipo da partícula: Função, Objeto, Característica, etc.
 }
 
 interface Bloodline {
@@ -121,33 +123,33 @@ interface Backgrounds {
 
 const UNIVERSAL_PARTICLES: Record<string, UniversalParticle[]> = {
     'Ocultismo': [
-        { name: 'Revelar', word: 'Il', category: 'Ocultismo' },
-        { name: 'Espírito', word: 'Pneuma', category: 'Ocultismo' },
-        { name: 'Invocar/Criar', word: 'Ev', category: 'Ocultismo' },
-        { name: 'Abstrato', word: 'Ala', category: 'Ocultismo' }
+        { name: 'Revelar', word: 'Il', category: 'Ocultismo', type: 'Função' },
+        { name: 'Espírito', word: 'Pneuma', category: 'Ocultismo', type: 'Objeto' },
+        { name: 'Invocar/Criar', word: 'Ev', category: 'Ocultismo', type: 'Função' },
+        { name: 'Abstrato', word: 'Ala', category: 'Ocultismo', type: 'Objeto' }
     ],
     'Acadêmicos': [
-        { name: 'Informação', word: 'Azi', category: 'Acadêmicos' },
-        { name: 'Alterar', word: 'Al', category: 'Acadêmicos' },
-        { name: 'Construção', word: 'Omu', category: 'Acadêmicos' }
+        { name: 'Informação', word: 'Azi', category: 'Acadêmicos', type: 'Objeto' },
+        { name: 'Alterar', word: 'Al', category: 'Acadêmicos', type: 'Função' },
+        { name: 'Construção', word: 'Omu', category: 'Acadêmicos', type: 'Objeto' }
     ],
     'Ciência': [
-        { name: 'Fogo', word: 'Ig', category: 'Ciência' },
-        { name: 'Água', word: 'Quan', category: 'Ciência' },
-        { name: 'Ar', word: 'Aer', category: 'Ciência' },
-        { name: 'Terra', word: 'Mun', category: 'Ciência' },
-        { name: 'Inanimado', word: 'Exa', category: 'Ciência' }
+        { name: 'Fogo', word: 'Ig', category: 'Ciência', type: 'Característica' },
+        { name: 'Água', word: 'Quan', category: 'Ciência', type: 'Característica' },
+        { name: 'Ar', word: 'Aer', category: 'Ciência', type: 'Característica' },
+        { name: 'Terra', word: 'Mun', category: 'Ciência', type: 'Característica' },
+        { name: 'Inanimado', word: 'Exa', category: 'Ciência', type: 'Objeto' }
     ],
     'Medicina': [
-        { name: 'Pessoa', word: 'Ivi', category: 'Medicina' },
-        { name: 'Vegetação', word: 'Ora', category: 'Medicina' },
-        { name: 'Restaurar', word: 'An', category: 'Medicina' },
-        { name: 'Enfraquecer', word: 'In', category: 'Medicina' }
+        { name: 'Pessoa', word: 'Ivi', category: 'Medicina', type: 'Objeto' },
+        { name: 'Vegetação', word: 'Ora', category: 'Medicina', type: 'Objeto' },
+        { name: 'Restaurar', word: 'An', category: 'Medicina', type: 'Função' },
+        { name: 'Enfraquecer', word: 'In', category: 'Medicina', type: 'Função' }
     ],
     'Crime/Manha': [
-        { name: 'Aprisionar', word: 'Ar', category: 'Crime/Manha' },
-        { name: 'Enfraquecer', word: 'In', category: 'Crime/Manha' },
-        { name: 'Lugar/Terreno', word: 'Locus', category: 'Crime/Manha' }
+        { name: 'Aprisionar', word: 'Ar', category: 'Crime/Manha', type: 'Função' },
+        { name: 'Enfraquecer', word: 'In', category: 'Crime/Manha', type: 'Função' },
+        { name: 'Lugar/Terreno', word: 'Locus', category: 'Crime/Manha', type: 'Objeto' }
     ]
 };
 
@@ -862,8 +864,10 @@ export const CharacterCreationWizard: React.FC = () => {
                     paDisponivel: 0,
                     paTotalGasto: 0,
                     purifiedDiceThisSequence: 0,
-                    assimilationDice: 5, // Começa com 5 dados ao tomar a primeira poção (Seq. 9)
-                    maxAssimilationDice: 5,
+                    // Assimilação: INFINITA (representando a loucura/poder bruto instável)
+                    assimilationDice: Number.POSITIVE_INFINITY,
+                    maxAssimilationDice: Number.POSITIVE_INFINITY,
+                    soulDice: 0, // Branco: começa com 0, só ganha purificando Preto
                     defense: 0,
                     absorption: 0,
                     initiative: finalAttributes.raciocinio,
@@ -1305,48 +1309,171 @@ export const CharacterCreationWizard: React.FC = () => {
                         <div className="wizard-step-content pathway-step">
                             <h2 className="step-title">Caminho e Partículas</h2>
                             <p className="step-description">
-                                Escolha seu Caminho Beyonder. Você receberá a Partícula de Domínio do caminho e poderá escolher 
+                                Escolha seu Caminho Beyonder. Cada caminho representa uma filosofia de poder diferente. Você receberá a Partícula de Domínio do caminho e poderá escolher 
                                 {maxUniversalParticles} Partículas Universais.
                             </p>
                             
                             <div className="pathway-selection">
-                                <label htmlFor="pathway">Escolha seu Caminho:</label>
-                                <select 
-                                    id="pathway"
-                                    value={selectedPathway} 
-                                    onChange={(e) => setSelectedPathway(e.target.value)}
-                                    className="pathway-dropdown"
-                                >
-                                    <option value="">Selecione um caminho...</option>
-                                    {PATHWAYS.map(pathway => (
-                                        <option key={pathway} value={pathway}>
-                                            {PATHWAY_DISPLAY_NAMES[pathway] || pathway}
-                                        </option>
-                                    ))}
-                                </select>
+                                <h3 style={{ marginBottom: '1.5rem' }}>Selecione seu Caminho:</h3>
+                                
+                                <div className="pathways-grid" style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                    gap: '1.5rem',
+                                    marginBottom: '2rem'
+                                }}>
+                                    {PATHWAYS.map(pathway => {
+                                        const description = PATHWAY_DESCRIPTIONS[pathway];
+                                        const isSelected = selectedPathway === pathway;
+                                        
+                                        return (
+                                            <div
+                                                key={pathway}
+                                                className={`pathway-card ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => setSelectedPathway(pathway)}
+                                                style={{
+                                                    padding: '1.5rem',
+                                                    border: isSelected ? '2px solid #d4af37' : '2px solid rgba(212, 175, 55, 0.3)',
+                                                    borderRadius: '12px',
+                                                    background: isSelected ? 'rgba(212, 175, 55, 0.1)' : 'rgba(50, 60, 80, 0.5)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s ease',
+                                                    backdropFilter: 'blur(8px)',
+                                                }}
+                                            >
+                                                <h4 style={{
+                                                    color: isSelected ? '#d4af37' : '#e8e8e8',
+                                                    marginBottom: '0.5rem',
+                                                    fontSize: '1.1rem'
+                                                }}>
+                                                    {PATHWAY_DISPLAY_NAMES[pathway]}
+                                                </h4>
+                                                
+                                                <p style={{
+                                                    color: '#b0b0b0',
+                                                    fontSize: '0.85rem',
+                                                    marginBottom: '0.75rem',
+                                                    lineHeight: '1.4'
+                                                }}>
+                                                    {description?.shortDescription}
+                                                </p>
+                                                
+                                                <div style={{
+                                                    marginTop: '1rem',
+                                                    paddingTop: '1rem',
+                                                    borderTop: '1px solid rgba(212, 175, 55, 0.2)'
+                                                }}>
+                                                    <p style={{
+                                                        color: '#d4af37',
+                                                        fontSize: '0.8rem',
+                                                        marginBottom: '0.5rem',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {description?.themeName}
+                                                    </p>
+                                                    <p style={{
+                                                        color: '#8896a8',
+                                                        fontSize: '0.75rem',
+                                                        fontStyle: 'italic'
+                                                    }}>
+                                                        Arquétipo: {description?.archetype}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                                 
                                 {selectedPathway && DOMAIN_PARTICLES[selectedPathway] && (
-                                    <div className="domain-particle-display">
-                                        <h4>Partícula de Domínio:</h4>
-                                        <div className="particle-card domain">
-                                            <span className="particle-name">{DOMAIN_PARTICLES[selectedPathway].particle}</span>
-                                            <span className="particle-word">"{DOMAIN_PARTICLES[selectedPathway].word}"</span>
+                                    <div className="domain-particle-display" style={{
+                                        padding: '1.5rem',
+                                        background: 'rgba(212, 175, 55, 0.1)',
+                                        border: '1px solid rgba(212, 175, 55, 0.3)',
+                                        borderRadius: '12px',
+                                        marginTop: '2rem'
+                                    }}>
+                                        <h4 style={{ color: '#d4af37', marginBottom: '1rem' }}>Partícula de Domínio:</h4>
+                                        <div className="particle-card domain" style={{
+                                            padding: '1rem',
+                                            background: 'rgba(212, 175, 55, 0.15)',
+                                            border: '1px solid rgba(212, 175, 55, 0.5)',
+                                            borderRadius: '8px',
+                                            textAlign: 'center'
+                                        }}>
+                                            <span className="particle-name" style={{ 
+                                                display: 'block',
+                                                color: '#d4af37',
+                                                fontSize: '1.2rem',
+                                                fontWeight: 'bold',
+                                                marginBottom: '0.5rem'
+                                            }}>
+                                                {DOMAIN_PARTICLES[selectedPathway].particle}
+                                            </span>
+                                            <span className="particle-word" style={{
+                                                display: 'block',
+                                                color: '#8896a8',
+                                                fontSize: '0.9rem'
+                                            }}>
+                                                "{DOMAIN_PARTICLES[selectedPathway].word}"
+                                            </span>
+                                            <span style={{
+                                                display: 'block',
+                                                color: '#6a7a8a',
+                                                fontSize: '0.8rem',
+                                                marginTop: '0.5rem',
+                                                fontStyle: 'italic'
+                                            }}>
+                                                Tipo: {DOMAIN_PARTICLES[selectedPathway].type || 'Função'}
+                                            </span>
                                         </div>
                                     </div>
                                 )}
                             </div>
                             
                             {selectedPathway && (
-                                <div className="universal-particles-selection">
-                                    <h3>Selecione {maxUniversalParticles} Partículas Universais:</h3>
-                                    <p className="selection-counter">
+                                <div className="universal-particles-selection" style={{
+                                    marginTop: '3rem',
+                                    paddingTop: '2rem',
+                                    borderTop: '1px solid rgba(212, 175, 55, 0.2)'
+                                }}>
+                                    <h3 style={{ color: '#e8e8e8', marginBottom: '0.5rem' }}>
+                                        Selecione {maxUniversalParticles} Partículas Universais
+                                    </h3>
+                                    <p style={{
+                                        color: '#8896a8',
+                                        marginBottom: '1.5rem',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        As Partículas Universais complementam seu Caminho e permitem versatilidade adicional. Escolha com cuidado para moldar seu estilo de combate e magia.
+                                    </p>
+                                    <p className="selection-counter" style={{
+                                        textAlign: 'center',
+                                        color: selectedUniversalParticles.length === maxUniversalParticles ? '#4a9bff' : '#d4af37',
+                                        fontWeight: 'bold',
+                                        marginBottom: '1.5rem'
+                                    }}>
                                         {selectedUniversalParticles.length} / {maxUniversalParticles} selecionadas
+                                        {selectedUniversalParticles.length === maxUniversalParticles && ' ✓'}
                                     </p>
                                     
                                     {Object.entries(UNIVERSAL_PARTICLES).map(([category, particles]) => (
-                                        <div key={category} className="particle-category">
-                                            <h4>{category}</h4>
-                                            <div className="particle-grid">
+                                        <div key={category} className="particle-category" style={{
+                                            marginBottom: '2rem'
+                                        }}>
+                                            <h4 style={{
+                                                color: '#d4af37',
+                                                marginBottom: '1rem',
+                                                fontSize: '1rem',
+                                                borderBottom: '1px solid rgba(212, 175, 55, 0.3)',
+                                                paddingBottom: '0.5rem'
+                                            }}>
+                                                {category}
+                                            </h4>
+                                            <div className="particle-grid" style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                                                gap: '1rem'
+                                            }}>
                                                 {particles.map(particle => {
                                                     const isSelected = selectedUniversalParticles.some(
                                                         p => p.name === particle.name && p.word === particle.word
@@ -1356,9 +1483,47 @@ export const CharacterCreationWizard: React.FC = () => {
                                                             key={`${particle.name}-${particle.word}`}
                                                             className={`particle-card universal ${isSelected ? 'selected' : ''}`}
                                                             onClick={() => toggleUniversalParticle(particle)}
+                                                            style={{
+                                                                padding: '1rem',
+                                                                border: isSelected ? '2px solid #d4af37' : '1px solid rgba(212, 175, 55, 0.3)',
+                                                                borderRadius: '8px',
+                                                                background: isSelected ? 'rgba(212, 175, 55, 0.2)' : 'rgba(50, 60, 80, 0.3)',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s ease',
+                                                                textAlign: 'center'
+                                                            }}
                                                         >
-                                                            <span className="particle-name">{particle.name}</span>
-                                                            <span className="particle-word">"{particle.word}"</span>
+                                                            <span className="particle-name" style={{
+                                                                display: 'block',
+                                                                color: '#e8e8e8',
+                                                                fontWeight: 'bold',
+                                                                marginBottom: '0.3rem',
+                                                                fontSize: '0.95rem'
+                                                            }}>
+                                                                {particle.name}
+                                                            </span>
+                                                            <span className="particle-word" style={{
+                                                                display: 'block',
+                                                                color: '#8896a8',
+                                                                fontSize: '0.8rem',
+                                                                marginBottom: '0.5rem'
+                                                            }}>
+                                                                "{particle.word}"
+                                                            </span>
+                                                            {particle.type && (
+                                                                <span style={{
+                                                                    display: 'block',
+                                                                    color: '#d4af37',
+                                                                    fontSize: '0.7rem',
+                                                                    fontStyle: 'italic',
+                                                                    opacity: 0.9,
+                                                                    borderTop: '1px solid rgba(212, 175, 55, 0.3)',
+                                                                    paddingTop: '0.4rem',
+                                                                    marginTop: '0.4rem'
+                                                                }}>
+                                                                    Tipo: {particle.type}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     );
                                                 })}

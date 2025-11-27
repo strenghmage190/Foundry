@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { initialAgentData } from '../../constants';
 import { ImageCropModal } from './ImageCropModal';
 import { uploadAgentAvatar, updateAgentCustomization } from '../../api/agents';
+import { generateSmartButtonColor, getContrastColor } from '../../utils/colorUtils';
 
 interface CustomizationModalProps {
     isOpen: boolean;
@@ -652,13 +653,35 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
                             <h4>Aparência</h4>
                             <div className="form-group">
                                 <label htmlFor="pathway-color">Cor de Destaque</label>
-                                <input
-                                    id="pathway-color"
-                                    type="color"
-                                    className="pathway-color-picker"
-                                    value={color}
-                                    onChange={e => setColor(e.target.value)}
-                                />
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    <input
+                                        id="pathway-color"
+                                        type="color"
+                                        className="pathway-color-picker"
+                                        value={color}
+                                        onChange={e => setColor(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        style={{
+                                            background: generateSmartButtonColor(color),
+                                            color: getContrastColor(generateSmartButtonColor(color)),
+                                            border: 'none',
+                                            padding: '8px 16px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                        title="Preview de como os botões aparecerão com a cor selecionada"
+                                    >
+                                        Preview Botão
+                                    </button>
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                                    A cor dos botões será ajustada automaticamente para melhor legibilidade
+                                </div>
                             </div>
                             {renderAvatarInput('avatarHealthy', 'Avatar (Saudável)')}
                             {renderAvatarInput('avatarHurt', 'Avatar (Ferido)')}

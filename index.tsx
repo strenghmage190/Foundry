@@ -11,6 +11,12 @@ import CampaignDashboardPage from './components/CampaignDashboardPage';
 import InvitePage from './components/InvitePage';
 import MasterScreenPage from './components/MasterScreenPage';
 import PlayerSettingsPage from './components/PlayerSettingsPage';
+import MagicParticlesGrimoire from './components/MagicParticlesGrimoire';
+import ArcaneMasteryGuide from './components/ArcaneMasteryGuide';
+import PathwaysExplorer from './components/PathwaysExplorer';
+import { DeitiesExplorer } from './components/DeitiesExplorer';
+import { FamiliesExplorer } from './components/FamiliesExplorer';
+import { KnowledgeSidebar } from './components/KnowledgeSidebar';
 import { initialAgentData } from './constants';
 import { getUserProfile } from './api/users';
 import { getSignedAvatarUrl } from './utils/avatarUtils';
@@ -49,16 +55,40 @@ const AppContent = () => {
             <Header
                 onShowAgents={() => navigate('/agents')}
                 onShowCampaigns={() => navigate('/campaigns')}
+                onShowGrimoire={() => navigate('/grimoire')}
+                onShowArcaneMastery={() => navigate('/arcane-mastery')}
                 onShowProfile={() => navigate('/profile')}
                 onLogout={async () => { await supabase.auth.signOut(); }} />
+            <KnowledgeSidebar
+                onShowGrimoire={() => navigate('/grimoire')}
+                onShowArcaneMastery={() => navigate('/arcane-mastery')}
+                onShowPathways={() => navigate('/pathways')}
+                onShowDeities={() => navigate('/deities')}
+                onShowFamilies={() => navigate('/families')}
+            />
             <main className="main-content">
                 <Routes>
                     {/* Rota Padrão e Lista de Agentes */}
                     <Route path="/" element={<AgentListPage />} />
                     <Route path="/agents" element={<AgentListPage />} />
 
-                    {/* Rota de Criação de Personagem */}
+                    {/* Rota da Criação de Personagem */}
                     <Route path="/create-character" element={<CharacterCreationWizard />} />
+
+                    {/* Rota do Grimório de Partículas Mágicas */}
+                    <Route path="/grimoire" element={<MagicParticlesGrimoire />} />
+
+                    {/* Rota da Maestria Arcana */}
+                    <Route path="/arcane-mastery" element={<ArcaneMasteryGuide />} />
+
+                    {/* Rota dos Caminhos Beyonder */}
+                    <Route path="/pathways" element={<PathwaysExplorer />} />
+
+                    {/* Rota dos Deuses */}
+                    <Route path="/deities" element={<DeitiesExplorer />} />
+
+                    {/* Rota das Famílias */}
+                    <Route path="/families" element={<FamiliesExplorer />} />
 
                     {/* 👇 ROTA DA FICHA - SEM PASSAR PROPS 👇 */}
                     {/* A ficha buscará seus próprios dados usando o ID da URL */}

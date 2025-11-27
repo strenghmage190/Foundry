@@ -4,10 +4,12 @@ interface HeaderProps {
     onShowAgents?: () => void;
     onShowCampaigns?: () => void;
     onShowProfile?: () => void;
+    onShowGrimoire?: () => void;
+    onShowArcaneMastery?: () => void;
     onLogout: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onShowAgents, onShowCampaigns, onShowProfile, onLogout }) => {
+export const Header: React.FC<HeaderProps> = ({ onShowAgents, onShowCampaigns, onShowProfile, onShowGrimoire, onShowArcaneMastery, onLogout }) => {
     return (
         <header className="app-header">
             <h1 className="title-font">Beyonders</h1>

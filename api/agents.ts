@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import type { AgentData, CustomizationSettings } from '../types';
+import { beyondersReplacer, reviveInfinityInObject } from '../utils/serializationUtils';
 
 /**
  * Uploads an agent avatar file to the agent-avatars bucket.
@@ -66,10 +67,15 @@ export async function saveAgentData(agent: AgentData): Promise<boolean> {
     console.log(`[saveAgentData] Saving agent ${id}`);
     console.log('[saveAgentData] Data to save:', dataToSave);
 
+    // Convert Infinity values to a special marker before serialization
+    // We stringify then parse to handle the replacer properly
+    const jsonString = JSON.stringify(dataToSave, beyondersReplacer);
+    const dataToSaveProcessed = JSON.parse(jsonString);
+
     // IMPORTANT: dataToSave becomes the content of the 'data' column (JSONB)
     const { data, error } = await supabase
       .from('agents')
-      .update({ data: dataToSave })
+      .update({ data: dataToSaveProcessed })
       .eq('id', id)
       .select();
 

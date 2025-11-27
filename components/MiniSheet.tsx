@@ -4,6 +4,7 @@ import { AgentData, Character } from '../types';
 import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import { supabase } from '../supabaseClient';
 import { Shield, Zap, Heart, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { generateSmartButtonColor } from '../utils/colorUtils';
 import '../styles/components/_mini-sheet.css';
 
 interface MiniSheetProps {
@@ -124,7 +125,7 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
   };
 
   return (
-    <div className="mini-sheet" style={{ '--character-color': character.pathwayColor || '#8a2be2' } as React.CSSProperties}>
+    <div className="mini-sheet" style={{ '--character-color': generateSmartButtonColor(character.pathwayColor || '#8a2be2') } as React.CSSProperties}>
 
       {/* Cabeçalho com Avatar e Nome */}
       <div className="msc-header">

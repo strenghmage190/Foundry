@@ -18,6 +18,20 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'particles-objetos': ['./data/particles/objetos.ts'],
+              'particles-funcoes': ['./data/particles/funcoes.ts'],
+              'particles-caracteristicas': ['./data/particles/caracteristicas.ts'],
+              'particles-complementos': ['./data/particles/complementos.ts'],
+              'particles-criadores': ['./data/particles/criadores.ts'],
+              'particles-pathways': ['./data/particles/pathways.ts'],
+            }
+          }
+        }
       }
     };
 });

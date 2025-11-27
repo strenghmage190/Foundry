@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import { linkAgentToCampaign } from '../../api/campaigns';
+import { reviveInfinityInObject } from '../../utils/serializationUtils';
 import { AgentData } from '../../types';
 
 interface Props {
@@ -30,7 +31,11 @@ const AddAgentModal: React.FC<Props> = ({ campaignId, onClose, onAgentAdded }) =
 
       if (data) {
         // Formata os dados para o formato AgentData
-        const formattedAgents = data.map(item => ({ ...(item.data as any), id: item.id }));
+        const formattedAgents = data.map(item => {
+          const agentData = item.data as any;
+          const revivedData = reviveInfinityInObject(agentData);
+          return { ...revivedData, id: item.id };
+        });
         setMyAgents(formattedAgents);
       }
       setIsLoading(false);

@@ -33,6 +33,7 @@ import { MagicTab } from "./tabs/MagicTab.tsx";
 import { InventoryTab } from "./tabs/InventoryTab.tsx";
 import { NotesTab } from "./tabs/NotesTab.tsx";
 import { AntecedentesTab } from "./tabs/AntecedentesTab.tsx";
+import { ResourcesTab } from "./tabs/ResourcesTab.tsx";
 import { MagicGrimoireModal } from './modals/MagicGrimoireModal';
 import { ImprovementModal } from './modals/ImprovementModal';
 import { CreatePathwayModal } from './modals/CreatePathwayModal';
@@ -47,12 +48,15 @@ import { DiceIcon, PaletteIcon, FlameIcon } from "./icons.tsx";
 
 // Imports de Dados e Utilitários
 import { caminhosData } from "../data/beyonders-data.tsx";
-import { rollDice, rollSimpleDice, rollDamage } from "../utils/diceRoller.ts";
+import { rollDiceWithTypes, rollSimpleDice, rollDamage } from "../utils/diceRoller.ts";
+import { reviveInfinityInObject, beyondersReplacer } from "../utils/serializationUtils";
 import { getAvatarForSanityAndVitality } from "../utils/agentUtils";
 import {
   getContrastColor,
   darkenColor,
   hexToRgb,
+  generateSmartButtonColor,
+  getIntelligentContrast,
 } from "../utils/colorUtils.ts";
 import { NotificationLog } from "./ToastContainer.tsx";
 import { ControlTestTracker } from "./ControlTestTracker.tsx";
@@ -265,6 +269,7 @@ const RollPopover: React.FC<RollPopoverProps> = ({
 }) => {
   const [assimilationDice, setAssimilationDice] = useState(0);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: popoverData.top, left: popoverData.left });
 
   const isSkillRoll = popoverData.rollType === "skill";
@@ -276,6 +281,22 @@ const RollPopover: React.FC<RollPopoverProps> = ({
   useEffect(() => {
     setAssimilationDice(0);
   }, [popoverData.name, popoverData.pool]);
+
+  // Previne scroll wheel de alterar o valor do input
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Previne o comportamento padrão de incremento/decremento do input number
+      e.preventDefault();
+    };
+
+    input.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      input.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -365,6 +386,7 @@ const RollPopover: React.FC<RollPopoverProps> = ({
               </button>
               <input
                 id="popover-assim-input"
+                ref={inputRef}
                 type="number"
                 value={assimilationDice}
                 onChange={(e) =>
@@ -409,7 +431,8 @@ type Tab =
   | "INVENTÁRIO"
   | "HISTÓRICO"
   | "ANTECEDENTES"
-  | "ÂNCORAS";
+  | "ÂNCORAS"
+  | "RECURSOS";
 
 const stringToHash = (str: string | undefined) => {
   let hash = 0;
@@ -502,7 +525,9 @@ export const CharacterSheetPage = () => {
         });
         setAgent(null);
       } else {
-        const formattedAgent = { ...(data.data as AgentData), id: data.id, isPrivate: !!(data as any).is_private };
+        // Revive Infinity values that were serialized as "∞_INFINITY"
+        const revivedData = reviveInfinityInObject(data.data);
+        const formattedAgent = { ...revivedData as AgentData, id: data.id, isPrivate: !!(data as any).is_private };
         console.log('[CharacterSheetPage] Loaded agent from DB:', data);
         console.log('[CharacterSheetPage] Customization in loaded data:', data.data?.customization);
         console.log('[CharacterSheetPage] Formatted agent customization:', formattedAgent.customization);
@@ -611,9 +636,14 @@ export const CharacterSheetPage = () => {
     const saveChanges = async () => {
       setSaveStatus("salvando");
       const { id, isPrivate, ...dataToSave } = debouncedAgent; // Separa o ID e campos fora de data
+      
+      // Handle Infinity serialization
+      const jsonString = JSON.stringify(dataToSave, beyondersReplacer);
+      const dataToSaveProcessed = JSON.parse(jsonString);
+      
       const { error } = await supabase
         .from("agents")
-        .update({ data: dataToSave })
+        .update({ data: dataToSaveProcessed })
         .eq("id", id); // Salva apenas o objeto 'data'
       if (error) {
         setSaveStatus("não salvo");
@@ -1053,11 +1083,13 @@ export const CharacterSheetPage = () => {
   const sheetStyle = useMemo(() => {
     if (!agent) return {};
     const color = agent.character.pathwayColor || "#9c27b0";
+    const smartButtonColor = generateSmartButtonColor(color);
+    const intelligentContrast = getIntelligentContrast(smartButtonColor);
     return {
-      "--character-color": color,
-      "--character-color-dark": darkenColor(color, 0.2),
-      "--character-contrast-color": getContrastColor(color),
-      "--character-color-rgb": hexToRgb(color),
+      "--character-color": smartButtonColor,
+      "--character-color-dark": darkenColor(smartButtonColor, 0.2),
+      "--character-contrast-color": intelligentContrast,
+      "--character-color-rgb": hexToRgb(smartButtonColor),
     };
   }, [agent]);
 
@@ -1075,6 +1107,7 @@ export const CharacterSheetPage = () => {
     "HISTÓRICO",
     "ANTECEDENTES",
     "ÂNCORAS",
+    "RECURSOS",
   ];
 
   const handleCharacterFieldChange = (field: keyof Character, value: any) => {
@@ -1473,61 +1506,11 @@ export const CharacterSheetPage = () => {
 
       const soulDiceUsed = Math.max(0, pool - assimilationDiceUsed);
 
-      const soulRolls = Array.from(
-        { length: soulDiceUsed },
-        () => Math.floor(Math.random() * 10) + 1
-      );
-      const assimilationRolls = Array.from(
-        { length: assimilationDiceUsed },
-        () => Math.floor(Math.random() * 10) + 1
-      );
-
-      let madnessTriggers = 0;
-      const soulSuccessContributions: number[] = [];
-      const assimilationSuccessContributions: number[] = [];
-
-      soulRolls.forEach((roll) => {
-        if (roll >= 6 && roll <= 9) soulSuccessContributions.push(1);
-        else if (roll === 10) soulSuccessContributions.push(2);
-      });
-
-      assimilationRolls.forEach((roll) => {
-        if (roll === 1) madnessTriggers++;
-        else if (roll >= 6 && roll <= 9)
-          assimilationSuccessContributions.push(2);
-        else if (roll === 10) assimilationSuccessContributions.push(3);
-      });
-
-      const soulSuccesses = soulSuccessContributions.reduce((a, b) => a + b, 0);
-      const assimilationSuccesses = assimilationSuccessContributions.reduce(
-        (a, b) => a + b,
-        0
-      );
-
-      const allSuccessContributions = [
-        ...soulSuccessContributions,
-        ...assimilationSuccessContributions,
-      ];
-      let totalSuccesses = allSuccessContributions.reduce(
-        (acc, val) => acc + val,
-        0
-      );
-
-      let madnessMessage = "";
-      if (madnessTriggers > 0) {
-        allSuccessContributions.sort((a, b) => b - a);
-        let successesCancelled = 0;
-        for (let i = 0; i < madnessTriggers; i++) {
-          if (i < allSuccessContributions.length) {
-            const cancelled = allSuccessContributions[i];
-            totalSuccesses -= cancelled;
-            successesCancelled += cancelled;
-          }
-        }
-        madnessMessage = ` O poder se rebelou, cancelando ${successesCancelled} sucesso(s).`;
-      }
-
-      const finalSuccesses = Math.max(0, totalSuccesses);
+      // NOVO: Usar o sistema de regras de Beyonders
+      const rollResult = rollDiceWithTypes(soulDiceUsed, assimilationDiceUsed, 6);
+      
+      const { soulRolls, assimilationRolls, totalSuccesses, soulSuccesses, assimilationSuccesses, madnessTriggers, isBotch, madnessMessage } = rollResult;
+      const finalSuccesses = totalSuccesses;
 
       const breakdownLines = [];
       if (soulRolls.length > 0)
@@ -2155,6 +2138,16 @@ export const CharacterSheetPage = () => {
                     onInvokeAnchor={handleInvokeAnchor}
                   />
                 </div>
+              </div>
+              <div
+                style={{
+                  display: activeTab === "RECURSOS" ? "block" : "none",
+                }}
+              >
+                <ResourcesTab
+                  character={effectiveAgentData.character}
+                  onCharacterChange={handleCharacterFieldChange}
+                />
               </div>
             </div>
           </div>
