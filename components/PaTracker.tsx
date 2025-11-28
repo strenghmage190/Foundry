@@ -100,6 +100,33 @@ export const PaTracker: React.FC<PaTrackerProps> = ({ agent, onUpdate, onOpenImp
     const digestaoProgressoAtual = (paTotalGasto || 0) + (paDisponivel || 0);
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
     
+    // Auto-purify at 25% milestones
+    useEffect(() => {
+        const totalPurificationMilestones = targetPa > 0 ? Math.floor(progressPercent / 25) : 0;
+        const purificationsAvailable = totalPurificationMilestones - (purifiedDiceThisSequence || 0);
+        
+        if (purificationsAvailable > 0 && (assimilationDice || 0) > 0) {
+            // Auto-purify one dice for each milestone reached
+            const newAssimilationDice = Math.max(0, (assimilationDice || 0) - purificationsAvailable);
+            const newSoulDice = (soulDice || 0) + purificationsAvailable;
+            
+            onUpdate({
+                character: {
+                    ...character,
+                    assimilationDice: newAssimilationDice,
+                    soulDice: newSoulDice,
+                    purifiedDiceThisSequence: totalPurificationMilestones
+                }
+            });
+            
+            addLiveToast({
+                type: 'success',
+                title: 'Purificação Automática! ✨',
+                message: `${purificationsAvailable} Dado(s) Preto foi/foram purificado(s) em Branco! Assimilação: ${newAssimilationDice} | Alma: ${newSoulDice}`
+            });
+        }
+    }, [digestaoProgressoAtual, sequence]); // Monitorar mudanças em PA
+    
     return (
         <div className="pa-tracker-section">
             <h3 className="section-title">Pontos de Atuação (PA)</h3>

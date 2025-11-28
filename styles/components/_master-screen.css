@@ -19,8 +19,34 @@
 .ms-empty-state { color:#9b9b9b; padding:12px }
 .ms-placeholder { background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; color:#cfcfcf }
 
+.ms-combat-wrapper {
+  position: relative;
+}
+
+.ms-back-to-sessions-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(142, 67, 255, 0.15);
+  color: #8e43ff;
+  border: 1px solid #8e43ff;
+  padding: 0.7rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.ms-back-to-sessions-btn:hover {
+  background: rgba(142, 67, 255, 0.25);
+  box-shadow: 0 0 12px rgba(142, 67, 255, 0.3);
+}
+
 @media(max-width:980px){
   .ms-simple-layout { grid-template-columns:1fr }
   .ms-dice-log-panel { order:2 }
   .ms-cards-area { order:1 }
 }
+

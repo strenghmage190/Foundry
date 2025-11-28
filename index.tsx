@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AgentListPage } from './components/AgentListPage';
 import { CharacterSheetPage } from './components/CharacterSheetPage';
 import { CharacterCreationWizard } from './components/CharacterCreationWizard';
+import { CreaturesListPage } from './components/CreaturesListPage';
 import { Header } from './components/Header';
 import UserProfilePage from './components/UserProfilePage';
 import CampaignsListPage from './components/CampaignsListPage';
@@ -55,6 +56,7 @@ const AppContent = () => {
             <Header
                 onShowAgents={() => navigate('/agents')}
                 onShowCampaigns={() => navigate('/campaigns')}
+                onShowCreatures={() => navigate('/creatures')}
                 onShowGrimoire={() => navigate('/grimoire')}
                 onShowArcaneMastery={() => navigate('/arcane-mastery')}
                 onShowProfile={() => navigate('/profile')}
@@ -74,6 +76,9 @@ const AppContent = () => {
 
                     {/* Rota da Criação de Personagem */}
                     <Route path="/create-character" element={<CharacterCreationWizard />} />
+
+                    {/* Rota das Criaturas */}
+                    <Route path="/creatures" element={<CreaturesListPage />} />
 
                     {/* Rota do Grimório de Partículas Mágicas */}
                     <Route path="/grimoire" element={<MagicParticlesGrimoire />} />

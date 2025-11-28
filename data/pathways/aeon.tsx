@@ -4,7 +4,7 @@ import { PathwayData } from '../../types';
 // Dados estruturados derivados da descrição fornecida.
 export const aeonData: PathwayData = {
     category: 'Éon Eterno',
-    pathway: 'CAMINHO DO ÉON ETERNO',
+    pathway: 'CAMINHO DO AEON ETERNO',
     pvBase: 10, // Versátil (10 / +4)
     pvPorAvanço: 4,
     peBase: 20, // Canalizador (20 / +6)

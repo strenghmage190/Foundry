@@ -21,12 +21,14 @@ const CampaignCard: React.FC<Props> = ({ campaign, isPlayer, agentId, onLinkChar
     if (coverPath && !coverPath.startsWith('http')) {
       try {
         const { data } = supabase.storage.from('campaign-covers').getPublicUrl(coverPath);
+        console.log('🖼️ CampaignCard: Generated public URL:', data.publicUrl);
         setCoverImageUrl(data.publicUrl || coverPath);
       } catch (e) {
-        console.warn('CampaignCard: public URL fallback to raw path', e);
+        console.warn('❌ CampaignCard: public URL fallback to raw path', coverPath, e);
         setCoverImageUrl(coverPath);
       }
     } else {
+      console.log('📁 CampaignCard: Using URL directly:', coverPath);
       setCoverImageUrl(coverPath || null);
     }
   }, [campaign.cover_image_url]);

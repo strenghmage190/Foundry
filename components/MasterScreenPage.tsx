@@ -4,11 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCampaignById, getPlayersByCampaignId, getCampaignsByMasterId } from '../api/campaigns';
+import { getCombatSessionsByCampaignId, createCombatSession, updateCombatSession, deleteCombatSession } from '../api/combatSessions';
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
 import { beyondersReplacer, reviveInfinityInObject } from '../utils/serializationUtils';
-import type { Campaign, Character } from '../types';
+import type { Campaign, Character, CombatSession, AgentData } from '../types';
 import CharacterStatusCard from './CharacterStatusCard';
 import CombatManager from './CombatManager';
+import CombatSessionManager from './CombatSessionManager';
 import CharacterOverviewModal from './CharacterOverviewModal';
 import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import DiceLogEntry from './DiceLogEntry';
@@ -34,6 +36,8 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | number | null>(null);
   const [notes, setNotes] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('AGENTES');
+  const [combatSessions, setCombatSessions] = useState<CombatSession[]>([]);
+  const [activeCombatSessionId, setActiveCombatSessionId] = useState<string | undefined>();
 
   const notesKey = `beyonders_notes_${effectiveCampaignId}`;
 
@@ -76,15 +80,6 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
         return { ...p, user_profiles: { ...(profile || {}), signedAvatarUrl: signedAvatar } };
       }));
       setCharacters(enriched || []);
-      // Clean up selectedIds: remove selections that point to participants without characters
-      setSelectedIds(prev => {
-        const next: Record<string | number, boolean> = {};
-        (enriched || []).forEach((p: any) => {
-          const hasCharacter = !!p?.agents?.data?.character;
-          if (hasCharacter && prev[p.id]) next[p.id] = true;
-        });
-        return next;
-      });
       setLoading(false);
     }
     load();
@@ -109,7 +104,17 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     return () => clearTimeout(t);
   }, [notes, campaign]);
 
-  // (Iniciativa removida no redesign)
+  // Hook para carregar combates do Supabase
+  useEffect(() => {
+    if (!campaign) return;
+
+    const loadCombatSessions = async () => {
+      const sessions = await getCombatSessionsByCampaignId(campaign.id);
+      setCombatSessions(sessions);
+    };
+
+    loadCombatSessions();
+  }, [campaign]);
 
   // Hook for real-time dice roll logging (mantido)
   useEffect(() => {
@@ -220,6 +225,77 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
   // participante selecionado atualmente (para painel expandido)
   const selectedParticipant = characters.find(c => c.id === selectedParticipantId) || null;
 
+  // Funções para gerenciar combates
+  const handleCreateCombatSession = async (session: CombatSession) => {
+    if (!campaign) return;
+    
+    // Otimização de UI
+    setCombatSessions(prev => [...prev, session]);
+    setActiveCombatSessionId(session.id);
+
+    // Persistir no Supabase
+    const saved = await createCombatSession(campaign.id, {
+      name: session.name,
+      location: session.location,
+      participantIds: session.participantIds,
+      status: session.status,
+      notes: session.notes,
+    });
+
+    if (saved) {
+      // Atualizar com o ID gerado pelo Supabase
+      setCombatSessions(prev =>
+        prev.map(s => (s.id === session.id ? { ...saved, createdAt: new Date(saved.createdAt) } : s))
+      );
+      setActiveCombatSessionId(saved.id);
+    }
+  };
+
+  const handleSelectCombatSession = (sessionId: string) => {
+    setActiveCombatSessionId(sessionId);
+  };
+
+  const handleDeleteCombatSession = async (sessionId: string) => {
+    // Otimização de UI
+    setCombatSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (activeCombatSessionId === sessionId) {
+      setActiveCombatSessionId(undefined);
+    }
+
+    // Deletar do Supabase
+    await deleteCombatSession(sessionId);
+  };
+
+  const handleUpdateCombatSession = async (sessionId: string, updates: Partial<CombatSession>) => {
+    // Otimização de UI
+    setCombatSessions(prev =>
+      prev.map(s => (s.id === sessionId ? { ...s, ...updates } : s))
+    );
+
+    // Atualizar no Supabase
+    await updateCombatSession(sessionId, updates);
+  };
+
+  // Prepare available participants for combat session manager
+  const availableParticipantsForCombat = visibleCharacters.map(ch => ({
+    id: ch.id,
+    name: ch.agents?.data?.character?.name || `Participante #${ch.id}`,
+    avatarUrl: ch.agents?.data?.character?.avatarUrl ||
+               ch.agents?.data?.customization?.avatarHealthy ||
+               ch.agents?.data?.customization?.avatarHurt ||
+               ch.agents?.data?.customization?.avatarDisturbed ||
+               ch.agents?.data?.customization?.avatarInsane
+  }));
+
+  // Get agents for active combat session
+  const activeCombatSession = combatSessions.find(s => s.id === activeCombatSessionId);
+  const combatAgents = activeCombatSession
+    ? visibleCharacters
+        .filter(ch => activeCombatSession.participantIds.includes(ch.id))
+        .map(ch => ch.agents?.data)
+        .filter(Boolean) as AgentData[]
+    : visibleCharacters.map(ch => ch.agents?.data).filter(Boolean) as AgentData[];
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
@@ -311,8 +387,27 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
               )}
             </div>
           )}
-          {activeTab === 'COMBATES' && (
-            <CombatManager agents={visibleCharacters.map(ch => ch.agents?.data).filter(Boolean) as any} />
+          {activeTab === 'COMBATES' && !activeCombatSessionId && (
+            <CombatSessionManager
+              sessions={combatSessions}
+              availableParticipants={availableParticipantsForCombat}
+              onSelectSession={handleSelectCombatSession}
+              onCreateSession={handleCreateCombatSession}
+              onDeleteSession={handleDeleteCombatSession}
+              onUpdateSession={handleUpdateCombatSession}
+              activeSessionId={activeCombatSessionId}
+            />
+          )}
+          {activeTab === 'COMBATES' && activeCombatSessionId && (
+            <div className="ms-combat-wrapper">
+              <button
+                className="ms-back-to-sessions-btn"
+                onClick={() => setActiveCombatSessionId(undefined)}
+              >
+                ← Voltar para Combates
+              </button>
+              <CombatManager agents={combatAgents} />
+            </div>
           )}
           {!['AGENTES','COMBATES'].includes(activeTab) && (
             <div className="ms-placeholder">

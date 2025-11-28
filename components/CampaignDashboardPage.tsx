@@ -150,14 +150,16 @@ const CampaignDashboardPage: React.FC<{ campaignId?: string }> = ({ campaignId }
   // 👇👇👇 NOVO useEffect PARA GERAR A URL ASSINADA 👇👇👇
   useEffect(() => {
     if (!campaign?.cover_image_url) {
+      console.log('📭 CampaignDashboard: No cover image URL');
       setCoverImageUrl(null);
       return;
     }
     try {
       const { data } = supabase.storage.from('campaign-covers').getPublicUrl(campaign.cover_image_url);
+      console.log('🖼️ CampaignDashboard: Generated public URL:', data.publicUrl, 'from path:', campaign.cover_image_url);
       setCoverImageUrl(data.publicUrl || campaign.cover_image_url);
     } catch (e) {
-      console.warn('CampaignDashboardPage: public URL fallback to raw path (cover)', e);
+      console.warn('❌ CampaignDashboard: public URL fallback to raw path', campaign.cover_image_url, e);
       setCoverImageUrl(campaign.cover_image_url);
     }
   }, [campaign]);

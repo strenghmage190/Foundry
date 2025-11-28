@@ -831,6 +831,7 @@ export const CharacterSheetPage = () => {
     | "createPathway";
   const [activeModal, setActiveModal] = useState<ModalType | null>(null);
   const [improvingPathway, setImprovingPathway] = useState<string | null>(null);
+  const [editingAttack, setEditingAttack] = useState<Attack | null>(null);
 
   // Estado relacionado à Forma Mítica
   const [isMythicalFormActive, setIsMythicalFormActive] = useState(false);
@@ -2002,7 +2003,10 @@ export const CharacterSheetPage = () => {
                   onUpdate={handleUpdate}
                   addLiveToast={addLiveToast}
                   addLogEntry={addLogEntry}
-                  onOpenAddWeaponModal={() => setActiveModal("addWeapon")}
+                  onOpenAddWeaponModal={(attack?: Attack) => {
+                    setEditingAttack(attack || null);
+                    setActiveModal("addWeapon");
+                  }}
                   onOpenAddProtectionModal={() =>
                     setActiveModal("addProtection")
                   }
@@ -2049,6 +2053,7 @@ export const CharacterSheetPage = () => {
                   onArtifactsChange={(v) => handleUpdate({ artifacts: v })}
                   money={effectiveAgentData.money}
                   onMoneyChange={(v) => handleUpdate({ money: v })}
+                  onAddAttack={(a) => handleUpdate({ attacks: [...effectiveAgentData.attacks, a] })}
                 />
               </div>
               <div
@@ -2404,10 +2409,26 @@ export const CharacterSheetPage = () => {
       {activeModal === "addWeapon" && (
         <AddWeaponModal
           isOpen={true}
-          onClose={() => setActiveModal(null)}
-          onAddAttack={(a) =>
-            handleUpdate({ attacks: [...effectiveAgentData.attacks, a] })
-          }
+          onClose={() => {
+            setActiveModal(null);
+            setEditingAttack(null);
+          }}
+          initialData={editingAttack}
+          attributes={effectiveAgentData.attributes}
+          skills={effectiveAgentData.habilidades?.gerais || []}
+          onAddAttack={(a) => {
+            if (editingAttack) {
+              // Modo edição: substitui o ataque existente
+              const updatedAttacks = effectiveAgentData.attacks.map(atk => 
+                atk.id === editingAttack.id ? { ...a, id: editingAttack.id } : atk
+              );
+              handleUpdate({ attacks: updatedAttacks });
+            } else {
+              // Modo novo: adiciona novo ataque
+              handleUpdate({ attacks: [...effectiveAgentData.attacks, a] });
+            }
+            setEditingAttack(null);
+          }}
         />
       )}
       {activeModal === "addProtection" && (

@@ -22,6 +22,8 @@ interface AddWeaponModalProps {
     onSave?: (attack: Omit<Attack, 'id'> & { id?: string }) => void;
     onAddAttack?: (attack: Omit<Attack, 'id'> & { id?: string }) => void;
     initialData?: Attack | null;
+    attributes?: Record<string, number>;
+    skills?: Array<{ name: string; points: number }>;
 }
 
 const initialWeaponState: Omit<Attack, 'id'> = {
@@ -38,7 +40,7 @@ const initialWeaponState: Omit<Attack, 'id'> = {
     maxAmmo: 0,
 };
 
-export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose, onSave, onAddAttack, initialData }) => {
+export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose, onSave, onAddAttack, initialData, attributes = {}, skills = [] }) => {
     const [weapon, setWeapon] = useState<Omit<Attack, 'id'> & { id?: string }>(initialData || initialWeaponState);
 
     useEffect(() => {
@@ -50,6 +52,20 @@ export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose,
     const handleChange = (field: keyof Attack, value: string | number) => {
         setWeapon(prev => ({ ...prev, [field]: value }));
     };
+
+    // Calcular parada de ataque automaticamente
+    const getAttributeValue = (attr: string): number => {
+        return attributes[attr] || 0;
+    };
+
+    const getSkillValue = (skillName: string): number => {
+        const skill = skills.find(s => s.name === skillName);
+        return skill?.points || 0;
+    };
+
+    const attributeValue = getAttributeValue(weapon.attribute);
+    const skillValue = getSkillValue(weapon.skill);
+    const totalAttackPool = attributeValue + skillValue;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -105,8 +121,25 @@ export const AddWeaponModal: React.FC<AddWeaponModalProps> = ({ isOpen, onClose,
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>Bônus Numérico</label>
-                            <input type="number" value={weapon.bonusAttack} onChange={e => handleChange('bonusAttack', Number(e.target.value))} />
+                            <label>Parada de Ataque</label>
+                            <div style={{ 
+                                padding: '0.75rem', 
+                                background: 'rgba(169, 120, 248, 0.1)', 
+                                border: '1px solid #a978f8',
+                                borderRadius: '4px',
+                                fontSize: '1.1rem',
+                                fontWeight: 'bold',
+                                color: '#a978f8'
+                            }}>
+                                {totalAttackPool} 
+                                <small style={{ color: '#aaa', fontSize: '0.8rem', marginLeft: '0.5rem', fontWeight: 'normal' }}>
+                                    ({capitalize(weapon.attribute)} {attributeValue} + {weapon.skill} {skillValue})
+                                </small>
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label>Bônus Adicional</label>
+                            <input type="number" value={weapon.bonusAttack} onChange={e => handleChange('bonusAttack', Number(e.target.value))} placeholder="Bônus de arma ou qualidade (+n)" />
                         </div>
                         <div className="form-group">
                             <label>Alcance</label>

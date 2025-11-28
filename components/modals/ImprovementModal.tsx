@@ -178,6 +178,17 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         const newSoulDice = soulDice - (whiteDiceToConvert * 4);
         const newPaDisponivel = (agent.character.paDisponivel || 0) + whiteDiceToConvert;
 
+        const updatedAgent = {
+            ...agent,
+            character: {
+                ...agent.character,
+                soulDice: newSoulDice,
+                paDisponivel: newPaDisponivel
+            }
+        };
+
+        // Atualizar estado local e pai
+        setCurrentAgent(updatedAgent);
         onUpdateAgent({
             character: {
                 ...agent.character,
@@ -214,13 +225,33 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         if (!abilityToAdd) return;
         
         const newAbility: BeyonderAbility = { ...abilityToAdd, id: Date.now(), acquisitionMethod: 'free', description: abilityToAdd.desc };
-        onUpdateAgent({
+        const updateData: any = {
             habilidadesBeyonder: [...agent.habilidadesBeyonder, newAbility],
             character: {
                 ...agent.character,
                 claimedFreeAbilitiesForSequences: [...(agent.character.claimedFreeAbilitiesForSequences || []), agent.character.sequence]
             }
-        });
+        };
+
+        // Se for uma partícula de domínio, adicionar também em learnedParticles
+        const sourcePath = dataSource[primaryPathwayName || ''];
+        if (sourcePath?.domain?.particulas) {
+            const domainParticle = sourcePath.domain.particulas.find((p: any) => p.name === selectedFreeAbilityName);
+            if (domainParticle) {
+                const newLearnedParticle = {
+                    id: Date.now(),
+                    type: domainParticle.type,
+                    name: domainParticle.name,
+                    palavra: domainParticle.translation,
+                    description: domainParticle.conceito,
+                    isDomain: true,
+                    acquisitionMethod: 'free' as const
+                };
+                updateData.learnedParticles = [...(agent.learnedParticles || []), newLearnedParticle];
+            }
+        }
+
+        onUpdateAgent(updateData);
         onClose();
     };
 
@@ -277,7 +308,31 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
             seqName: ability.seqName,
             acquisitionMethod: 'purchased'
         };
-        setCurrentAgent(prev => ({...prev, habilidadesBeyonder: [...prev.habilidadesBeyonder, newAbility]}));
+        
+        // Se for uma partícula de domínio, adicionar também em learnedParticles
+        let updatedAgent = {...currentAgent, habilidadesBeyonder: [...currentAgent.habilidadesBeyonder, newAbility]};
+        
+        if (ability.seqName.includes('Domínio') && pathwayData?.domain?.particulas) {
+            // Encontrar a partícula de domínio correspondente
+            const domainParticle = pathwayData.domain.particulas.find((p: any) => p.name === ability.name);
+            if (domainParticle) {
+                const newLearnedParticle = {
+                    id: Date.now(),
+                    type: domainParticle.type,
+                    name: domainParticle.name,
+                    palavra: domainParticle.translation,
+                    description: domainParticle.conceito,
+                    isDomain: true,
+                    acquisitionMethod: 'purchase' as const
+                };
+                updatedAgent = {
+                    ...updatedAgent,
+                    learnedParticles: [...(currentAgent.learnedParticles || []), newLearnedParticle]
+                };
+            }
+        }
+        
+        setCurrentAgent(updatedAgent);
     };
 
     const availableAbilitiesForPurchase = useMemo(() => {

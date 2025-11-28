@@ -187,6 +187,7 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({ onShowGrimoi
                             display: 'block',
                             width: '100%',
                             padding: '0.75rem',
+                            marginBottom: '0.5rem',
                             backgroundColor: 'rgba(34, 197, 94, 0.1)',
                             color: '#22c55e',
                             border: '1px solid #22c55e',

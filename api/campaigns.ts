@@ -277,15 +277,19 @@ export async function uploadAndSetCampaignCover(campaignId: string, file: File):
   const fileExt = file.name.split('.').pop();
   const fileName = `${campaignId}_${Date.now()}.${fileExt}`;
 
+  console.log('📤 Uploading campaign cover:', fileName, 'Size:', file.size, 'Type:', file.type);
+
   // 2. Faz upload para o bucket
   const { error: uploadError } = await supabase.storage
     .from('campaign-covers')
     .upload(fileName, file);
 
   if (uploadError) {
-    console.error('Erro ao fazer upload da imagem:', uploadError);
+    console.error('❌ Erro ao fazer upload da imagem:', uploadError);
     throw uploadError;
   }
+
+  console.log('✅ Upload successful! Saved as:', fileName);
 
   // 3. Salva APENAS o path no banco de dados, não a URL inteira.
   const updatedCampaign = await updateCampaign(campaignId, { cover_image_url: fileName });

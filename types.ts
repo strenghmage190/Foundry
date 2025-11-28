@@ -155,6 +155,9 @@ export interface InventoryItem {
     category: string;
     description: string;
     imageUrl: string;
+    na?: number; // Nível de Acesso (opcional, para compatibilidade com itens antigos)
+    peso?: number; // Peso em espaços (opcional, para compatibilidade com itens antigos)
+    origem?: string; // Origem do item (equipamento externo ou item customizado)
 }
 
 export interface Artifact {
@@ -405,4 +408,87 @@ export interface UserProfile {
     useOpenDyslexicFont: boolean;
     avatarPath: string | null;
     highlightColor: string;
+}
+
+// Inimigo/NPC simplificado para combates
+export interface EnemyAbility {
+    name: string;
+    actionType: 'Ação Principal' | 'Ação Livre' | 'Reação' | 'Passivo';
+    description: string;
+    effects?: string;
+}
+
+export interface CreatureSkill {
+    name: string;
+    attr: string; // e.g., "Vigor", "Inteligência"
+    points: number;
+}
+
+export interface EnemyAttack {
+    name: string;
+    dicePool: number;
+    damage: string;
+    qualities?: string;
+    notes?: string;
+}
+
+export interface Enemy {
+    id: string;
+    name: string;
+    description: string;
+    threatLevel: 'Baixa' | 'Média' | 'Alta' | 'Crítica';
+    recommendedSequence: string;
+    
+    // Atributos
+    attributes: Attributes;
+    espiritualidade: number;
+    
+    // Perícias e Testes
+    skills?: {
+        vontade: number;
+        vigor: number;
+        percepcao: number;
+        inteligencia: number;
+        raciocinio: number;
+        [key: string]: number;
+    };
+    creatureSkills?: CreatureSkill[];
+    
+    // Estatísticas de Combate
+    healthPoints: number;
+    initiative: number;
+    initiativeBreakdown?: string;
+    defense: number;
+    defenseBreakdown?: string;
+    absorption: number;
+    absorptionBreakdown?: string;
+    movement: number;
+    
+    // Ações de Combate
+    attacks: EnemyAttack[];
+    
+    // Poderes e Habilidades
+    abilities: EnemyAbility[];
+    
+    // Vulnerabilidades e Fraquezas
+    vulnerabilities?: string[];
+    weaknesses?: string[];
+    
+    // Anotações
+    notes?: string;
+}
+
+export interface CombatSession {
+    id: string;
+    name: string;
+    location?: string;
+    participantIds: string[]; // IDs dos personagens/agentes envolvidos
+    createdAt: Date;
+    status: 'active' | 'paused' | 'finished';
+    notes?: string;
+}
+
+export interface CombatManager {
+    combatSessions: CombatSession[];
+    activeCombatSessionId?: string;
 }
