@@ -2326,12 +2326,17 @@ export const CharacterSheetPage = () => {
                                   onBlur={() => setEditingSkillAttr(null)}
                                   autoFocus
                                 >
-                                  <option value="Força">FOR</option>
-                                  <option value="Destreza">DES</option>
-                                  <option value="Constituição">CON</option>
-                                  <option value="Inteligência">INT</option>
-                                  <option value="Sabedoria">SAB</option>
-                                  <option value="Carisma">CAR</option>
+                                  <option value="Força">FOR (Força)</option>
+                                  <option value="Destreza">DES (Destreza)</option>
+                                  <option value="Constituição">CON (Vigor)</option>
+                                  <option value="Vigor">VIG (Vigor)</option>
+                                  <option value="Carisma">CAR (Carisma)</option>
+                                  <option value="Manipulação">MAN (Manipulação)</option>
+                                  <option value="Autocontrole">AUT (Autocontrole)</option>
+                                  <option value="Inteligência">INT (Inteligência)</option>
+                                  <option value="Raciocínio">RAC (Raciocínio)</option>
+                                  <option value="Percepção">PER (Percepção)</option>
+                                  <option value="Espiritualidade">ESP (Espiritualidade)</option>
                                 </select>
                               ) : (
                                 <span className="skill-attr-tag compact" onClick={() => setEditingSkillAttr(skill.name)}>{attrName.substring(0,3).toUpperCase()}</span>
@@ -2412,12 +2417,17 @@ export const CharacterSheetPage = () => {
                                   onBlur={() => setEditingSkillAttr(null)}
                                   autoFocus
                                 >
-                                  <option value="Força">FOR</option>
-                                  <option value="Destreza">DES</option>
-                                  <option value="Constituição">CON</option>
-                                  <option value="Inteligência">INT</option>
-                                  <option value="Sabedoria">SAB</option>
-                                  <option value="Carisma">CAR</option>
+                                  <option value="Força">FOR (Força)</option>
+                                  <option value="Destreza">DES (Destreza)</option>
+                                  <option value="Constituição">CON (Vigor)</option>
+                                  <option value="Vigor">VIG (Vigor)</option>
+                                  <option value="Carisma">CAR (Carisma)</option>
+                                  <option value="Manipulação">MAN (Manipulação)</option>
+                                  <option value="Autocontrole">AUT (Autocontrole)</option>
+                                  <option value="Inteligência">INT (Inteligência)</option>
+                                  <option value="Raciocínio">RAC (Raciocínio)</option>
+                                  <option value="Percepção">PER (Percepção)</option>
+                                  <option value="Espiritualidade">ESP (Espiritualidade)</option>
                                 </select>
                               ) : (
                                 <div className="skill-attr-tag" onClick={() => setEditingSkillAttr(skill.name)}>{attrName.substring(0,3).toUpperCase()}</div>

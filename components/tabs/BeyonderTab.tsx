@@ -280,6 +280,40 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                 </div>
             )}
 
+            {/* Habilidade gratuita dos caminhos secundários */}
+            {character.pathways?.secondary && character.pathways.secondary.length > 0 && (
+                <div style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    backgroundColor: '#23232b',
+                    border: '1px solid #444',
+                    borderRadius: '8px'
+                }}>
+                    <h4 style={{ color: '#fff', marginBottom: '0.5rem' }}>Habilidade gratuita dos caminhos secundários</h4>
+                    {character.pathways.secondary.map((secPathName) => {
+                        const secKey = resolvePathKey(secPathName);
+                        const secPathData = allPathways[secKey];
+                        // Pega a primeira habilidade gratuita (poder inato ou similar)
+                        const freeAbility = secPathData?.poderesInatos?.[0];
+                        return freeAbility ? (
+                            <div key={secPathName} style={{ marginBottom: '1rem', background: '#18181c', borderRadius: '6px', padding: '0.75rem' }}>
+                                <strong style={{ color: '#8b5cf6' }}>{secPathName}</strong>
+                                <div style={{ marginTop: '0.5rem' }}>
+                                    <span style={{ fontWeight: 'bold', color: '#fff' }}>{freeAbility.nome}</span>
+                                    <span style={{ marginLeft: '0.5rem', color: '#aaa' }}>{freeAbility.seq}</span>
+                                    <p style={{ marginTop: '0.25rem', color: '#ccc' }}>{freeAbility.desc}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div key={secPathName} style={{ marginBottom: '1rem', background: '#18181c', borderRadius: '6px', padding: '0.75rem' }}>
+                                <strong style={{ color: '#8b5cf6' }}>{secPathName}</strong>
+                                <div style={{ marginTop: '0.5rem', color: '#999' }}>Nenhuma habilidade gratuita encontrada.</div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* Nome Alternativo para Exibição Pública */}
             {currentPathwayData?.isSecret && (
                 <div className="pathway-display-name" style={{ 

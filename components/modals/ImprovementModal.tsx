@@ -38,12 +38,13 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     onClose, 
     agent, 
     onUpdateAgent, 
-    addLiveToast,
-    pathwayToImprove,
+    addLiveToast, 
+    pathwayToImprove, 
     allPathwaysData
 }) => {
+    // Local state and safe accessors
     const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent || initialAgentData)));
-    const [paSpent, setPaSpent] = useState(0);
+    const [paSpent, setPaSpent] = useState<number>(0);
     const [activeTab, setActiveTab] = useState<ImprovementTab>('Atributos');
     const [selectedFreeAbilityName, setSelectedFreeAbilityName] = useState<string | null>(null);
     const [isAddingAntecedente, setIsAddingAntecedente] = useState(false);
@@ -53,8 +54,14 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const safeHabilidadesBeyonder = agent?.habilidadesBeyonder || [];
     const { pa, paTotalGasto, sequence } = safeCharacter;
     const isEligibleForFreebie = !(safeCharacter.claimedFreeAbilitiesForSequences?.includes(safeCharacter.sequence));
-    
-    // Updated Digestion Logic - total accumulated PA (available + spent)
+
+    const handleSkillAttrChange = (type: 'gerais' | 'investigativas', skillName: string, attrValue: string) => {
+        setCurrentAgent(prev => {
+            const newSkills = { ...prev.habilidades };
+            newSkills[type] = newSkills[type].map(s => s.name === skillName ? { ...s, attr: attrValue } : s);
+            return { ...prev, habilidades: newSkills };
+        });
+    };
     const targetPa = getPaRequirement(sequence);
     const digestaoProgressoAtual = (paTotalGasto || 0) + (pa || 0);
     const canAdvance = digestaoProgressoAtual >= targetPa && sequence > 1;
@@ -485,11 +492,35 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                             {currentAgent.habilidades.gerais.map((skill: Habilidade) => {
                                 const cost = (skill.points + 1) * 2;
                                 return (
-                                     <div key={skill.name} className="improvement-item">
+                                    <div key={skill.name} className="improvement-item">
                                         <div className="improvement-item-name">{skill.name}: {skill.points} → {skill.points + 1}</div>
                                         <div className="improvement-item-controls">
                                             <span className="improvement-item-cost">Custo: {cost} PA</span>
                                             <button onClick={() => handleSkillIncrease('gerais', skill.name, cost)} disabled={availablePA < cost || skill.points >= 5}>+1</button>
+                                            <select
+                                                value={skill.attr}
+                                                onChange={e => handleSkillAttrChange('gerais', skill.name, e.target.value)}
+                                                style={{
+                                                    backgroundColor: '#1a1a1c',
+                                                    border: '1px solid #444',
+                                                    color: '#fff',
+                                                    borderRadius: 6,
+                                                    padding: '0.35rem 0.5rem',
+                                                    fontSize: '0.9rem',
+                                                    marginLeft: '0.5rem'
+                                                }}
+                                            >
+                                                <option value="FOR">FOR (Força)</option>
+                                                <option value="DES">DES (Destreza)</option>
+                                                <option value="CON">CON (Vigor)</option>
+                                                <option value="CAR">CAR (Carisma)</option>
+                                                <option value="MAN">MAN (Manipulação)</option>
+                                                <option value="AUT">AUT (Autocontrole)</option>
+                                                <option value="INT">INT (Inteligência)</option>
+                                                <option value="RAC">RAC (Raciocínio)</option>
+                                                <option value="PER">PER (Percepção)</option>
+                                                <option value="ESP">ESP (Espiritualidade)</option>
+                                            </select>
                                         </div>
                                     </div>
                                 )
@@ -498,11 +529,35 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                               {currentAgent.habilidades.investigativas.map((skill: Habilidade) => {
                                 const cost = (skill.points + 1) * 3;
                                 return (
-                                     <div key={skill.name} className="improvement-item">
+                                    <div key={skill.name} className="improvement-item">
                                         <div className="improvement-item-name">{skill.name}: {skill.points} → {skill.points + 1}</div>
                                         <div className="improvement-item-controls">
                                             <span className="improvement-item-cost">Custo: {cost} PA</span>
                                             <button onClick={() => handleSkillIncrease('investigativas', skill.name, cost)} disabled={availablePA < cost || skill.points >= 5}>+1</button>
+                                            <select
+                                                value={skill.attr}
+                                                onChange={e => handleSkillAttrChange('investigativas', skill.name, e.target.value)}
+                                                style={{
+                                                    backgroundColor: '#1a1a1c',
+                                                    border: '1px solid #444',
+                                                    color: '#fff',
+                                                    borderRadius: 6,
+                                                    padding: '0.35rem 0.5rem',
+                                                    fontSize: '0.9rem',
+                                                    marginLeft: '0.5rem'
+                                                }}
+                                            >
+                                                <option value="FOR">FOR (Força)</option>
+                                                <option value="DES">DES (Destreza)</option>
+                                                <option value="CON">CON (Vigor)</option>
+                                                <option value="CAR">CAR (Carisma)</option>
+                                                <option value="MAN">MAN (Manipulação)</option>
+                                                <option value="AUT">AUT (Autocontrole)</option>
+                                                <option value="INT">INT (Inteligência)</option>
+                                                <option value="RAC">RAC (Raciocínio)</option>
+                                                <option value="PER">PER (Percepção)</option>
+                                                <option value="ESP">ESP (Espiritualidade)</option>
+                                            </select>
                                         </div>
                                     </div>
                                 )
