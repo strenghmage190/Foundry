@@ -1018,8 +1018,9 @@ export const CharacterSheetPage = () => {
     const maxLuckPoints = hasFortuneWheel ? getMaxLuckPointsBySequence(sequence) : 0;
 
     // Calcula Pontos de Estase (Caminho do Éon Eterno)
+    // PEt = Espiritualidade (pontos atuais) + Vigor (atributo)
     const hasAeonPathway = characterPathways.some(p => p.toUpperCase().includes('ÉON') || p.toUpperCase().includes('AEON'));
-    const maxEstasePoints = hasAeonPathway ? (agent.attributes.vigor || 0) + (agent.attributes.espiritualidade || 0) : 0;
+    const maxEstasePoints = hasAeonPathway ? (agent.character.spirituality || 0) + (agent.attributes.vigor || 0) : 0;
 
     return {
       maxVitality: base.maxVitality,
@@ -1081,6 +1082,33 @@ export const CharacterSheetPage = () => {
   // =======================================================
   // 👆👆👆 FIM DA GRANDE MUDANÇA 👆👆👆
   // =======================================================
+
+  // Inicializar Pontos de Estase automaticamente para personagens existentes
+  useEffect(() => {
+    if (!effectiveAgentData || !derivedStats) return;
+    
+    const { character } = effectiveAgentData;
+    const needsInitialization = 
+      derivedStats.maxEstasePoints > 0 && 
+      (character.maxEstasePoints === undefined || character.maxEstasePoints === 0) &&
+      (character.estasePoints === undefined || character.estasePoints === 0);
+    
+    if (needsInitialization) {
+      console.log('🔧 Inicializando Pontos de Estase para personagem existente:', {
+        maxEstasePoints: derivedStats.maxEstasePoints,
+        vigor: effectiveAgentData.attributes.vigor,
+        espiritualidade: effectiveAgentData.attributes.espiritualidade
+      });
+      
+      handleUpdate({
+        character: {
+          ...character,
+          maxEstasePoints: derivedStats.maxEstasePoints,
+          estasePoints: derivedStats.maxEstasePoints
+        }
+      });
+    }
+  }, [effectiveAgentData?.character.pathway, effectiveAgentData?.character.pathways, derivedStats?.maxEstasePoints]);
 
   const sheetStyle = useMemo(() => {
     if (!agent) return {};
@@ -1161,8 +1189,8 @@ export const CharacterSheetPage = () => {
   ) => {
     const newAttributes = { ...effectiveAgentData.attributes, [attribute]: value };
     
-    // Recalcular maxEstasePoints se vigor ou espiritualidade mudarem
-    if ((attribute === 'vigor' || attribute === 'espiritualidade') && effectiveAgentData) {
+    // Recalcular maxEstasePoints se vigor mudar (PEt = Espiritualidade + Vigor)
+    if (attribute === 'vigor' && effectiveAgentData) {
       const c = effectiveAgentData.character;
       let hasAeon = false;
       if (c.pathways?.primary) {
@@ -1174,9 +1202,7 @@ export const CharacterSheetPage = () => {
       }
       
       if (hasAeon) {
-        const newVigor = attribute === 'vigor' ? value : newAttributes.vigor || 0;
-        const newEsp = attribute === 'espiritualidade' ? value : newAttributes.espiritualidade || 0;
-        const newMaxEstase = newVigor + newEsp;
+        const newMaxEstase = (c.spirituality || 0) + value;
         const currentEstase = c.estasePoints || 0;
         
         handleUpdate({

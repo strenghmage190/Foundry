@@ -113,7 +113,7 @@ export const EstaseTracker: React.FC<EstaseTrackerProps> = ({ character, onUpdat
         fontSize: '0.85rem',
         color: '#aaa'
       }}>
-        <strong style={{ color: '#9c27b0' }}>Máx PEt:</strong> Vigor + Espiritualidade
+        <strong style={{ color: '#9c27b0' }}>Máx PEt:</strong> Espiritualidade + Vigor
         <br />
         <strong style={{ color: '#9c27b0' }}>Intervenção Causal:</strong> Gaste 1 PEt ao ver rolagem; converta 1 ou 10 em 5 ou 6
       </div>

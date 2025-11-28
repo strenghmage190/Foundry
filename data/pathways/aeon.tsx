@@ -14,7 +14,7 @@ export const aeonData: PathwayData = {
     mecanicaUnica: {
         titulo: 'Pontos de Estase (PEt) e Fluxo Causal',
         items: [
-            { nome: 'Reserva de PEt', desc: 'Sua reserva total de Pontos de Estase (PEt) = Vigor + Espiritualidade.' },
+            { nome: 'Reserva de PEt', desc: 'Sua reserva total de Pontos de Estase (PEt) = Espiritualidade + Vigor.' },
             { nome: 'Intervenção Causal', desc: 'Reação Livre: Gaste 1 PEt ao ver qualquer rolagem; converta um extremo (1 ou 10) em 5 ou 6, estabilizando o Fado.' },
             { nome: 'Cumprimento do Fado', desc: 'Após sofrer Botch, teste Vigor + Autocontrole (Dif.8). Se vencer, gaste 2 PEt para Transferir a Culpa Causal: a falha é rerrolada contra alvo de Sequência ≤ sua (exceto Luz/Ordem).'},
             { nome: 'Dança da Finalidade', desc: 'Âncora Ritualística. Se omitida em criação de feitiços, -2 dados nos testes de ativação. Dura 5+ minutos no início/fim de rituais.' },

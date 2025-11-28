@@ -1036,11 +1036,12 @@ export const CharacterCreationWizard: React.FC = () => {
                         { conviction: '', symbol: '' }
                     ],
                     // Pontos de Estase (PEt) para Caminho do Éon Eterno
+                    // PEt = Espiritualidade (pontos) + Vigor (atributo)
                     estasePoints: (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO ÉON ETERNO' || (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO AEON ETERNO'
-                        ? finalAttributes.vigor + finalAttributes.espiritualidade
+                        ? PE + finalAttributes.vigor
                         : 0,
                     maxEstasePoints: (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO ÉON ETERNO' || (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO AEON ETERNO'
-                        ? finalAttributes.vigor + finalAttributes.espiritualidade
+                        ? PE + finalAttributes.vigor
                         : 0
                 },
                 backgrounds: {
