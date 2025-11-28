@@ -39,7 +39,7 @@ insert into pathways (
   name, category, pv_base, pv_por_avanco, pe_base, pe_por_avanco, vontade_bonus, sanidade_base,
   domain_description, sequences, is_secret, allowed_agent_ids
 ) values (
-  'CAMINHO DO VÉU (SECRETO)', 'SECRETO', 7, 2, 5, 2, 1, 6,
+  'CAMINHO DO PRIMOGÊNITO DO CAOS (SECRETO)', 'SECRETO', 7, 2, 5, 2, 1, 6,
   'Domínio de ilusões e ocultação metafísica.',
   '{"Sequência 9":[{"name":"Bruma Inicial","desc":"Cria névoa ilusória menor (placeholder)."}],"Sequência 8":[{"name":"Olhar Obscuro","desc":"Dificulta rastreamento mental (placeholder)."}]}',
   true,

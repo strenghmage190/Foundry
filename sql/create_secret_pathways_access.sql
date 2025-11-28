@@ -92,7 +92,7 @@ SELECT
 INSERT INTO secret_pathway_access (pathway_name, is_secret, allowed_user_ids, allowed_agent_ids)
 VALUES 
   ('CAMINHO DO ÉON ETERNO', true, array[]::uuid[], array[]::integer[]),
-  ('CAMINHO DO VÉU', true, array[]::uuid[], array[]::integer[])
+  ('CAMINHO DO PRIMOGÊNITO DO CAOS', true, array[]::uuid[], array[]::integer[])
 ON CONFLICT (pathway_name) DO NOTHING;
 
 -- 5. Função helper para adicionar acesso a um usuário
@@ -147,27 +147,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ============================================================
--- EXEMPLOS DE USO
--- ============================================================
 
--- Conceder acesso ao Caminho do Éon Eterno para um usuário específico:
--- SELECT grant_secret_pathway_access('CAMINHO DO ÉON ETERNO', 'uuid-do-usuario');
 
--- Conceder acesso ao Caminho do Véu para um agente específico:
--- SELECT grant_secret_pathway_access('CAMINHO DO VÉU', NULL, 123);
+-- Conceder acesso ao Caminho do Primogênito do Caos para um agente específico:
+-- SELECT grant_secret_pathway_access('CAMINHO DO PRIMOGÊNITO DO CAOS', NULL, 123);
 
--- Verificar se usuário atual pode ver um caminho:
--- SELECT can_user_see_secret_pathway('CAMINHO DO ÉON ETERNO');
 
--- Remover acesso:
--- SELECT revoke_secret_pathway_access('CAMINHO DO ÉON ETERNO', 'uuid-do-usuario');
 
--- Listar todos os acessos configurados:
--- SELECT * FROM secret_pathway_access;
 
--- Ver quais caminhos o usuário atual pode acessar:
--- SELECT * FROM user_visible_pathways;
 
 -- ============================================================
 -- POLÍTICAS RLS (Row Level Security) - OPCIONAL

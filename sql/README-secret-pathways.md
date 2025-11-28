@@ -29,9 +29,9 @@ SELECT grant_secret_pathway_access(
   'user-uuid-aqui'::uuid
 );
 
--- Para o Caminho do Véu
+-- Para o Caminho do Primogênito do Caos
 SELECT grant_secret_pathway_access(
-  'CAMINHO DO VÉU', 
+  'CAMINHO DO PRIMOGÊNITO DO CAOS', 
   'user-uuid-aqui'::uuid
 );
 ```
@@ -121,7 +121,8 @@ SELECT * FROM secret_pathway_access
 WHERE pathway_name = 'CAMINHO DO ÉON ETERNO';
 ```
 
-### Cenário: Liberar Véu para quem tem can_create_pathways
+
+### Cenário: Liberar Primogênito do Caos para quem tem can_create_pathways
 
 Neste caso, não precisa fazer nada! O sistema já reconhece usuários com `can_create_pathways = true` automaticamente.
 

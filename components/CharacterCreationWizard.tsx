@@ -79,7 +79,7 @@ const DOMAIN_PARTICLES: Record<string, DomainParticle> = {
     'CAMINHO DA RODA DA FORTUNA': { pathway: 'CAMINHO DA RODA DA FORTUNA', particle: 'Fatum', word: 'Destino', type: 'Característica' },
     'CAMINHO DO ERRO': { pathway: 'CAMINHO DO ERRO', particle: 'Nihil', word: 'Vazio/Lacuna', type: 'Objeto' },
     'CAMINHO DO ÉON ETERNO': { pathway: 'CAMINHO DO ÉON ETERNO', particle: 'Fatum', word: 'Fado/Sentença', type: 'Característica' },
-    'CAMINHO DO VÉU': { pathway: 'CAMINHO DO VÉU', particle: 'Caligo', word: 'Névoa', type: 'Característica' }
+    'CAMINHO DO PRIMOGÊNITO DO CAOS': { pathway: 'CAMINHO DO PRIMOGÊNITO DO CAOS', particle: 'Bios/Haema/Profanus', word: 'Vida/Sangue/Profano', type: 'Característica' }
 };
 
 interface UniversalParticle {
@@ -246,7 +246,7 @@ const BASE_PATHWAYS = [
 
 const SECRET_PATHWAYS = [
     'CAMINHO DO ÉON ETERNO',
-    'CAMINHO DO VÉU'
+    'CAMINHO DO PRIMOGÊNITO DO CAOS'
 ];
 
 // Mapeamento para exibição amigável
@@ -274,7 +274,7 @@ const PATHWAY_DISPLAY_NAMES: Record<string, string> = {
     'CAMINHO DO IMPERADOR NEGRO': 'Imperador Negro',
     'CAMINHO DA RODA DA FORTUNA': 'Roda da Fortuna',
     'CAMINHO DO ÉON ETERNO': 'Éon Eterno',
-    'CAMINHO DO VÉU': 'Véu'
+    'CAMINHO DO PRIMOGÊNITO DO CAOS': 'Primogênito do Caos'
 };
 
 export const CharacterCreationWizard: React.FC = () => {
@@ -294,7 +294,7 @@ export const CharacterCreationWizard: React.FC = () => {
             available.push('CAMINHO DO ÉON ETERNO');
         }
         if (permissions.can_see_pathway_veu) {
-            available.push('CAMINHO DO VÉU');
+            available.push('CAMINHO DO PRIMOGÊNITO DO CAOS');
         }
         console.log('📜 Caminhos disponíveis:', available);
         return available;

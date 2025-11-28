@@ -112,7 +112,7 @@ const PathwayManager: React.FC<PathwayManagerProps> = ({
           return permissions.can_see_pathway_aeon === true;
         }
         
-        if (pathwayName.includes('VÉU') || pathwayName.includes('VEU')) {
+        if (pathwayName.includes('PRIMOGÊNITO') || pathwayName.includes('PRIMOGENITO') || pathwayName.includes('PRIMOGÊNITO DO CAOS') || pathwayName.includes('PRIMOGENITO DO CAOS')) {
           return permissions.can_see_pathway_veu === true;
         }
         

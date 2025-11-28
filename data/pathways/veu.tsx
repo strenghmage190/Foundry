@@ -1,126 +1,98 @@
 import { PathwayData } from '../../types';
 
-// CAMINHO DO VÉU (CAOS) - Caminho Secreto
-// Domínio do Caos, Vida Profana, Corrupção e Alquimia Herética
+// Substituído: Conteúdo do Véu atualizado para representar o Caminho do Primogênito do Caos
+// OBS: arquivo permanece em './veu' para compatibilidade com permissões/SQL existentes.
 export const veuData: PathwayData = {
-  category: 'Caos e Vida Profana',
-  pathway: 'CAMINHO DO VÉU',
-  pvBase: 10, // Versátil (corpo como ferramenta/laboratório)
+  category: 'Caos e Corrupção Biológica',
+  pathway: 'CAMINHO DO PRIMOGÊNITO DO CAOS',
+  title: 'CAMINHO DO PRIMOGÊNITO DO CAOS',
+  pvBase: 12,
   pvPorAvanço: 4,
-  peBase: 15, // Híbrido (manipulação física + feitiçaria espiritual)
-  pePorAvanço: 5,
-  vontadeBonus: 0, // Instável (dominação, impulsos sombrios)
-  sanidade: 7, // Equilibrado (corrupção gradual, não verdades cósmicas)
+  peBase: 20,
+  pePorAvanço: 6,
+  vontadeBonus: 0,
+  sanidade: 6,
   mecanicaUnica: {
-    titulo: 'Abraço do Caos',
+    titulo: 'O Jardim da Carne',
     items: [
-      { nome: 'Imprevisibilidade', desc: 'O Caos rejeita ordem. Sempre que rolar dados, role 1d10 adicional: se for 10, algo inesperado acontece a seu favor; se for 1, contra você.' },
-      { nome: 'Entropia Crescente', desc: 'Cada vez que usa uma habilidade do Véu, acumula 1 ponto de Entropia. Com 5 pontos, deve fazer teste de Sanidade (Dif. 7) ou sofrer efeito aleatório de Caos.' },
-      { nome: 'Manipulação de Probabilidade', desc: 'Gaste 3 PE: force rerrolagem de qualquer teste (seu ou de outro). O novo resultado é final.' },
-      { nome: 'TODO: Adicionar mais mecânicas únicas', desc: '' }
+      { nome: 'Alquimia de Sangue (A Colheita)', desc: 'Use seu sangue como componente: Potencializar (+50% potência) ou Corromper (efeito colateral de corrupção). Custa 1 Ponto de Corrupção Física ao usuário (nova trilha, máximo 10).' },
+      { nome: 'A Forma Mutável (O Plantio)', desc: 'Gaste tempo em ritual para gastar Pontos de Corrupção Física e adquirir Dádivas Profanas temporárias (guelras, pele quitinosa, garras, etc.).' },
+      { nome: 'Metástase Incontrolável (O Risco)', desc: 'Cada 5 pontos de Corrupção Física aumenta a dificuldade de testes de Vontade para resistir à perda de controle. Em 10 pontos traços se tornam permanentes.' }
     ]
   },
   poderesInatos: [
-    { seq: '9', nome: 'Toque da Desordem', desc: '+2 dados em testes para causar confusão, desordem ou sabotagem.' },
-    { seq: '8', nome: 'Sorte do Caos', desc: '1x por sessão, transforme uma falha crítica em sucesso marginal.' },
-    { seq: '7', nome: 'Aura Entrópica', desc: 'Objetos complexos perto de você (10m) têm chance de falhar (armas emperram, portas travam, etc).' },
-    { seq: '6', nome: 'TODO: Poder Seq 6', desc: '' },
-    { seq: '5', nome: 'TODO: Poder Seq 5', desc: '' },
-    { seq: '4', nome: 'Olho do Caos', desc: 'Pode ver linhas de probabilidade e eventos caóticos antes de acontecerem (+3 Iniciativa).' },
-    { seq: '3', nome: 'TODO: Poder Seq 3', desc: '' },
-    { seq: '2', nome: 'TODO: Poder Seq 2', desc: '' },
-    { seq: '1', nome: 'Avatar do Caos', desc: 'Você se torna um ponto focal de entropia pura. Realidade se distorce ao seu redor.' }
+    { seq: '9', nome: 'Aura de Dominância', desc: 'Passivo: dificuldade para usar Intimidação diminui em 1; mortais de Vontade baixa hesitam.' },
+    { seq: '8', nome: 'Dedo Verde', desc: 'Passivo: identifique plantas e faça-as crescer mais rápido e saudáveis.' },
+    { seq: '7', nome: 'Sangue Corrompido', desc: 'Passivo: quando usado como componente em rituais de corrupção, seu sangue adiciona +1 dado ao teste de ativação.' },
+    { seq: '6', nome: 'Semente de Vida', desc: 'Ativo: 1x/semana gaste 5 PE para encantar uma semente que gera criatura vegetal obediente por 1 hora.' },
+    { seq: '5', nome: 'Metamorfose Inevitável', desc: 'Passivo: sua forma física altera-se permanentemente para feminina.' },
+    { seq: '4', nome: 'Voz da Soberana', desc: 'Passivo: seus comandos verbais têm autoridade sobrenatural; dificuldade para resistir aumenta em 1 para alvos de Sequência inferior.' },
+    { seq: '3', nome: 'Domínio da Procriação', desc: 'Ativo: gaste PE para acelerar gestação ou tornar um ser fértil (efeito a critério do Narrador).' },
+    { seq: '2', nome: 'Toque da Realidade', desc: 'Ativo/Reação: 1x/sessão gaste 1 Ponto de Vontade para declarar um objeto inanimado "real" (indestrutível por cena) ou "irreal" (se desfaz).'},
+    { seq: '1', nome: 'Ressurreição Profana', desc: 'Ativo/Ritual: toque em um recém-falecido e traga-o de volta. Ritual perigoso e custoso, quase sempre chamando a atenção divina.' }
   ],
   mythicalForm: {
-    incomplete: {
-      tempHpBonus: 0,
-      attributeBoosts: {
-        destreza: 2,
-        manipulacao: 2,
-        percepcao: 1
-      },
-      sanityCostPerTurn: '1d6',
-      abilities: [
-        { name: 'Forma Caótica', desc: 'Seu corpo muda constantemente. +2 Defesa contra ataques físicos.' },
-        { name: 'Irradiar Caos', desc: 'Inimigos a 5m sofrem -1 dado em todos os testes.' },
-        { name: 'TODO: Adicionar mais habilidades da forma incompleta', desc: '' }
-      ]
+    availableAtSeq: 4,
+    name: 'A Mãe Fecunda do Pecado',
+    activation: 'Ação Completa — exige Degradação de Sanidade; acumula Pontos de Corrupção Mítica',
+    passive: {
+      titulo: 'Aura da Fertilidade Profana',
+      desc: 'Plantas crescem descontroladamente; pequenas criaturas tornam-se hostis a outros. Aliados em 10m recuperam 1 nível de Vitalidade/turno; após 3 turnos devem passar em Vontade (DT 5) ou sofrer um traço físico grotesco temporário.'
     },
-    complete: {
-      tempHpBonus: 10,
-      attributeBoosts: {
-        destreza: 3,
-        manipulacao: 3,
-        percepcao: 2,
-        raciocinio: 1
-      },
-      abilities: [
-        { name: 'Senhor da Entropia', desc: 'Controle total sobre caos local. +3 Defesa, +2 Absorção.' },
-        { name: 'Reescrever Destino', desc: 'Ação: Altere o resultado de qualquer rolagem feita na cena para qualquer valor.' },
-        { name: 'Aura de Improbabilidade', desc: 'Eventos impossíveis se tornam possíveis ao seu redor. O Mestre narra fenômenos caóticos.' },
-        { name: 'TODO: Adicionar mais habilidades da forma completa', desc: '' }
-      ]
-    }
+    bonusesIniciais: { forca: 2, vigor: 2 },
+    abilities: [
+      { name: 'Nascimento de Prole', requisito: 'Seq.4', custo: '8 PE', desc: 'Sua massa corporal gera 1d3 criaturas vegetais/monstruosas que servem você até o fim da cena.' },
+      { name: 'Toque da Mãe Divina', requisito: 'Seq.3', custo: '10 PE', desc: 'Toque voluntário: restaura todos os níveis de Vitalidade e cura doenças/venenos. O alvo recebe uma fraqueza permanente decidida pelo Narrador.' },
+      { name: 'Velo da Realidade', requisito: 'Seq.2', custo: '5 PE (Reação)', desc: 'Anula um ataque/poder que manipule realidade/tempo/espaço na sua direção; o poder falha como se não tivesse sido ativado.' }
+    ]
   },
   domain: {
-    description: 'Vida Profana, Sangue, Mutação, Alquimia Herética e Corrupção Biológica. Domínio visceral sobre carne, ciclos de vida e rituais proibidos.',
+    description: 'Apelidados de "Os Jardineiros Profanos": intimidação primordial, alquimia floral e manipulação da vida para propagar corrupção. Catalisador ambulante para criação, corrupção e mutação.',
     particulas: [
-      { name: 'Bios', translation: 'Vida Primal', type: 'Objeto/Característica', conceito: 'Essência da vida caótica — crescimento, mutação, procriação. Poder do câncer, evolução e criação de monstros.', exemplo: 'Ev Phys Bios — Invocar Corpo com Vida Primal (criar quimeras, forçar crescimento celular aberrante)', uso: 'Lues Phys Bios — Corromper Corpo com Vida Primal (impor mutação: tumores, membros extras, deformações)' },
-      { name: 'Haema', translation: 'Sangue', type: 'Objeto/Característica', conceito: 'Sangue como veículo da vida, linhagem e poder. Governa vitalidade líquida, roubo vampírico e feitiçaria de sangue.', exemplo: 'Im Eli Haema — Atacar com Elemento Sangue (lâminas, projéteis ou tentáculos de sangue endurecido)', uso: 'Na Phys Haema — Restaurar Corpo com Sangue (cura perigosa que acelera coagulação, deixa cicatrizes grotescas)' },
-      { name: 'Profanus', translation: 'Profano/Herético', type: 'Função', conceito: 'Desafiar e perverter ordem divina. Blasfêmia, ritual proibido, corrupção conceitual. Mancha luz, torce vida.', exemplo: 'Profanus Magia — Profanar Magia (corromper cura em tumores/dor, transformar selos sagrados em atratores de mal)', uso: 'Corromper conceitos sagrados, inverter propósitos de feitiços benéficos, poluir rituais' },
-      { name: 'TODO: Partícula 4', translation: 'TODO', type: 'TODO', conceito: 'TODO', exemplo: 'TODO', uso: 'TODO' }
+      { name: 'Bios', translation: 'Vida', type: 'Característica', conceito: 'Crescimento e reprodução selvagens; criação e manipulação de organismos.' },
+      { name: 'Haema', translation: 'Sangue', type: 'Objeto', conceito: 'Sangue como catalisador; feitiçaria de sangue e alquimia biológica.' },
+      { name: 'Profanus', translation: 'Profano', type: 'Função', conceito: 'Herético, corrupção de rituais e conceitos sagrados.' }
     ]
   },
   sequences: {
     'Sequência 9': [
-      { name: 'Toque Entrópico', desc: 'Gaste 2 PE: toque causa mal funcionamento em objeto simples (arma, fechadura, etc) por 1 cena.' },
-      { name: 'Confundir Sentidos', desc: 'Gaste 2 PE: alvo deve fazer teste de Percepção (Dif. 6) ou fica desorientado por 1 turno (-2 dados).' },
-      { name: 'TODO: Habilidade Seq 9 #3', desc: '' }
+      { name: 'Aura de Pavor (Ativo)', custo: '2 PE', desc: 'Gaste 2 PE: alvo na linha de visão faz teste de Vontade (DT 6) ou sofre -1 dado em todas as ações por 3 turnos.' },
+      { name: 'Físico Aprimorado (Passivo)', desc: 'Ganhe +1 permanente em Força ou Vigor.' },
+      { name: 'Golpe Brutal (Ativo)', custo: '3 PE', desc: 'Ataque corpo a corpo que ignora 2 pontos de Armadura; empurra alvo 2m se não tiver armadura.' }
     ],
     'Sequência 8': [
-      { name: 'Cascata de Falhas', desc: 'Gaste 3 PE: equipamento tecnológico/complexo em área pequena falha por 1d6 turnos.' },
-      { name: 'TODO: Habilidade Seq 8 #2', desc: '' }
+      { name: 'Conhecimento Botânico (Passivo)', desc: 'Crie poções simples (Agente Cicatrizante, Veneno de Escorpião, Agente Casca-grossa) mediante teste Inteligência + Ofícios.' },
+      { name: 'Mestre das Lâminas de Poda (Passivo)', desc: 'Ferramentas de jardinagem não sofrem penalidade e causam +2 dano.' },
+      { name: 'Aura do Semeador (Ativo)', custo: '2 PE', desc: '10m: plantas animadas hostis aos seus inimigos por 1 hora; terreno difícil e -1 dado em Furtividade.' }
     ],
     'Sequência 7': [
-      { name: 'Desvio Probabilístico', desc: 'Gaste 4 PE: modifique +2 ou -2 em qualquer rolagem que você testemunhe (antes do resultado).' },
-      { name: 'TODO: Habilidade Seq 7 #2', desc: '' }
+      { name: 'Ritual: Santuário de Sangue (Ativo/Ritual)', custo: '10 PE', tempo: '1h', desc: 'Santuário com bônus: custos de habilidades de vida reduzidos pela metade; Olhos da Deusa (percepção) e Vínculo Vital.' },
+      { name: 'Feitiço: Forma Espectral (Ativo)', custo: '4 PE/turno', desc: 'Dentro do Santuário você torna-se intangível e invisível.' },
+      { name: 'Feitiço: Animação de Sangue (Ativo)', custo: '6 PE', desc: 'Reanima cadáver como Espírito de Sangue (Força 4, Vigor 4, comportamento simples).' }
     ],
     'Sequência 6': [
-      { name: 'TODO: Habilidade Seq 6 #1', desc: '' },
-      { name: 'TODO: Habilidade Seq 6 #2', desc: '' }
+      { name: 'Dádiva da Vida (Ativo/Ritual)', desc: 'Ritual íntimo que gera gestação acelerada; o feto é ingrediente místico e cria vínculo com o caster.' },
+      { name: 'Criação de Sementes-Vínculo (Ativo)', custo: '3 PE', desc: 'Encante sementes para comunicação telepática e sensibilidade sobre o portador.' },
+      { name: 'Cura pelo Toque (Ativo)', custo: '4 PE', desc: 'Restaura 3 níveis de Vitalidade; deixa cicatrizes grotescas; uso repetido tem risco.' }
     ],
     'Sequência 5': [
-      { name: 'Zona de Caos', desc: 'Gaste 7 PE: crie área de 10m onde eventos imprevisíveis acontecem (Mestre narra). Dura 3 turnos.' },
-      { name: 'TODO: Habilidade Seq 5 #2', desc: '' }
+      { name: 'Grito da Banshee (Ativo)', custo: '4 PE', desc: 'Cone 10m: inimigos fazem teste de Vontade (DT 7) ou sofrem 1 Nível de Degradação de Sanidade.' },
+      { name: 'Maldição Enfraquecedora (Ativo)', custo: '3 PE', desc: 'Toque/aponte: teste disputado; impõe -2 dados em testes Físicos na próxima cena.' }
     ],
     'Sequência 4': [
-      { name: 'Reverter Causalidade', desc: 'Gaste 10 PE: desfaça 1 ação que aconteceu no turno anterior (incluindo dano).' },
-      { name: 'TODO: Habilidade Seq 4 #2', desc: '' }
+      { name: 'Metamorfose Inevitável (Passivo)', desc: 'Seu gênero físico altera-se para feminino permanentemente.' },
+      { name: 'Invocação Profana (Ativo/Ritual)', custo: '10 PE', tempo: '1 min', desc: 'Abra uma fenda e convoque uma criatura maligna por 1 cena.' }
     ],
     'Sequência 3': [
-      { name: 'TODO: Habilidade Seq 3 #1', desc: '' },
-      { name: 'TODO: Habilidade Seq 3 #2', desc: '' }
+      { name: 'Domínio da Procriação (Ativo)', desc: 'Acelere gestação ou torne um ser fértil mediante gasto de PE significativo.' }
     ],
     'Sequência 2': [
-      { name: 'Tempestade de Entropia', desc: 'Gaste 15 PE: área grande sofre efeitos caóticos extremos. Todos fazem testes de Sanidade (Dif. 8).' },
-      { name: 'TODO: Habilidade Seq 2 #2', desc: '' }
+      { name: 'Velo da Realidade (Reação)', custo: '5 PE', desc: 'Anula um ataque/poder que manipule realidade/tempo/espaço.' }
     ],
     'Sequência 1': [
-      { name: 'Colapso da Ordem', desc: 'Gaste 25 PE: destrua completamente um sistema, estrutura ou padrão (físico ou abstrato).' },
-      { name: 'Reescrever Realidade', desc: 'Gaste 30 PE e 2 Vontade: altere retroativamente 1 evento ocorrido na sessão.' }
+      { name: 'Ressurreição Profana (Ativo/Ritual)', desc: 'Ressuscitar um ser recém-falecido mediante grande sacrifício narrativo/mecânico.' }
     ]
   },
-  correntes: [
-    { id: 1, sequence: 'Seq. 9', titulo: 'Abraço da Desordem', beneficio: '+1 dado ao causar confusão ou caos social.', risco: 'Você também sofre -1 em testes de organização e planejamento.' },
-    { id: 2, sequence: 'Seq. 8', titulo: 'TODO: Corrente Seq 8', beneficio: 'TODO', risco: 'TODO' },
-    { id: 3, sequence: 'Seq. 7', titulo: 'TODO: Corrente Seq 7', beneficio: 'TODO', risco: 'TODO' },
-    { id: 4, sequence: 'Seq. 6', titulo: 'TODO: Corrente Seq 6', beneficio: 'TODO', risco: 'TODO' },
-    { id: 5, sequence: 'Seq. 5', titulo: 'Zona de Instabilidade', beneficio: 'Dentro de sua Zona de Caos, você ganha +2 Iniciativa.', risco: 'Aliados também são afetados por eventos aleatórios.' },
-    { id: 6, sequence: 'Seq. 4', titulo: 'TODO: Corrente Seq 4', beneficio: 'TODO', risco: 'TODO' },
-    { id: 7, sequence: 'Seq. 3', titulo: 'TODO: Corrente Seq 3', beneficio: 'TODO', risco: 'TODO' },
-    { id: 8, sequence: 'Seq. 2', titulo: 'TODO: Corrente Seq 2', beneficio: 'TODO', risco: 'TODO' },
-    { id: 9, sequence: 'Seq. 1', titulo: 'Agente do Caos Absoluto', beneficio: 'Imunidade a padrões e previsões. Ninguém pode prever suas ações.', risco: 'Você também não pode planejar com mais de 1 turno de antecedência.' }
-  ],
   isSecret: true,
   allowedAgentIds: [],
   allowedUserIds: []
