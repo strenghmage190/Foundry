@@ -17,6 +17,15 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const APPLY = process.argv.includes('--apply');
+// optional filters
+const AGENT_FILTER = (() => {
+  const idx = process.argv.indexOf('--agent');
+  return idx >= 0 ? process.argv[idx + 1] : null;
+})();
+const PLAYER_FILTER = (() => {
+  const idx = process.argv.indexOf('--player');
+  return idx >= 0 ? process.argv[idx + 1] : null;
+})();
 
 const stripAccents = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
@@ -36,7 +45,17 @@ async function fetchAllAgents() {
     .range(0, 99999);
 
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+
+  // Apply optional filters in-memory (safe for small DBs)
+  if (AGENT_FILTER) {
+    return rows.filter(r => String(r.id) === String(AGENT_FILTER));
+  }
+  if (PLAYER_FILTER) {
+    return rows.filter(r => (r.data && r.data.character && r.data.character.name && String(r.data.character.name).toLowerCase() === String(PLAYER_FILTER).toLowerCase()));
+  }
+
+  return rows;
 }
 
 function normalizeAgentData(agentData) {

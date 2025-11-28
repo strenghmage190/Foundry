@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { BeyonderAbility, PathwayData, Character, InfernalAspect } from '../../types.ts';
 import { hasArcaneMastery } from '../../utils/calculations';
+import { resolvePathKey } from '../../utils/resolvePathKey';
 
 interface BeyonderTabProps {
     abilities: BeyonderAbility[];
