@@ -3,12 +3,45 @@ import { Enemy, Attributes } from '../types.ts';
 
 // Função para gerar UUID
 const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 };
+
+const createEmptyCreature = (): Enemy => ({
+    id: generateUUID(),
+    name: '',
+    description: '',
+    threatLevel: 'Média',
+    recommendedSequence: '',
+    attributes: initialAttributes,
+    espiritualidade: 1,
+    healthPoints: 20,
+    initiative: 3,
+    defense: 3,
+    absorption: 3,
+    movement: 6,
+    attacks: [],
+    abilities: [],
+    vulnerabilities: [],
+    weaknesses: [],
+    skills: {
+        vontade: 3,
+        vigor: 3,
+        percepcao: 3,
+        inteligencia: 2,
+        raciocinio: 2
+    },
+    creatureSkills: [
+        { name: 'Vontade', attr: 'Autocontrole', points: 3 },
+        { name: 'Vigor', attr: 'Vigor', points: 3 },
+        { name: 'Percepção', attr: 'Sabedoria', points: 3 },
+        { name: 'Inteligência', attr: 'Inteligência', points: 2 },
+        { name: 'Raciocínio', attr: 'Inteligência', points: 2 }
+    ]
+});
 
 interface EditCreatureModalProps {
     isOpen: boolean;
@@ -32,38 +65,7 @@ const initialAttributes: Attributes = {
 
 export const EditCreatureModal: React.FC<EditCreatureModalProps> = ({ isOpen, creature, onSave, onClose }) => {
     const [formData, setFormData] = useState<Enemy>(
-        creature || {
-            id: generateUUID(),
-            name: '',
-            description: '',
-            threatLevel: 'Média',
-            recommendedSequence: '',
-            attributes: initialAttributes,
-            espiritualidade: 1,
-            healthPoints: 20,
-            initiative: 3,
-            defense: 3,
-            absorption: 3,
-            movement: 6,
-            attacks: [],
-            abilities: [],
-            vulnerabilities: [],
-            weaknesses: [],
-            skills: {
-                vontade: 3,
-                vigor: 3,
-                percepcao: 3,
-                inteligencia: 2,
-                raciocinio: 2
-            },
-            creatureSkills: [
-                { name: 'Vontade', attr: 'Autocontrole', points: 3 },
-                { name: 'Vigor', attr: 'Vigor', points: 3 },
-                { name: 'Percepção', attr: 'Sabedoria', points: 3 },
-                { name: 'Inteligência', attr: 'Inteligência', points: 2 },
-                { name: 'Raciocínio', attr: 'Inteligência', points: 2 }
-            ]
-        }
+        creature || createEmptyCreature()
     );
 
     const [activeTab, setActiveTab] = useState<'basico' | 'atributos' | 'pericias' | 'combate' | 'ataques' | 'habilidades' | 'fraquezas'>('basico');
@@ -71,6 +73,10 @@ export const EditCreatureModal: React.FC<EditCreatureModalProps> = ({ isOpen, cr
     useEffect(() => {
         if (creature) {
             setFormData(creature);
+        } else if (isOpen) {
+            // Quando o modal é aberto para criar uma nova criatura,
+            // garantir que o form seja reiniciado com um novo UUID
+            setFormData(createEmptyCreature());
         }
     }, [creature, isOpen]);
 

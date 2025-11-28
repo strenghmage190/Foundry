@@ -105,6 +105,48 @@ export interface Character {
   affiliationStatus?: number; // Nível de status na organização (1-5)
   origin?: string; // Origem do personagem
   concept?: string; // Conceito do personagem
+    // Companheiro Beyonder (opcional)
+    companion?: {
+        type: 'humano' | 'animal';
+        origin?: 'Despertado' | 'Herdeiro' | 'Antigo';
+        biologicalMold?: 'Predador Ápice' | 'Predador Astuto' | 'Sobrevivente Adaptável';
+        pathway?: string;
+        attributes?: Attributes;
+        skills?: Record<string, number>;
+        habilidadesBeyonder?: BeyonderAbility[];
+        learnedParticles?: LearnedParticle[];
+        basePE?: number;
+        mechanics?: {
+            naturalAttack: string; // e.g., '1d6 + Força (Letal)'
+            naturalArmor: number; // Bônus de armadura
+            sixthSense: boolean; // Re-roll 1s/2s on Perception
+            socialPenalty: number; // -2 dice on social tests
+            intimidationBonus: number; // +1 dice on Intimidation vs lower INT
+            cannotUseTools: boolean; // Cannot use tools/weapons without hands
+            stealthAdvantage: boolean; // Perfect Disguise
+            moldAptitude?: {
+                type: 'briga' | 'furtividade' | 'pressentir';
+                bonus: string;
+                description: string;
+            };
+            moldWeakness?: {
+                type: 'prontidao' | 'vigor' | 'combat';
+                penalty: number;
+                description: string;
+            };
+            originBonus?: {
+                type: 'vinculo' | 'conhecimento';
+                bonus: number | string;
+                description: string;
+            };
+        };
+        primalPath?: {
+            seq7: { name: string; unlocked: boolean; description: string };
+            seq5: { name: string; unlocked: boolean; description: string };
+            seq4: { name: string; unlocked: boolean; description: string };
+            seq2: { name: string; unlocked: boolean; description: string };
+        };
+    };
 }
 
 export interface Attack {

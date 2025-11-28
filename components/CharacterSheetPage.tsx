@@ -1070,10 +1070,11 @@ export const CharacterSheetPage = () => {
           derivedStats?.maxLuckPoints ?? (agent.character.maxLuckPoints || 0)
         ),
         maxEstasePoints: derivedStats.maxEstasePoints || 0,
-        estasePoints: Math.min(
-          agent.character.estasePoints ?? derivedStats.maxEstasePoints ?? 0,
-          derivedStats.maxEstasePoints || 0
-        ),
+        // Permite que o jogador controle estasePoints manualmente
+        // Apenas inicializa com max se for undefined
+        estasePoints: agent.character.estasePoints !== undefined 
+          ? agent.character.estasePoints 
+          : (derivedStats.maxEstasePoints || 0),
       },
     };
   }, [agent, derivedStats]);
@@ -1158,8 +1159,40 @@ export const CharacterSheetPage = () => {
     attribute: keyof Attributes,
     value: number
   ) => {
+    const newAttributes = { ...effectiveAgentData.attributes, [attribute]: value };
+    
+    // Recalcular maxEstasePoints se vigor ou espiritualidade mudarem
+    if ((attribute === 'vigor' || attribute === 'espiritualidade') && effectiveAgentData) {
+      const c = effectiveAgentData.character;
+      let hasAeon = false;
+      if (c.pathways?.primary) {
+        const list = [c.pathways.primary, ...(c.pathways.secondary || [])].filter(Boolean);
+        hasAeon = list.some(p => p.toUpperCase().includes('ÉON') || p.toUpperCase().includes('AEON'));
+      } else if (c.pathway) {
+        const pathStr = Array.isArray(c.pathway) ? c.pathway.join(' ') : c.pathway;
+        hasAeon = pathStr.toUpperCase().includes('ÉON') || pathStr.toUpperCase().includes('AEON');
+      }
+      
+      if (hasAeon) {
+        const newVigor = attribute === 'vigor' ? value : newAttributes.vigor || 0;
+        const newEsp = attribute === 'espiritualidade' ? value : newAttributes.espiritualidade || 0;
+        const newMaxEstase = newVigor + newEsp;
+        const currentEstase = c.estasePoints || 0;
+        
+        handleUpdate({
+          attributes: newAttributes,
+          character: {
+            ...c,
+            maxEstasePoints: newMaxEstase,
+            estasePoints: Math.min(currentEstase, newMaxEstase)
+          }
+        });
+        return;
+      }
+    }
+    
     handleUpdate({
-      attributes: { ...effectiveAgentData.attributes, [attribute]: value },
+      attributes: newAttributes,
     });
   };
 

@@ -303,6 +303,12 @@ export const CharacterCreationWizard: React.FC = () => {
     // Step 1: Concept and Identity
     const [characterName, setCharacterName] = useState('');
     const [characterConcept, setCharacterConcept] = useState('');
+    // Companion option: Humano ou Animal
+    const [companionType, setCompanionType] = useState<'humano' | 'animal'>('humano');
+    const [companionOrigin, setCompanionOrigin] = useState<'Despertado' | 'Herdeiro' | 'Antigo'>('Despertado');
+    const [companionMold, setCompanionMold] = useState<'Predador Ápice' | 'Predador Astuto' | 'Sobrevivente Adaptável'>('Predador Ápice');
+    const [companionPathway, setCompanionPathway] = useState<string>('');
+    const [selectedInnateAbility, setSelectedInnateAbility] = useState<string>('');
     
     // Step 2: Attribute Prioritization and Distribution
     const [attributePriorities, setAttributePriorities] = useState<CategoryPriority[]>([
@@ -433,6 +439,10 @@ export const CharacterCreationWizard: React.FC = () => {
     // Attribute adjustment
     const adjustAttribute = (attr: keyof AttributeScores, delta: number) => {
         setAttributes(prev => {
+            // For animals, intelligence cannot go above 1
+            if (companionType === 'animal' && attr === 'inteligencia' && delta > 0 && prev.inteligencia >= 1) {
+                return prev;
+            }
             const newValue = prev[attr] + delta;
             
             // Validate new value
@@ -490,7 +500,7 @@ export const CharacterCreationWizard: React.FC = () => {
     };
     
     // Validation for each step
-    const canProceedStep1 = characterName.trim() !== '' && characterConcept.trim() !== '';
+    const canProceedStep1 = characterName.trim() !== '' && characterConcept.trim() !== '' && (companionType === 'humano' || (companionType === 'animal' && companionPathway !== ''));
     
     const canProceedStep2 = useMemo(() => {
         const allAssigned = attributePriorities.every(p => p.points > 0);
@@ -499,13 +509,23 @@ export const CharacterCreationWizard: React.FC = () => {
             const { used, available } = getCategoryPoints(cat);
             return used === available;
         });
+        // For animals, intelligence must stay at 1
+        if (companionType === 'animal' && attributes.inteligencia > 1) return false;
         return allAssigned && uniqueAssignments && allPointsUsed;
-    }, [attributePriorities, attributes]);
+    }, [attributePriorities, attributes, companionType]);
     
-    const canProceedStep3 = skillPriority !== null && investigativePointsAvailable === 0 && generalPointsAvailable === 0;
-    const canProceedStep4 = selectedPathway !== '' && selectedUniversalParticles.length === maxUniversalParticles;
-    const canProceedStep5 = true; // Bloodline is optional
-    const canProceedStep6 = true; // Affiliation is optional
+    const canProceedStep3 = companionType === 'animal' 
+        ? (() => {
+            const generalCount = Object.keys(skills).filter(s => GENERAL_SKILLS.includes(s)).reduce((sum, s) => sum + (skills[s] || 0), 0);
+            const investigativeCount = Object.keys(skills).filter(s => INVESTIGATIVE_SKILLS.includes(s)).reduce((sum, s) => sum + (skills[s] || 0), 0);
+            return generalCount === 5 && investigativeCount === 3;
+          })()
+        : (skillPriority !== null && investigativePointsAvailable === 0 && generalPointsAvailable === 0);
+    const canProceedStep4 = companionType === 'animal' 
+        ? (selectedUniversalParticles.length === 2 && selectedInnateAbility !== '') 
+        : (selectedPathway !== '' && selectedUniversalParticles.length === maxUniversalParticles);
+    const canProceedStep5 = true; // Bloodline is optional (or skipped for animals)
+    const canProceedStep6 = true; // Affiliation is optional (or skipped for animals)
     
     // Calculate available background points
     const getAvailableBackgroundPoints = useMemo(() => {
@@ -628,6 +648,16 @@ export const CharacterCreationWizard: React.FC = () => {
     const createCharacter = async () => {
         setIsCreating(true);
         
+        console.log('🐾 Criando personagem:', {
+            companionType,
+            companionPathway,
+            companionOrigin,
+            companionMold,
+            selectedUniversalParticles,
+            selectedInnateAbility,
+            attributes
+        });
+        
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -648,12 +678,121 @@ export const CharacterCreationWizard: React.FC = () => {
                 console.warn('Could not resolve user profile avatar', e);
             }
             
+            // Build companion payload first if creating an animal companion
+            const companionPayload = (companionType === 'animal' && companionPathway)
+                ? (() => {
+                    // Use attributes from wizard (already include mold bonuses from step 2)
+                    const companionAttrs = { ...attributes };
+
+                    // Use selected skills for animal companions (5 general + 3 investigative)
+                    const autoSkills: Record<string, number> = { ...skills };
+
+                    // Domain particle for companion
+                    const domainPart = DOMAIN_PARTICLES[companionPathway];
+
+                    // Use the selected universal particles from wizard state
+                    const companionUniversals = selectedUniversalParticles.map(p => ({
+                        name: p.name,
+                        word: p.word,
+                        domain: 'Universal',
+                        type: p.category || 'Função',
+                        category: p.category,
+                        acquisitionMethod: 'universal'
+                    }));
+
+                    // Grant selected innate ability from step 4
+                    const pathData = PATHWAYS_DATA[companionPathway];
+                    const innateAbilities = pathData?.poderesInatos || [];
+                    const companionAbilities = selectedInnateAbility ? [{
+                        id: Date.now(),
+                        name: selectedInnateAbility,
+                        description: innateAbilities.find(ab => ab.nome === selectedInnateAbility)?.desc || '',
+                        acquisitionMethod: 'free',
+                        seqName: '9'
+                    }] : [];
+
+                    const learned = [] as any[];
+                    if (domainPart) {
+                        learned.push({ 
+                            name: domainPart.particle, 
+                            word: domainPart.word, 
+                            domain: companionPathway, 
+                            type: domainPart.type || 'Função', 
+                            acquisitionMethod: 'innate' 
+                        });
+                    }
+                    learned.push(...companionUniversals);
+
+                    // Apply origin effect
+                    let basePE = companionAttrs.inteligencia + companionAttrs.carisma;
+                    if (companionOrigin === 'Herdeiro') {
+                        basePE += 5; // +5 PE for Herdeiro origin
+                    }
+
+                    return {
+                        type: 'animal',
+                        origin: companionOrigin,
+                        biologicalMold: companionMold,
+                        pathway: companionPathway,
+                        attributes: companionAttrs,
+                        skills: autoSkills,
+                        habilidadesBeyonder: companionAbilities,
+                        learnedParticles: learned,
+                        basePE: basePE,
+                        // Special companion mechanics
+                        mechanics: {
+                            naturalAttack: '1d6 + Força (Letal)',
+                            naturalArmor: Math.ceil(companionAttrs.vigor / 2),
+                            sixthSense: true, // Re-roll 1s and 2s on Perception
+                            socialPenalty: -2, // -2 dice on social tests (except Intimidation)
+                            intimidationBonus: 1, // +1 dice on Intimidation vs lower INT
+                            cannotUseTools: true,
+                            stealthAdvantage: true, // Perfect Disguise - advantage on Stealth
+                            // Mold-specific innate aptitudes
+                            moldAptitude: companionMold === 'Predador Ápice'
+                                ? { type: 'briga', bonus: 'Dificuldade de cura +1 para ferimentos causados', description: 'Ataques de Briga são particularmente selvagens' }
+                                : companionMold === 'Predador Astuto'
+                                ? { type: 'furtividade', bonus: 'Primeiro sucesso conta como dois', description: 'Movimento sobrenaturalmente silencioso' }
+                                : { type: 'pressentir', bonus: '1x/sessão pressentir perigo', description: 'Percepção de perigo quase infalível' },
+                            // Mold-specific weaknesses
+                            moldWeakness: companionMold === 'Predador Ápice' 
+                                ? { type: 'prontidao', penalty: -1, description: 'Visão de Túnel: -1 dado em Prontidão para perceber emboscadas/flancos' }
+                                : companionMold === 'Predador Astuto'
+                                ? { type: 'vigor', penalty: -1, description: 'Constituição Frágil: -1 Vigor ao calcular PV' }
+                                : { type: 'combat', penalty: -1, description: 'Aversão ao Confronto: -1 dado em ataques no 1º turno quando em desvantagem numérica' },
+                            // Origin-specific bonuses
+                            originBonus: companionOrigin === 'Despertado'
+                                ? { type: 'vinculo', bonus: -1, description: 'Dificuldade de Vínculo Sensorial reduzida em 1' }
+                                : companionOrigin === 'Antigo'
+                                ? { type: 'conhecimento', bonus: '1x/história', description: 'Fazer pergunta sobre lenda antiga/local místico/ritual esquecido' }
+                                : undefined
+                        },
+                        // Caminho Primal - Evolution milestones (unlocked at specific Sequences)
+                        primalPath: {
+                            seq7: { name: 'Predador Aprimorado', unlocked: false, description: 'Rastrear ressonância emocional + dano natural +1 passo' },
+                            seq5: { name: 'Fera Interior se Manifesta', unlocked: false, description: 'Metamorfose Parcial (2 PE, ação bônus, adaptação bestial por cena)' },
+                            seq4: { name: 'Despertar da Forma Verdadeira', unlocked: false, description: 'Forma Híbrida (10 PE, 1x/dia, forma humanoide por 1 hora)' },
+                            seq2: { name: 'Besta Conceitual', unlocked: false, description: 'Passagem Instintiva (1x/história, teleporte para ambiente selvagem familiar)' }
+                        }
+                    };
+                })()
+                : undefined;
+            
+            if (companionType === 'animal') {
+                console.log('🦁 Companion Payload criado:', companionPayload);
+            }
+            
             // Start with base skills and attributes
-            const finalSkills = { ...skills };
+            let finalSkills = { ...skills };
             let finalAttributes = { ...attributes };
             
-            // Apply bloodline bonuses/penalties
-            const bloodline = BLOODLINES.find(b => b.id === selectedBloodline);
+            // For animal companions, use auto-assigned skills instead
+            if (companionType === 'animal' && companionPayload) {
+                finalSkills = { ...companionPayload.skills };
+            }
+            
+            // Apply bloodline bonuses/penalties (skip for animals)
+            const bloodline = companionType === 'animal' ? null : BLOODLINES.find(b => b.id === selectedBloodline);
             
             // Apply starting skills from bloodline
             if (bloodline?.mechanics?.startingSkills) {
@@ -692,17 +831,21 @@ export const CharacterCreationWizard: React.FC = () => {
                 }
             }
             
-            // Get affiliation data
-            const affiliation = AFFILIATIONS.find(a => a.id === selectedAffiliation);
+            // Get affiliation data (skip for animals)
+            const affiliation = companionType === 'animal' ? null : AFFILIATIONS.find(a => a.id === selectedAffiliation);
             
-            // Create learned particles array
-            const domainParticle = DOMAIN_PARTICLES[selectedPathway];
-            const learnedParticles = [
+            // Create learned particles array (use companion particles for animals)
+            const pathwayForParticles = companionType === 'animal' ? companionPathway : selectedPathway;
+            const domainParticle = pathwayForParticles ? DOMAIN_PARTICLES[pathwayForParticles] : null;
+            
+            const learnedParticles = companionType === 'animal' && companionPayload 
+                ? companionPayload.learnedParticles
+                : (domainParticle ? [
                 {
                     name: domainParticle.particle,
                     word: domainParticle.word,
-                    domain: selectedPathway,
-                    type: domainParticle.type || 'Função', // Use o tipo específico da partícula de domínio
+                    domain: pathwayForParticles,
+                    type: domainParticle.type || 'Função',
                     acquisitionMethod: 'innate'
                 },
                 ...selectedUniversalParticles.map(p => ({
@@ -713,13 +856,19 @@ export const CharacterCreationWizard: React.FC = () => {
                     category: p.category,
                     acquisitionMethod: 'universal'
                 }))
-            ];
+            ] : []);
             
             // Calculate derived stats based on 9-attribute system
-            const HP = 10 + finalAttributes.vigor * 2;
+            // Apply Predador Astuto weakness: -1 Vigor for HP calculation
+            const vigorForHP = (companionType === 'animal' && companionMold === 'Predador Astuto') 
+                ? Math.max(1, finalAttributes.vigor - 1) 
+                : finalAttributes.vigor;
+            const HP = 10 + vigorForHP * 2;
             const Sanity = finalSanityMax;
             const Willpower = finalAttributes.carisma;
-            const PE = finalAttributes.inteligencia + finalAttributes.carisma;
+            const PE = companionType === 'animal' && companionPayload 
+                ? companionPayload.basePE 
+                : (finalAttributes.inteligencia + finalAttributes.carisma);
             
             // Build habilidades in the correct format {gerais: [], investigativas: []}
             const habilidadesGerais = GENERAL_SKILLS.map(skillName => {
@@ -850,15 +999,16 @@ export const CharacterCreationWizard: React.FC = () => {
                     concept: characterConcept,
                     avatarUrl: defaultAvatar,
                     sequence: 9,
-                    pathway: selectedPathway, // Formato antigo para compatibilidade
+                    pathway: companionType === 'animal' ? companionPathway : selectedPathway, // Use companionPathway for animals
                     pathways: {
-                        primary: selectedPathway,
-                        secondary: allowedSecondaryPathways
+                        primary: companionType === 'animal' ? companionPathway : selectedPathway,
+                        secondary: companionType === 'animal' ? [] : allowedSecondaryPathways
                     },
-                    bloodline: bloodline?.name || 'Nenhuma',
-                    bloodlineCost: bloodline?.cost || 0,
-                    affiliation: affiliation?.name || 'Nenhum',
-                    affiliationStatus: selectedAffiliation !== 'none' ? affiliationStatus : 0,
+                    companion: companionPayload,
+                    bloodline: companionType === 'animal' ? 'Companheiro Beyonder' : (bloodline?.name || 'Nenhuma'),
+                    bloodlineCost: companionType === 'animal' ? 0 : (bloodline?.cost || 0),
+                    affiliation: companionType === 'animal' ? 'Nenhum' : (affiliation?.name || 'Nenhum'),
+                    affiliationStatus: (companionType === 'animal' || selectedAffiliation === 'none') ? 0 : affiliationStatus,
                     vitality: HP,
                     maxVitality: HP,
                     spirituality: PE,
@@ -884,7 +1034,14 @@ export const CharacterCreationWizard: React.FC = () => {
                         { conviction: '', symbol: '' },
                         { conviction: '', symbol: '' },
                         { conviction: '', symbol: '' }
-                    ]
+                    ],
+                    // Pontos de Estase (PEt) para Caminho do Éon Eterno
+                    estasePoints: (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO ÉON ETERNO' || (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO AEON ETERNO'
+                        ? finalAttributes.vigor + finalAttributes.espiritualidade
+                        : 0,
+                    maxEstasePoints: (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO ÉON ETERNO' || (companionType === 'animal' ? companionPathway : selectedPathway) === 'CAMINHO DO AEON ETERNO'
+                        ? finalAttributes.vigor + finalAttributes.espiritualidade
+                        : 0
                 },
                 backgrounds: {
                     aliados: backgrounds.aliados,
@@ -904,7 +1061,14 @@ export const CharacterCreationWizard: React.FC = () => {
                 attacks: [],
                 protections: [],
                 // Grant free Beyonder abilities for each additional (secondary) pathway: one innate at Seq.9 (or first available)
+                // For animal companions, use the companion abilities instead
                 habilidadesBeyonder: (() => {
+                    // If animal companion, use companion abilities from payload
+                    if (companionType === 'animal' && companionPayload) {
+                        return companionPayload.habilidadesBeyonder || [];
+                    }
+                    
+                    // Otherwise, grant abilities for secondary pathways
                     const result: any[] = [];
                     try {
                         (allowedSecondaryPathways || []).forEach((sec, idx) => {
@@ -931,12 +1095,12 @@ export const CharacterCreationWizard: React.FC = () => {
                 artifacts: [],
                 money: { libras: 0, soli: 0, pennies: 0 },
                 antecedentes: [],
-                afiliacoes: selectedAffiliation !== 'none' ? [{
+                afiliacoes: (companionType === 'animal' || selectedAffiliation === 'none') ? [] : [{
                     id: selectedAffiliation,
                     name: affiliation?.name || '',
                     description: affiliation?.description || '',
                     status: affiliationStatus
-                }] : [],
+                }],
                 learnedParticles,
                 customization: {
                     useOpenDyslexicFont: false,
@@ -946,6 +1110,14 @@ export const CharacterCreationWizard: React.FC = () => {
                     avatarInsane: ''
                 }
             };
+            
+            console.log('💾 Salvando no banco:', {
+                characterName,
+                pathway: newAgentData.character.pathway,
+                companion: newAgentData.character.companion,
+                learnedParticles: newAgentData.character.learnedParticles,
+                habilidadesBeyonder: newAgentData.character.habilidadesBeyonder
+            });
             
             // Insert into database
             const { data: insertedData, error } = await supabase
@@ -986,11 +1158,23 @@ export const CharacterCreationWizard: React.FC = () => {
             return;
         }
         
-        setCurrentStep(prev => Math.min(prev + 1, 8));
+        // For animal companions, skip steps 5, 6, 7 (bloodline, affiliation, backgrounds)
+        let nextStep = currentStep + 1;
+        if (companionType === 'animal') {
+            if (currentStep === 4) nextStep = 8; // Skip from step 4 directly to step 8
+        }
+        
+        setCurrentStep(prev => Math.min(nextStep, 8));
     };
     
     const handlePrevious = () => {
-        setCurrentStep(prev => Math.max(prev - 1, 1));
+        // For animal companions, skip steps 5, 6, 7 when going back
+        let prevStep = currentStep - 1;
+        if (companionType === 'animal') {
+            if (currentStep === 8) prevStep = 4; // Skip back from step 8 directly to step 4
+        }
+        
+        setCurrentStep(prev => Math.max(prevStep, 1));
     };
     
     const getAttributeLabel = (attr: keyof AttributeScores): string => {
@@ -1104,6 +1288,346 @@ export const CharacterCreationWizard: React.FC = () => {
                                     rows={4}
                                 />
                             </div>
+
+                            <div className="form-group" style={{ marginTop: '2rem' }}>
+                                <h3 style={{ 
+                                    color: '#d4af37', 
+                                    fontSize: '1.3rem', 
+                                    marginBottom: '1rem',
+                                    textAlign: 'center',
+                                    borderBottom: '2px solid rgba(212, 175, 55, 0.3)',
+                                    paddingBottom: '0.75rem'
+                                }}>
+                                    Escolha o Tipo de Personagem
+                                </h3>
+                                
+                                <div style={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: '1fr 1fr', 
+                                    gap: '1.5rem',
+                                    marginBottom: '1.5rem'
+                                }}>
+                                    {/* Card Humano */}
+                                    <div 
+                                        onClick={() => setCompanionType('humano')}
+                                        style={{
+                                            padding: '1.5rem',
+                                            border: companionType === 'humano' ? '3px solid #d4af37' : '2px solid rgba(212, 175, 55, 0.3)',
+                                            borderRadius: '12px',
+                                            background: companionType === 'humano' 
+                                                ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05))' 
+                                                : 'rgba(42, 42, 46, 0.5)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                            backdropFilter: 'blur(8px)',
+                                            boxShadow: companionType === 'humano' ? '0 4px 20px rgba(212, 175, 55, 0.3)' : 'none'
+                                        }}
+                                    >
+                                        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                            <div style={{ 
+                                                fontSize: '3rem', 
+                                                marginBottom: '0.5rem',
+                                                filter: companionType === 'humano' ? 'none' : 'grayscale(50%)'
+                                            }}>
+                                                👤
+                                            </div>
+                                            <h4 style={{ 
+                                                color: companionType === 'humano' ? '#d4af37' : '#e8e8e8',
+                                                fontSize: '1.3rem',
+                                                margin: '0 0 0.5rem 0',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                Agente Humano
+                                            </h4>
+                                        </div>
+                                        <p style={{ 
+                                            color: '#b0b0b0', 
+                                            fontSize: '0.9rem',
+                                            lineHeight: '1.5',
+                                            textAlign: 'center',
+                                            margin: 0
+                                        }}>
+                                            Um ser humano que consumiu uma poção Beyonder e ganhou poderes sobrenaturais. Capaz de interagir socialmente e manipular objetos com destreza.
+                                        </p>
+                                        {companionType === 'humano' && (
+                                            <div style={{
+                                                marginTop: '1rem',
+                                                padding: '0.5rem',
+                                                background: 'rgba(212, 175, 55, 0.1)',
+                                                borderRadius: '6px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <span style={{ color: '#d4af37', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                                    ✓ Selecionado
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Card Companheiro Animal */}
+                                    <div 
+                                        onClick={() => setCompanionType('animal')}
+                                        style={{
+                                            padding: '1.5rem',
+                                            border: companionType === 'animal' ? '3px solid #4a9bff' : '2px solid rgba(74, 155, 255, 0.3)',
+                                            borderRadius: '12px',
+                                            background: companionType === 'animal' 
+                                                ? 'linear-gradient(135deg, rgba(74, 155, 255, 0.15), rgba(74, 155, 255, 0.05))' 
+                                                : 'rgba(42, 42, 46, 0.5)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                            backdropFilter: 'blur(8px)',
+                                            boxShadow: companionType === 'animal' ? '0 4px 20px rgba(74, 155, 255, 0.3)' : 'none'
+                                        }}
+                                    >
+                                        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                            <div style={{ 
+                                                fontSize: '3rem', 
+                                                marginBottom: '0.5rem',
+                                                filter: companionType === 'animal' ? 'none' : 'grayscale(50%)'
+                                            }}>
+                                                🐺
+                                            </div>
+                                            <h4 style={{ 
+                                                color: companionType === 'animal' ? '#4a9bff' : '#e8e8e8',
+                                                fontSize: '1.3rem',
+                                                margin: '0 0 0.5rem 0',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                Companheiro Beyonder
+                                            </h4>
+                                        </div>
+                                        <p style={{ 
+                                            color: '#b0b0b0', 
+                                            fontSize: '0.9rem',
+                                            lineHeight: '1.5',
+                                            textAlign: 'center',
+                                            margin: 0
+                                        }}>
+                                            Um animal senciente que ascendeu através de uma poção Beyonder. Possui instintos aguçados, habilidades bestiais naturais e conexão com o mundo selvagem.
+                                        </p>
+                                        {companionType === 'animal' && (
+                                            <div style={{
+                                                marginTop: '1rem',
+                                                padding: '0.5rem',
+                                                background: 'rgba(74, 155, 255, 0.1)',
+                                                borderRadius: '6px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <span style={{ color: '#4a9bff', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                                    ✓ Selecionado
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Configuração de Companheiro Animal */}
+                                {companionType === 'animal' && (
+                                    <div style={{ 
+                                        marginTop: '1.5rem', 
+                                        padding: '2rem', 
+                                        background: 'linear-gradient(135deg, rgba(74, 155, 255, 0.08), rgba(42, 42, 46, 0.8))',
+                                        borderRadius: '12px', 
+                                        border: '2px solid rgba(74, 155, 255, 0.4)',
+                                        boxShadow: '0 4px 20px rgba(74, 155, 255, 0.2)'
+                                    }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.75rem',
+                                            marginBottom: '1.5rem',
+                                            paddingBottom: '1rem',
+                                            borderBottom: '1px solid rgba(74, 155, 255, 0.3)'
+                                        }}>
+                                            <span style={{ fontSize: '1.8rem' }}>🐾</span>
+                                            <div>
+                                                <h4 style={{ 
+                                                    margin: '0 0 0.25rem 0', 
+                                                    color: '#4a9bff',
+                                                    fontSize: '1.2rem',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    Configuração do Companheiro Beyonder
+                                                </h4>
+                                                <p style={{ 
+                                                    color: '#8ab4f8', 
+                                                    margin: 0,
+                                                    fontSize: '0.9rem'
+                                                }}>
+                                                    Configure a origem, molde biológico e caminho sobrenatural do seu companheiro
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: '1fr 1fr', 
+                                            gap: '1.25rem',
+                                            marginBottom: '1.5rem'
+                                        }}>
+                                            <div>
+                                                <label style={{ 
+                                                    display: 'block',
+                                                    color: '#e8f4ff',
+                                                    fontWeight: 'bold',
+                                                    marginBottom: '0.5rem',
+                                                    fontSize: '0.95rem'
+                                                }}>
+                                                    🌟 Origem do Poder
+                                                </label>
+                                                <select 
+                                                    value={companionOrigin} 
+                                                    onChange={e => setCompanionOrigin(e.target.value as any)} 
+                                                    style={{ 
+                                                        width: '100%',
+                                                        padding: '0.75rem',
+                                                        borderRadius: '8px',
+                                                        border: '2px solid rgba(74, 155, 255, 0.4)',
+                                                        background: 'rgba(26, 26, 28, 0.9)',
+                                                        color: '#e8f4ff',
+                                                        fontSize: '0.95rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    <option value="Despertado">⚗️ Despertado (Pela Poção)</option>
+                                                    <option value="Herdeiro">👑 Herdeiro (Nascido Beyonder)</option>
+                                                    <option value="Antigo">📜 Antigo (Linhagem Adormecida)</option>
+                                                </select>
+                                                <p style={{ 
+                                                    fontSize: '0.8rem', 
+                                                    color: '#8ab4f8', 
+                                                    margin: '0.5rem 0 0 0',
+                                                    fontStyle: 'italic'
+                                                }}>
+                                                    {companionOrigin === 'Despertado' && 'Vínculo Sensorial tem dificuldade -1'}
+                                                    {companionOrigin === 'Herdeiro' && 'Reserva máxima de PE +5 pontos'}
+                                                    {companionOrigin === 'Antigo' && 'Pergunta mística 1x por história'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label style={{ 
+                                                    display: 'block',
+                                                    color: '#e8f4ff',
+                                                    fontWeight: 'bold',
+                                                    marginBottom: '0.5rem',
+                                                    fontSize: '0.95rem'
+                                                }}>
+                                                    💪 Molde Biológico
+                                                </label>
+                                                <select 
+                                                    value={companionMold} 
+                                                    onChange={e => setCompanionMold(e.target.value as any)} 
+                                                    style={{ 
+                                                        width: '100%',
+                                                        padding: '0.75rem',
+                                                        borderRadius: '8px',
+                                                        border: '2px solid rgba(74, 155, 255, 0.4)',
+                                                        background: 'rgba(26, 26, 28, 0.9)',
+                                                        color: '#e8f4ff',
+                                                        fontSize: '0.95rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    <option value="Predador Ápice">🐻 Predador Ápice (Força Bruta)</option>
+                                                    <option value="Predador Astuto">🐆 Predador Astuto (Agilidade Letal)</option>
+                                                    <option value="Sobrevivente Adaptável">🦅 Sobrevivente Adaptável (Resiliência)</option>
+                                                </select>
+                                                <div style={{ 
+                                                    fontSize: '0.8rem', 
+                                                    color: '#8ab4f8', 
+                                                    margin: '0.5rem 0 0 0'
+                                                }}>
+                                                    {companionMold === 'Predador Ápice' && (
+                                                        <div>
+                                                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: '#4a9bff' }}>Bônus: +1 Força, +1 Vigor</p>
+                                                            <p style={{ margin: '0 0 0.5rem 0', fontStyle: 'italic' }}>⚔️ Aptidão Inata: Ataques de Briga aumentam a Dificuldade de cura em +1</p>
+                                                            <p style={{ margin: 0, color: '#ff9800' }}>⚠️ Fraqueza: Visão de Túnel (-1 dado em Prontidão vs emboscadas)</p>
+                                                        </div>
+                                                    )}
+                                                    {companionMold === 'Predador Astuto' && (
+                                                        <div>
+                                                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: '#4a9bff' }}>Bônus: +1 Destreza, +1 Percepção</p>
+                                                            <p style={{ margin: '0 0 0.5rem 0', fontStyle: 'italic' }}>🎭 Aptidão Inata: Primeiro sucesso em Furtividade conta como dois</p>
+                                                            <p style={{ margin: 0, color: '#ff9800' }}>⚠️ Fraqueza: Constituição Frágil (-1 Vigor ao calcular HP)</p>
+                                                        </div>
+                                                    )}
+                                                    {companionMold === 'Sobrevivente Adaptável' && (
+                                                        <div>
+                                                            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: '#4a9bff' }}>Bônus: +1 Raciocínio, +1 Autocontrole</p>
+                                                            <p style={{ margin: '0 0 0.5rem 0', fontStyle: 'italic' }}>🔮 Aptidão Inata: 1x/sessão, pressentir perigo (aviso do Narrador)</p>
+                                                            <p style={{ margin: 0, color: '#ff9800' }}>⚠️ Fraqueza: Aversão ao Confronto (-1 dado em ataques no 1º turno quando em menor número)</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label style={{ 
+                                                display: 'block',
+                                                color: '#e8f4ff',
+                                                fontWeight: 'bold',
+                                                marginBottom: '0.75rem',
+                                                fontSize: '1rem'
+                                            }}>
+                                                ✨ Caminho do Companheiro
+                                            </label>
+                                            <div style={{ 
+                                                display: 'grid', 
+                                                gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', 
+                                                gap: '0.75rem',
+                                                maxHeight: '300px',
+                                                overflowY: 'auto',
+                                                padding: '0.5rem'
+                                            }}>
+                                                {PATHWAYS.map(p => (
+                                                    <button 
+                                                        key={p} 
+                                                        onClick={() => setCompanionPathway(p)} 
+                                                        style={{ 
+                                                            padding: '0.75rem', 
+                                                            borderRadius: '8px', 
+                                                            border: companionPathway === p 
+                                                                ? '3px solid #4a9bff' 
+                                                                : '2px solid rgba(74, 155, 255, 0.2)',
+                                                            background: companionPathway === p 
+                                                                ? 'linear-gradient(135deg, rgba(74, 155, 255, 0.25), rgba(74, 155, 255, 0.1))' 
+                                                                : 'rgba(26, 26, 28, 0.6)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease',
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        <div style={{ 
+                                                            fontWeight: 'bold',
+                                                            color: companionPathway === p ? '#4a9bff' : '#e8f4ff',
+                                                            fontSize: '0.9rem'
+                                                        }}>
+                                                            {PATHWAY_DISPLAY_NAMES[p]}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {companionPathway && (
+                                                <div style={{
+                                                    marginTop: '1rem',
+                                                    padding: '0.75rem',
+                                                    background: 'rgba(74, 155, 255, 0.1)',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid rgba(74, 155, 255, 0.3)'
+                                                }}>
+                                                    <span style={{ color: '#4a9bff', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                                        ✓ Caminho selecionado: {PATHWAY_DISPLAY_NAMES[companionPathway]}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                     
@@ -1117,6 +1641,12 @@ export const CharacterCreationWizard: React.FC = () => {
                                 <strong>Primária:</strong> 6 pontos | <strong>Secundária:</strong> 4 pontos | <strong>Terciária:</strong> 3 pontos
                                 <br />
                                 Todos os atributos começam em <strong>1</strong> (●). O limite é <strong>5</strong> (●●●●●).
+                                {companionType === 'animal' && (
+                                    <>
+                                        <br />
+                                        <strong style={{ color: '#4a9bff' }}>⚠️ Companheiro Animal:</strong> Inteligência não pode passar de 1 na criação. O Molde Biológico aplicará bônus finais (+1/+1).
+                                    </>
+                                )}
                             </p>
                             
                             {/* Priority Selection */}
@@ -1218,6 +1748,121 @@ export const CharacterCreationWizard: React.FC = () => {
                     {/* Step 3: Skills (keeping existing implementation) */}
                     {currentStep === 3 && (
                         <div className="wizard-step-content skills-step">
+                            {companionType === 'animal' ? (
+                                <div>
+                                    <h2 className="step-title">Habilidades do Companheiro Beyonder</h2>
+                                    <p className="step-description" style={{ color: '#8ab4f8' }}>
+                                        Escolha as perícias do seu companheiro: <strong>5 pontos em Habilidades Gerais</strong> e <strong>3 pontos em Habilidades Investigativas</strong>.
+                                        <br />
+                                        <span style={{ fontSize: '0.9rem', color: '#b0b0b0' }}>
+                                            (Sugestão: 2 perícias do Molde Biológico + 1-2 perícias relacionadas ao Caminho)
+                                        </span>
+                                    </p>
+                                    <div style={{ 
+                                        padding: '1.5rem', 
+                                        background: 'linear-gradient(135deg, rgba(74, 155, 255, 0.1), rgba(42, 42, 46, 0.6))',
+                                        borderRadius: '12px',
+                                        border: '2px solid rgba(74, 155, 255, 0.3)',
+                                        marginBottom: '1.5rem'
+                                    }}>
+                                        <h4 style={{ color: '#4a9bff', margin: '0 0 0.75rem 0' }}>🐾 Dons da Besta (Mecânicas Exclusivas)</h4>
+                                        <ul style={{ color: '#b8d4ff', margin: 0, fontSize: '0.95rem', lineHeight: '1.6' }}>
+                                            <li><strong>Ataques Naturais:</strong> Dano base 1d6 Letal + Força (aumenta para 1d8 com 3 pontos em Briga, 1d10 com 5)</li>
+                                            <li><strong>Armadura Natural:</strong> Bônus igual à metade do Vigor (arredondado para cima)</li>
+                                            <li><strong>Sexto Sentido:</strong> Re-rolar dados que resultem em 1 ou 2 em testes de Percepção (1x por teste)</li>
+                                            <li><strong>Disfarce Perfeito:</strong> Vantagem em testes de Furtividade em ambientes urbanos/selvagens</li>
+                                        </ul>
+                                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(74, 155, 255, 0.2)' }}>
+                                            <p style={{ color: '#ffd54f', margin: 0, fontSize: '0.9rem' }}>
+                                                ⚠️ <strong>Limitações:</strong> -2 dados em testes sociais (exceto Intimidação, que ganha +1 vs INT menor). Incapaz de usar ferramentas sem mãos preênseis.
+                                            </p>
+                                            {companionMold && (
+                                                <p style={{ color: '#ff9800', margin: '0.5rem 0 0 0', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                                    🔸 <strong>Fraqueza do Molde:</strong> {' '}
+                                                    {companionMold === 'Predador Ápice' && 'Visão de Túnel (-1 dado em Prontidão para perceber emboscadas/flancos)'}
+                                                    {companionMold === 'Predador Astuto' && 'Constituição Frágil (-1 Vigor ao calcular PV)'}
+                                                    {companionMold === 'Sobrevivente Adaptável' && 'Aversão ao Confronto (-1 dado em ataques no 1º turno quando em desvantagem numérica)'}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="skills-distribution">
+                                        <div className="skills-category">
+                                            <div className="skills-category-header">
+                                                <h3>Habilidades Gerais</h3>
+                                                <span className="points-remaining">
+                                                    {5 - Object.keys(skills).filter(s => GENERAL_SKILLS.includes(s)).reduce((sum, s) => sum + (skills[s] || 0), 0)} pontos restantes
+                                                </span>
+                                            </div>
+                                            <div className="skills-grid">
+                                                {GENERAL_SKILLS.map(skill => (
+                                                    <div key={skill} className="skill-item">
+                                                        <label>{skill}</label>
+                                                        <div className="skill-controls">
+                                                            <button
+                                                                className="skill-btn minus"
+                                                                onClick={() => adjustSkill(skill, -1)}
+                                                                disabled={!skills[skill] || skills[skill] === 0}
+                                                            >
+                                                                −
+                                                            </button>
+                                                            <span className="skill-value">{skills[skill] || 0}</span>
+                                                            <button
+                                                                className="skill-btn plus"
+                                                                onClick={() => adjustSkill(skill, 1)}
+                                                                disabled={
+                                                                    (skills[skill] || 0) >= 3 ||
+                                                                    Object.keys(skills).filter(s => GENERAL_SKILLS.includes(s)).reduce((sum, s) => sum + (skills[s] || 0), 0) >= 5
+                                                                }
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="skills-category">
+                                            <div className="skills-category-header">
+                                                <h3>Habilidades Investigativas</h3>
+                                                <span className="points-remaining">
+                                                    {3 - Object.keys(skills).filter(s => INVESTIGATIVE_SKILLS.includes(s)).reduce((sum, s) => sum + (skills[s] || 0), 0)} pontos restantes
+                                                </span>
+                                            </div>
+                                            <div className="skills-grid">
+                                                {INVESTIGATIVE_SKILLS.map(skill => (
+                                                    <div key={skill} className="skill-item">
+                                                        <label>{skill}</label>
+                                                        <div className="skill-controls">
+                                                            <button
+                                                                className="skill-btn minus"
+                                                                onClick={() => adjustSkill(skill, -1)}
+                                                                disabled={!skills[skill] || skills[skill] === 0}
+                                                            >
+                                                                −
+                                                            </button>
+                                                            <span className="skill-value">{skills[skill] || 0}</span>
+                                                            <button
+                                                                className="skill-btn plus"
+                                                                onClick={() => adjustSkill(skill, 1)}
+                                                                disabled={
+                                                                    (skills[skill] || 0) >= 3 ||
+                                                                    Object.keys(skills).filter(s => INVESTIGATIVE_SKILLS.includes(s)).reduce((sum, s) => sum + (skills[s] || 0), 0) >= 3
+                                                                }
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
                             <h2 className="step-title">Priorização de Habilidades</h2>
                             <p className="step-description">
                                 Escolha o foco do seu personagem: <strong>Investigador</strong> (foco em Conhecimento) ou <strong>Homem de Ação</strong> (foco em Físico e Combate).
@@ -1331,17 +1976,212 @@ export const CharacterCreationWizard: React.FC = () => {
                                     </div>
                                 </div>
                             )}
+                                </>
+                            )}
                         </div>
                     )}
                     
                     {/* Step 4: Pathway and Particles (keeping existing implementation) */}
                     {currentStep === 4 && (
                         <div className="wizard-step-content pathway-step">
-                            <h2 className="step-title">Caminho e Partículas</h2>
-                            <p className="step-description">
-                                Escolha seu Caminho Beyonder. Cada caminho representa uma filosofia de poder diferente. Você receberá a Partícula de Domínio do caminho e poderá escolher 
-                                {maxUniversalParticles} Partículas Universais.
-                            </p>
+                            {companionType === 'animal' ? (
+                                <div>
+                                    <h2 className="step-title">Caminho e Partículas do Companheiro</h2>
+                                    <p className="step-description" style={{ color: '#8ab4f8' }}>
+                                        Seu <strong>Caminho Beyonder</strong> já foi selecionado: <span style={{ color: '#4a9bff', fontWeight: 'bold' }}>{PATHWAY_DISPLAY_NAMES[companionPathway] || companionPathway || 'Nenhum'}</span>
+                                    </p>
+                                    <div style={{ 
+                                        padding: '1.5rem', 
+                                        background: 'linear-gradient(135deg, rgba(74, 155, 255, 0.1), rgba(42, 42, 46, 0.6))',
+                                        borderRadius: '12px',
+                                        border: '2px solid rgba(74, 155, 255, 0.3)',
+                                        marginTop: '1.5rem'
+                                    }}>
+                                        <h3 style={{ color: '#4a9bff', marginBottom: '1rem' }}>✨ Benefícios do Caminho</h3>
+                                        <div style={{ 
+                                            marginBottom: '1.5rem',
+                                            padding: '1rem',
+                                            background: 'rgba(74, 155, 255, 0.08)',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <p style={{ color: '#b8d4ff', margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>
+                                                🔮 Partícula de Domínio (Automática)
+                                            </p>
+                                            <p style={{ color: '#e8f4ff', margin: 0, fontSize: '0.95rem' }}>
+                                                Você recebe automaticamente a partícula de domínio do seu caminho.
+                                            </p>
+                                        </div>
+                                        
+                                        <h3 style={{ color: '#4a9bff', marginBottom: '1rem', marginTop: '1.5rem' }}>🌟 Partículas Universais</h3>
+                                        <p style={{ color: '#e8f4ff', marginBottom: '1rem' }}>
+                                            Como Companheiro Beyonder, você recebe <strong>2 Partículas Universais</strong>. Selecione-as abaixo:
+                                        </p>
+                                        
+                                        <p style={{ 
+                                            textAlign: 'center',
+                                            color: selectedUniversalParticles.length === 2 ? '#81c784' : '#ffd54f',
+                                            fontWeight: 'bold',
+                                            marginBottom: '1rem'
+                                        }}>
+                                            {selectedUniversalParticles.length} / 2 selecionadas
+                                            {selectedUniversalParticles.length === 2 && ' ✓'}
+                                        </p>
+                                        
+                                        {Object.entries(UNIVERSAL_PARTICLES).map(([category, particles]) => (
+                                            <div key={category} style={{ marginBottom: '1.5rem' }}>
+                                                <h4 style={{
+                                                    color: '#4a9bff',
+                                                    marginBottom: '0.75rem',
+                                                    fontSize: '0.95rem',
+                                                    borderBottom: '1px solid rgba(74, 155, 255, 0.3)',
+                                                    paddingBottom: '0.5rem'
+                                                }}>
+                                                    {category}
+                                                </h4>
+                                                <div style={{ 
+                                                    display: 'grid', 
+                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                                                    gap: '0.75rem'
+                                                }}>
+                                                    {particles.map(particle => {
+                                                        const isSelected = selectedUniversalParticles.some(
+                                                            p => p.name === particle.name && p.word === particle.word
+                                                        );
+                                                        const canSelect = selectedUniversalParticles.length < 2 || isSelected;
+                                                        
+                                                        return (
+                                                            <div
+                                                                key={`${particle.name}-${particle.word}`}
+                                                                onClick={() => canSelect && toggleUniversalParticle(particle)}
+                                                                style={{
+                                                                    padding: '0.75rem',
+                                                                    background: isSelected 
+                                                                        ? 'linear-gradient(135deg, rgba(74, 155, 255, 0.3), rgba(42, 42, 46, 0.8))'
+                                                                        : 'rgba(42, 42, 46, 0.6)',
+                                                                    border: isSelected 
+                                                                        ? '2px solid #4a9bff' 
+                                                                        : '1px solid rgba(74, 155, 255, 0.2)',
+                                                                    borderRadius: '8px',
+                                                                    cursor: canSelect ? 'pointer' : 'not-allowed',
+                                                                    opacity: canSelect ? 1 : 0.4,
+                                                                    transition: 'all 0.2s ease',
+                                                                    textAlign: 'center'
+                                                                }}
+                                                            >
+                                                                <div style={{ 
+                                                                    color: isSelected ? '#4a9bff' : '#b8d4ff',
+                                                                    fontWeight: isSelected ? 'bold' : 'normal',
+                                                                    fontSize: '0.9rem',
+                                                                    marginBottom: '0.25rem'
+                                                                }}>
+                                                                    {particle.name}
+                                                                </div>
+                                                                <div style={{ color: '#8ab4f8', fontSize: '0.75rem' }}>
+                                                                    "{particle.word}"
+                                                                </div>
+                                                                {isSelected && <div style={{ color: '#4a9bff', fontSize: '1.2rem', marginTop: '0.25rem' }}>✓</div>}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    <div style={{ marginTop: '2rem' }}>
+                                        <h3 style={{ color: '#4a9bff', marginBottom: '1rem' }}>🎯 Habilidade Inata (Sequência 9)</h3>
+                                        <p style={{ color: '#e8f4ff', marginBottom: '1rem' }}>
+                                            Escolha 1 habilidade inata da Sequência 9 do seu caminho:
+                                        </p>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {PATHWAYS_DATA[companionPathway]?.poderesInatos
+                                                ?.filter(ab => String(ab.seq) === '9')
+                                                .map(ability => {
+                                                    const isSelected = selectedInnateAbility === ability.nome;
+                                                    return (
+                                                        <div
+                                                            key={ability.nome}
+                                                            onClick={() => setSelectedInnateAbility(ability.nome)}
+                                                            style={{
+                                                                padding: '1rem',
+                                                                background: isSelected 
+                                                                    ? 'linear-gradient(135deg, rgba(74, 155, 255, 0.3), rgba(42, 42, 46, 0.8))'
+                                                                    : 'rgba(42, 42, 46, 0.6)',
+                                                                border: isSelected 
+                                                                    ? '2px solid #4a9bff' 
+                                                                    : '1px solid rgba(74, 155, 255, 0.2)',
+                                                                borderRadius: '8px',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s ease'
+                                                            }}
+                                                        >
+                                                            <div style={{ 
+                                                                color: isSelected ? '#4a9bff' : '#b8d4ff',
+                                                                fontWeight: isSelected ? 'bold' : 'normal',
+                                                                marginBottom: '0.5rem'
+                                                            }}>
+                                                                {ability.nome}
+                                                            </div>
+                                                            <div style={{ color: '#e8f4ff', fontSize: '0.9rem' }}>
+                                                                {ability.desc}
+                                                            </div>
+                                                            {isSelected && <div style={{ color: '#4a9bff', fontSize: '1.2rem', marginTop: '0.5rem' }}>✓</div>}
+                                                        </div>
+                                                    );
+                                                }) || []}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Caminho Primal - Evolution Info */}
+                                    <div style={{ 
+                                        marginTop: '2rem',
+                                        padding: '1.5rem',
+                                        background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.15), rgba(42, 42, 46, 0.8))',
+                                        borderRadius: '12px',
+                                        border: '2px solid rgba(138, 43, 226, 0.4)'
+                                    }}>
+                                        <h3 style={{ color: '#ba68c8', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            🌟 O Caminho Primal (Evolução Futura)
+                                        </h3>
+                                        <p style={{ color: '#d4b3e8', marginBottom: '1rem', fontSize: '0.95rem' }}>
+                                            Conforme você avança em Sequências, sua biologia bestial se transforma de formas únicas:
+                                        </p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            <div style={{ padding: '0.75rem', background: 'rgba(138, 43, 226, 0.1)', borderRadius: '6px', borderLeft: '3px solid #ba68c8' }}>
+                                                <strong style={{ color: '#ba68c8' }}>Sequência 7:</strong>
+                                                <span style={{ color: '#d4b3e8', marginLeft: '0.5rem' }}>
+                                                    Rastrear ressonância emocional + dano natural aumenta 1 passo
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '0.75rem', background: 'rgba(138, 43, 226, 0.1)', borderRadius: '6px', borderLeft: '3px solid #9c27b0' }}>
+                                                <strong style={{ color: '#9c27b0' }}>Sequência 5:</strong>
+                                                <span style={{ color: '#d4b3e8', marginLeft: '0.5rem' }}>
+                                                    Metamorfose Parcial (2 PE, manifestar adaptação bestial por cena)
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '0.75rem', background: 'rgba(138, 43, 226, 0.1)', borderRadius: '6px', borderLeft: '3px solid #7b1fa2' }}>
+                                                <strong style={{ color: '#7b1fa2' }}>Sequência 4:</strong>
+                                                <span style={{ color: '#d4b3e8', marginLeft: '0.5rem' }}>
+                                                    Forma Híbrida (10 PE, forma humanoide por 1 hora, 1x/dia)
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '0.75rem', background: 'rgba(138, 43, 226, 0.1)', borderRadius: '6px', borderLeft: '3px solid #6a1b9a' }}>
+                                                <strong style={{ color: '#6a1b9a' }}>Sequência 2:</strong>
+                                                <span style={{ color: '#d4b3e8', marginLeft: '0.5rem' }}>
+                                                    Passagem Instintiva (teleporte para ambientes selvagens familiares, 1x/história)
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h2 className="step-title">Caminho e Partículas</h2>
+                                    <p className="step-description">
+                                        Escolha seu Caminho Beyonder. Cada caminho representa uma filosofia de poder diferente. Você receberá a Partícula de Domínio do caminho e poderá escolher 
+                                        {maxUniversalParticles} Partículas Universais.
+                                    </p>
                             
                             <div className="pathway-selection">
                                 <h3 style={{ marginBottom: '1.5rem' }}>Selecione seu Caminho:</h3>
@@ -1601,11 +2441,13 @@ export const CharacterCreationWizard: React.FC = () => {
                                     ))}
                                 </div>
                             )}
+                                </div>
+                            )}
                         </div>
                     )}
                     
-                    {/* Step 5: Bloodline */}
-                    {currentStep === 5 && (
+                    {/* Step 5: Bloodline - Skip for Animal Companions */}
+                    {currentStep === 5 && companionType !== 'animal' && (
                         <div className="wizard-step-content bloodline-step">
                             <h2 className="step-title">Linhagem do Personagem</h2>
                             <p className="step-description">
@@ -1655,8 +2497,8 @@ export const CharacterCreationWizard: React.FC = () => {
                         </div>
                     )}
                     
-                    {/* Step 6: Affiliation */}
-                    {currentStep === 6 && (
+                    {/* Step 6: Affiliation - Skip for Animal Companions */}
+                    {currentStep === 6 && companionType !== 'animal' && (
                         <div className="wizard-step-content affiliation-step">
                             <h2 className="step-title">Afiliações</h2>
                             <p className="step-description">
@@ -1758,8 +2600,8 @@ export const CharacterCreationWizard: React.FC = () => {
                         </div>
                     )}
                     
-                    {/* Step 7: Backgrounds */}
-                    {currentStep === 7 && (
+                    {/* Step 7: Backgrounds - Skip for Animal Companions */}
+                    {currentStep === 7 && companionType !== 'animal' && (
                         <div className="wizard-step-content backgrounds-step">
                             <h2 className="step-title">Antecedentes</h2>
                             <p className="step-description">
