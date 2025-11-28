@@ -180,6 +180,7 @@ export interface BeyonderAbility {
     description: string;
     cost?: number | null;
     seqName?: string | null;
+    pathway?: string | null;
     acquisitionMethod?: 'free' | 'purchased';
     isDomain?: boolean;
 }

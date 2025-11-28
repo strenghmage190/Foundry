@@ -15,6 +15,8 @@ import {
   MythicalFormStage,
   PathwayData,
   ProtectionItem,
+  Attack,
+  FormaMitica,
 } from "../types.ts";
 import { supabase } from "../supabaseClient";
 import { uploadAgentAvatar } from "../api/agents";
@@ -22,6 +24,7 @@ import { logDiceRoll } from "../api/campaigns";
 import { useDebounce } from "../src/hooks/useDebounce";
 import { usePermissions } from "../src/hooks/usePermissions";
 import { useMyContext } from "../MyContext";
+import { rollDice } from "../utils/diceRoller";
 
 // Imports de Componentes
 import { StatusBar } from "./StatusBar";
@@ -503,7 +506,7 @@ export const CharacterSheetPage = () => {
         title: "Erro",
         message: "ID do Agente não encontrado.",
       });
-      navigate('/agents'); // Redireciona para a lista de agentes se não houver ID
+      navigate("/agents");
       setIsLoading(false);
       return;
     }
@@ -525,18 +528,19 @@ export const CharacterSheetPage = () => {
         });
         setAgent(null);
       } else {
-        // Revive Infinity values that were serialized as "∞_INFINITY"
         const revivedData = reviveInfinityInObject(data.data);
-        const formattedAgent = { ...revivedData as AgentData, id: data.id, isPrivate: !!(data as any).is_private };
-        console.log('[CharacterSheetPage] Loaded agent from DB:', data);
-        console.log('[CharacterSheetPage] Customization in loaded data:', data.data?.customization);
-        console.log('[CharacterSheetPage] Formatted agent customization:', formattedAgent.customization);
+        const formattedAgent = {
+          ...revivedData,
+          id: data.id,
+          isPrivate: !!data.is_private,
+        };
         setAgent(formattedAgent);
       }
       setIsLoading(false);
     }
+
     fetchAgent();
-  }, [agentId, addLiveToast]);
+  }, [agentId]); // Removed addLiveToast to prevent unnecessary re-renders
 
   // =======================================================
   // 2.5. GERAR URLs ASSINADAS PARA AVATARES
@@ -545,44 +549,25 @@ export const CharacterSheetPage = () => {
     if (!agent) return;
 
     const generateSignedUrls = async () => {
-      const newSignedUrls: { 
-        avatarUrl?: string;
-        avatarHealthy?: string; 
-        avatarInsane?: string; 
-        avatarHurt?: string;
-        avatarDisturbed?: string;
-      } = {};
+      const newSignedUrls = {};
+      const avatarFields = [
+        "avatarHealthy",
+        "avatarInsane",
+        "avatarHurt",
+        "avatarDisturbed",
+      ];
 
-      // Gerar URL assinada para o avatar principal do personagem
-      // Se character.avatarUrl estiver vazio, usa avatarHealthy como fallback
-      const mainAvatarUrl = agent.character.avatarUrl || agent.customization?.avatarHealthy;
-      
-      if (mainAvatarUrl && !mainAvatarUrl.startsWith('http')) {
-        try {
-          const { data } = supabase.storage.from('agent-avatars').getPublicUrl(mainAvatarUrl);
-          newSignedUrls.avatarUrl = data.publicUrl || mainAvatarUrl;
-        } catch (error) {
-          console.warn('CharacterSheetPage: public URL fallback to raw path (main)', error);
-          newSignedUrls.avatarUrl = mainAvatarUrl;
-        }
-      } else {
-        newSignedUrls.avatarUrl = mainAvatarUrl || '';
-      }
-
-      // Gerar URLs assinadas para os avatares de customização
-      const avatarFields = ['avatarHealthy', 'avatarInsane', 'avatarHurt', 'avatarDisturbed'] as const;
       for (const field of avatarFields) {
         const url = agent.customization?.[field];
-        if (url && !url.startsWith('http')) {
+        if (url && !url.startsWith("http")) {
           try {
-            const { data } = supabase.storage.from('agent-avatars').getPublicUrl(url);
+            const { data } = supabase.storage.from("agent-avatars").getPublicUrl(url);
             newSignedUrls[field] = data.publicUrl || url;
-          } catch (error) {
-            console.warn(`CharacterSheetPage: public URL fallback to raw path (${field})`, error);
+          } catch {
             newSignedUrls[field] = url;
           }
         } else {
-          newSignedUrls[field] = url || '';
+          newSignedUrls[field] = url || "";
         }
       }
 
@@ -590,7 +575,7 @@ export const CharacterSheetPage = () => {
     };
 
     generateSignedUrls();
-  }, [agent]);
+  }, [agent]); // Optimized dependencies
 
   // =======================================================
   // 2.6. BUSCAR CAMINHOS CUSTOMIZADOS
@@ -682,9 +667,8 @@ export const CharacterSheetPage = () => {
           const newUrl = await uploadAgentAvatar(
             agent.id,
             field,
-            file,
-            agent.customization?.[field]
-          ); // Sua função de API
+            file
+          ); // Removed the fourth argument
           // Após o upload, atualiza o estado local com a nova URL
           setAgent((prevAgent: AgentData | null) => {
             if (!prevAgent) return null;

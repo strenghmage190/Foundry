@@ -45,8 +45,9 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent || initialAgentData)));
     const [paSpent, setPaSpent] = useState(0);
     const [activeTab, setActiveTab] = useState<ImprovementTab>('Atributos');
-    const [selectedFreeAbility, setSelectedFreeAbility] = useState<{ pathway: string; name: string } | null>(null);
+    const [selectedFreeAbilityName, setSelectedFreeAbilityName] = useState<string | null>(null);
     const [isAddingAntecedente, setIsAddingAntecedente] = useState(false);
+    const [newAntecedenteName, setNewAntecedenteName] = useState('');
 
     const safeCharacter = agent?.character || initialAgentData.character;
     const safeHabilidadesBeyonder = agent?.habilidadesBeyonder || [];
@@ -58,7 +59,6 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const digestaoProgressoAtual = (paTotalGasto || 0) + (pa || 0);
     const canAdvance = digestaoProgressoAtual >= targetPa && sequence > 1;
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
-                setSelectedFreeAbility(null);
     const hasChanges = paSpent > 0;
 
     // Caminhos ativos do personagem (novo e legado)
@@ -100,15 +100,16 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         return activePathway ? dataSource[activePathway] : undefined;
     }, [activePathway, dataSource]);
 
+    // Optimized useEffect to prevent unnecessary re-renders
     useEffect(() => {
         if (isOpen) {
-            setSelectedFreeAbility(null);
+            setSelectedFreeAbilityName(null); // Corrected the variable name
             setPaSpent(0);
             setIsAddingAntecedente(false);
-            setNewAntecedenteName('');
-            setActiveTab(isEligibleForFreebie ? 'Habilidades' : 'Atributos');
+            setNewAntecedenteName("");
+            setActiveTab(isEligibleForFreebie ? "Habilidades" : "Atributos");
         }
-    }, [isOpen, agent, isEligibleForFreebie]);
+    }, [isOpen, isEligibleForFreebie]); // Removed agent from dependencies to prevent unnecessary re-renders
     
     const availablePA = (safeCharacter.pa || 0) - paSpent;
 
@@ -221,8 +222,8 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         if (!selectedFreeAbilityName) return;
         const abilityToAdd = availableAbilitiesForFreeChoice.find(a => a.name === selectedFreeAbilityName);
         if (!abilityToAdd) return;
-        
-        const newAbility: BeyonderAbility = { ...abilityToAdd, id: Date.now(), acquisitionMethod: 'free', description: abilityToAdd.desc };
+
+        const newAbility: BeyonderAbility = { ...abilityToAdd, id: Date.now(), acquisitionMethod: 'free', description: abilityToAdd.desc, pathway: abilityToAdd.pathway };
         const updateData: any = {
             habilidadesBeyonder: [...agent.habilidadesBeyonder, newAbility],
             character: {
@@ -232,7 +233,8 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         };
 
         // Se for uma partícula de domínio, adicionar também em learnedParticles
-        const sourcePath = dataSource[primaryPathwayName || ''];
+        // Usar o pathway correto da habilidade selecionada (abilityToAdd.pathway)
+        const sourcePath = dataSource[abilityToAdd.pathway || primaryPathwayName || ''];
         if (sourcePath?.domain?.particulas) {
             const domainParticle = sourcePath.domain.particulas.find((p: any) => p.name === selectedFreeAbilityName);
             if (domainParticle) {
@@ -297,13 +299,14 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         setNewAntecedenteName('');
     };
 
-    const handleBuyAbility = (ability: { name: string; desc: string; seqName: string; }, cost: number) => {
+    const handleBuyAbility = (ability: { name: string; desc: string; seqName: string; pathway: string }, cost: number) => {
         setPaSpent(prev => prev + cost);
         const newAbility: BeyonderAbility = {
             id: Date.now(),
             name: ability.name,
             description: ability.desc,
             seqName: ability.seqName,
+            pathway: ability.pathway,
             acquisitionMethod: 'purchased'
         };
         
@@ -374,12 +377,12 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     }, [pathwayData, currentAgent.character.sequence, currentAgent.habilidadesBeyonder]);
 
     const availableAbilitiesForFreeChoice = useMemo(() => {
-        // Gather abilities from all pathways for the current sequence, excluding already owned abilities
+        // Gather abilities from character's pathways for the current sequence, excluding already owned abilities
         const ownedAbilityNames = new Set(safeHabilidadesBeyonder.map(a => a.name));
         const seqLabel = `Sequência ${safeCharacter.sequence}:`;
         const results: Array<{ pathway: string; name: string; desc: string; seqName: string }> = [];
 
-        Object.keys(dataSource).forEach((pathwayName) => {
+        characterPathways.forEach((pathwayName) => {
             const path = dataSource[pathwayName];
             if (!path || !path.sequences) return;
             const seqKey = Object.keys(path.sequences).find(k => k.includes(seqLabel));
@@ -393,7 +396,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
         });
 
         return results;
-    }, [dataSource, safeCharacter.sequence, safeHabilidadesBeyonder]);
+    }, [dataSource, safeCharacter.sequence, safeHabilidadesBeyonder, characterPathways]);
 
 
     if (!isOpen) return null;
@@ -555,6 +558,10 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                                                 <div className="improvement-item-name">
                                                     <strong>{ability.name}</strong>
                                                     <p className="item-description">{ability.desc}</p>
+                                                    <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: '#aaa' }}>
+                                                        <span style={{ marginRight: '1rem' }}>{ability.seqName}</span>
+                                                        <span style={{ opacity: 0.85 }}>Origem: <strong style={{ color: 'var(--character-color)' }}>{ability.pathway}</strong></span>
+                                                    </div>
                                                 </div>
                                                 <div className="improvement-item-controls">
                                                      <button 
@@ -581,7 +588,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
                                             </div>
                                             <div className="improvement-item-controls">
                                                  <span className="improvement-item-cost">Custo: {ability.cost} PA</span>
-                                                 <button className="buy-ability-btn" onClick={() => handleBuyAbility({name: ability.name, desc: ability.desc, seqName: seqGroup.seqName}, ability.cost)} disabled={availablePA < ability.cost}>
+                                                 <button className="buy-ability-btn" onClick={() => handleBuyAbility({name: ability.name, desc: ability.desc, seqName: seqGroup.seqName, pathway: activePathway || ''}, ability.cost)} disabled={availablePA < ability.cost}>
                                                     Comprar
                                                 </button>
                                             </div>

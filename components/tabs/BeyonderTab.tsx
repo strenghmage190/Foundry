@@ -132,6 +132,8 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
     };
 
     const groupedAbilities = abilities.reduce((acc, ability) => {
+        // Only include abilities from the selected pathway
+        if (ability.pathway && ability.pathway !== selectedPathway) return acc;
         const key = ability.seqName || 'Habilidades Únicas';
         if (!acc[key]) {
             acc[key] = [];
