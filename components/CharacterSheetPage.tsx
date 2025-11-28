@@ -1019,7 +1019,7 @@ export const CharacterSheetPage = () => {
 
     // Calcula Pontos de Estase (Caminho do Éon Eterno)
     const hasAeonPathway = characterPathways.some(p => p.toUpperCase().includes('ÉON') || p.toUpperCase().includes('AEON'));
-    const maxEstasePoints = hasAeonPathway ? (agent.attributes.vigor || 0) + base.maxSpirituality : 0;
+    const maxEstasePoints = hasAeonPathway ? (agent.attributes.vigor || 0) + (agent.attributes.espiritualidade || 0) : 0;
 
     return {
       maxVitality: base.maxVitality,
