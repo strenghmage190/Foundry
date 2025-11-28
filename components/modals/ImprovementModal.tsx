@@ -45,9 +45,8 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent || initialAgentData)));
     const [paSpent, setPaSpent] = useState(0);
     const [activeTab, setActiveTab] = useState<ImprovementTab>('Atributos');
-    const [selectedFreeAbilityName, setSelectedFreeAbilityName] = useState<string | null>(null);
+    const [selectedFreeAbility, setSelectedFreeAbility] = useState<{ pathway: string; name: string } | null>(null);
     const [isAddingAntecedente, setIsAddingAntecedente] = useState(false);
-    const [newAntecedenteName, setNewAntecedenteName] = useState('');
 
     const safeCharacter = agent?.character || initialAgentData.character;
     const safeHabilidadesBeyonder = agent?.habilidadesBeyonder || [];
@@ -59,7 +58,7 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     const digestaoProgressoAtual = (paTotalGasto || 0) + (pa || 0);
     const canAdvance = digestaoProgressoAtual >= targetPa && sequence > 1;
     const progressPercent = targetPa > 0 ? Math.min(100, (digestaoProgressoAtual / targetPa) * 100) : 0;
-    
+                setSelectedFreeAbility(null);
     const hasChanges = paSpent > 0;
 
     // Caminhos ativos do personagem (novo e legado)
@@ -103,11 +102,10 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
 
     useEffect(() => {
         if (isOpen) {
-            setCurrentAgent(JSON.parse(JSON.stringify(agent)));
+            setSelectedFreeAbility(null);
             setPaSpent(0);
             setIsAddingAntecedente(false);
             setNewAntecedenteName('');
-            setSelectedFreeAbilityName(null);
             setActiveTab(isEligibleForFreebie ? 'Habilidades' : 'Atributos');
         }
     }, [isOpen, agent, isEligibleForFreebie]);
@@ -376,18 +374,26 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     }, [pathwayData, currentAgent.character.sequence, currentAgent.habilidadesBeyonder]);
 
     const availableAbilitiesForFreeChoice = useMemo(() => {
-        const sourcePathName = primaryPathwayName;
-        if (!sourcePathName) return [];
-        const sourcePath = dataSource[sourcePathName];
-        if (!sourcePath) return [];
+        // Gather abilities from all pathways for the current sequence, excluding already owned abilities
         const ownedAbilityNames = new Set(safeHabilidadesBeyonder.map(a => a.name));
-        const seqNameKey = Object.keys(sourcePath.sequences).find(key => key.includes(`Sequência ${safeCharacter.sequence}:`));
-        if (!seqNameKey) return [];
+        const seqLabel = `Sequência ${safeCharacter.sequence}:`;
+        const results: Array<{ pathway: string; name: string; desc: string; seqName: string }> = [];
 
-        return (sourcePath.sequences[seqNameKey as keyof typeof sourcePath.sequences] as SequenceAbility[])
-            .filter(ability => !ownedAbilityNames.has(ability.name))
-            .map(ability => ({ name: ability.name, desc: ability.desc, seqName: seqNameKey }));
-    }, [primaryPathwayName, dataSource, safeCharacter.sequence, safeHabilidadesBeyonder]);
+        Object.keys(dataSource).forEach((pathwayName) => {
+            const path = dataSource[pathwayName];
+            if (!path || !path.sequences) return;
+            const seqKey = Object.keys(path.sequences).find(k => k.includes(seqLabel));
+            if (!seqKey) return;
+            const abilities = (path.sequences[seqKey as keyof typeof path.sequences] as SequenceAbility[]) || [];
+            abilities.forEach(ab => {
+                if (!ownedAbilityNames.has(ab.name)) {
+                    results.push({ pathway: pathwayName, name: ab.name, desc: ab.desc, seqName: seqKey });
+                }
+            });
+        });
+
+        return results;
+    }, [dataSource, safeCharacter.sequence, safeHabilidadesBeyonder]);
 
 
     if (!isOpen) return null;

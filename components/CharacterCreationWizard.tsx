@@ -9,6 +9,7 @@ import { BLOODLINES } from '../data/bloodlines-data';
 import { AFFILIATIONS } from '../data/affiliations-data';
 import { getParticleType } from '../data/magic-particles';
 import { PATHWAY_DESCRIPTIONS } from '../data/pathway-descriptions';
+import PATHWAYS_DATA from '../data/pathways';
 import '../styles/components/_character-creation-wizard.css';
 
 interface AttributeScores {
@@ -327,6 +328,8 @@ export const CharacterCreationWizard: React.FC = () => {
     
     // Step 4: Pathway and Particles
     const [selectedPathway, setSelectedPathway] = useState<string>('');
+    // Secondary/extra pathways (multiclass)
+    const [selectedSecondaryPathways, setSelectedSecondaryPathways] = useState<string[]>([]);
     const [selectedUniversalParticles, setSelectedUniversalParticles] = useState<UniversalParticle[]>([]);
     
     // Step 5: Origin (Background)
@@ -832,6 +835,11 @@ export const CharacterCreationWizard: React.FC = () => {
                 });
             }
             
+            // Determine allowed secondary pathways according to permissions
+            const allowedSecondaryPathways = (permissions.can_create_pathways && permissions.max_pathways && permissions.max_pathways > 1)
+                ? selectedSecondaryPathways.slice(0, Math.max(0, (permissions.max_pathways || 1) - 1))
+                : [];
+
             // Build complete agent data
             const newAgentData = {
                 ...JSON.parse(JSON.stringify(initialAgentData)),
@@ -845,7 +853,7 @@ export const CharacterCreationWizard: React.FC = () => {
                     pathway: selectedPathway, // Formato antigo para compatibilidade
                     pathways: {
                         primary: selectedPathway,
-                        secondary: []
+                        secondary: allowedSecondaryPathways
                     },
                     bloodline: bloodline?.name || 'Nenhuma',
                     bloodlineCost: bloodline?.cost || 0,
@@ -895,7 +903,29 @@ export const CharacterCreationWizard: React.FC = () => {
                 habilidades,
                 attacks: [],
                 protections: [],
-                habilidadesBeyonder: [],
+                // Grant free Beyonder abilities for each additional (secondary) pathway: one innate at Seq.9 (or first available)
+                habilidadesBeyonder: (() => {
+                    const result: any[] = [];
+                    try {
+                        (allowedSecondaryPathways || []).forEach((sec, idx) => {
+                            const pd = (PATHWAYS_DATA as any)[sec];
+                            const innates = pd?.poderesInatos || [];
+                            const chosen = innates.find((p: any) => String(p.seq).trim() === '9') || innates[0];
+                            if (chosen) {
+                                result.push({
+                                    id: Date.now() + idx,
+                                    name: chosen.nome,
+                                    description: chosen.desc,
+                                    acquisitionMethod: 'free',
+                                    seqName: chosen.seq || null
+                                });
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Erro ao atribuir habilidades gratuitas de caminhos secundários', e);
+                    }
+                    return result;
+                })(),
                 rituais: [],
                 inventory: [],
                 artifacts: [],
@@ -1383,6 +1413,45 @@ export const CharacterCreationWizard: React.FC = () => {
                                         );
                                     })}
                                 </div>
+
+                                                                {/* Secondary pathways selection (multiclass) */}
+                                                                {permissions.can_create_pathways && permissions.max_pathways && permissions.max_pathways > 1 && (
+                                                                    <div style={{ marginTop: '1.5rem' }}>
+                                                                        <h4 style={{ color: '#d4af37', marginBottom: '0.5rem' }}>
+                                                                            Escolha até {Math.max(0, permissions.max_pathways - 1)} Caminho(s) Secundário(s)
+                                                                        </h4>
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                                                                              {PATHWAYS.filter(p => p !== selectedPathway).map(p => {
+                                                                                const isSelected = selectedSecondaryPathways.includes(p);
+                                                                                return (
+                                                                                    <button
+                                                                                        key={p}
+                                                                                            onClick={() => {
+                                                                                            setSelectedSecondaryPathways(prev => {
+                                                                                                if (prev.includes(p)) return prev.filter(x => x !== p);
+                                                                                                const maxSecondaries = Math.max(0, (permissions.max_pathways || 1) - 1);
+                                                                                                if (prev.length >= maxSecondaries) return prev;
+                                                                                                return [...prev, p];
+                                                                                            });
+                                                                                        }}
+                                                                                        style={{
+                                                                                            padding: '0.75rem',
+                                                                                            borderRadius: '8px',
+                                                                                            border: isSelected ? '2px solid #4a9bff' : '1px solid rgba(212,175,55,0.2)',
+                                                                                            background: isSelected ? 'rgba(74,155,255,0.08)' : 'transparent',
+                                                                                            color: isSelected ? '#e8f4ff' : '#e8e8e8',
+                                                                                            cursor: 'pointer',
+                                                                                            textAlign: 'left'
+                                                                                        }}
+                                                                                    >
+                                                                                        <div style={{ fontWeight: 'bold' }}>{PATHWAY_DISPLAY_NAMES[p]}</div>
+                                                                                        <div style={{ fontSize: '0.8rem', color: '#a0aec0' }}>{PATHWAY_DESCRIPTIONS[p]?.shortDescription}</div>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                 
                                 {selectedPathway && DOMAIN_PARTICLES[selectedPathway] && (
                                     <div className="domain-particle-display" style={{
