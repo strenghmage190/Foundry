@@ -60,7 +60,7 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
         }
     }, [characterPathways, selectedPathway]);
 
-    // Obter dados do caminho selecionado
+    // Obter dados do caminho selecionado (suporta nomes curtos via mapeamento)
     const currentPathwayData = useMemo(() => {
         if (!selectedPathway) return null;
         return allPathways[selectedPathway];
@@ -192,6 +192,7 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
         { key: 'correntes' as FilterSection, label: 'Correntes', condition: correntes.length > 0 },
         { key: 'inatos' as FilterSection, label: 'Poderes Inatos', condition: poderesInatos.length > 0 },
         { key: 'mitica' as FilterSection, label: 'Forma Mítica', condition: !!(formaMitica && sequence <= 4) },
+        { key: 'companheiro' as FilterSection, label: 'Companheiro', condition: !!character.companion },
         { key: 'adquiridas' as FilterSection, label: 'Habilidades Compráveis', condition: true },
     ];
 
@@ -210,6 +211,9 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                 <p style={{ marginBottom: '0.5rem' }}>Nenhum caminho selecionado.</p>
                 <p style={{ fontSize: '0.9rem', color: '#666' }}>
                     Configure um caminho na seção de Antecedentes ou fale com o Mestre.
+                </p>
+                <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                    Dica: Se você tinha um companheiro (pet) e ele não aparece aqui, verifique a página <strong>Criaturas</strong>. Alguns pets são salvos como criaturas separadas e precisam ser vinculados manualmente à ficha.
                 </p>
                 {/* Debug info - pode remover depois */}
                 <details style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#555', textAlign: 'left' }}>
@@ -247,7 +251,10 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                     </label>
                     <select 
                         value={selectedPathway} 
-                        onChange={(e) => setSelectedPathway(e.target.value)}
+                        onChange={(e) => {
+                            setSelectedPathwayRaw(e.target.options[e.target.selectedIndex].text);
+                            setSelectedPathway(resolvePathKey(e.target.value));
+                        }}
                         style={{
                             width: '100%',
                             padding: '0.75rem',
@@ -261,8 +268,9 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                     >
                         {characterPathways.map((pathName) => {
                             const isPrimary = character.pathways?.primary === pathName;
+                            const value = resolvePathKey(pathName);
                             return (
-                                <option key={pathName} value={pathName}>
+                                <option key={pathName} value={value}>
                                     {isPrimary ? '★ ' : ''}{pathName}{isPrimary ? ' (Principal)' : ''}
                                 </option>
                             );
@@ -329,6 +337,18 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                     fontSize: '0.95rem'
                 }}>
                     Maestria Arcana ativa: custos de PE das suas habilidades são reduzidos pela metade (arredondado para cima).
+                </div>
+            )}
+
+            {/* Mostra mensagem de debug caso um caminho esteja definido mas não encontrado */}
+            { selectedPathway && !currentPathwayData && (
+                <div style={{ margin: '1rem 0', padding: '1rem', border: '1px solid #444', borderRadius: 6, background: '#1a1a1c', color: '#e0aaff' }}>
+                    <strong>⚠️ Caminho não encontrado:</strong>
+                    <p>O personagem tem um caminho configurado ({selectedPathwayRaw || selectedPathway}), mas o sistema não encontrou os dados do caminho para exibir. Isso pode acontecer se o nome salvo na ficha não corresponder exatamente ao nome registrado nos dados do caminho.</p>
+                    <details>
+                        <summary>Veja caminhos disponíveis (debug)</summary>
+                        <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{JSON.stringify(Object.keys(allPathways).slice(0,50), null, 2)}</pre>
+                    </details>
                 </div>
             )}
 
@@ -564,6 +584,51 @@ export const BeyonderTab: React.FC<BeyonderTabProps> = ({
                             {formaMitica.poderes.map(poder => (
                                 <p key={poder.nome} style={{marginTop: '0.5rem'}}><strong>{poder.tipo} ({poder.nome}):</strong> {poder.desc}</p>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Companheiro */}
+            {character.companion && (
+                <div ref={refs.companheiro} className={`accordion-section ${openMainSection === 'companheiro' ? 'active' : ''}`}>
+                    <div className="accordion-header" onClick={() => toggleMainSection('companheiro')}>
+                        <h4>Companheiro</h4>
+                        <span className="accordion-icon"></span>
+                    </div>
+                    <div className="accordion-content">
+                        <div className="tab-list">
+                            <div className="tab-list-item">
+                                <div className="item-header">
+                                    <h5 className="item-header-title">{character.companion.type === 'humano' ? 'Companheiro Humano' : 'Companheiro Animal'}</h5>
+                                </div>
+                                <p className="item-description"><strong>Tipo:</strong> {character.companion.type}</p>
+                                {character.companion.origin && <p className="item-description"><strong>Origem:</strong> {character.companion.origin}</p>}
+                                {character.companion.biologicalMold && <p className="item-description"><strong>Molde Biológico:</strong> {character.companion.biologicalMold}</p>}
+                                {character.companion.pathway && <p className="item-description"><strong>Caminho:</strong> {character.companion.pathway}</p>}
+                                {character.companion.attributes && (
+                                    <div>
+                                        <h6>Atributos:</h6>
+                                        <ul>
+                                            {Object.entries(character.companion.attributes).map(([attr, value]) => (
+                                                <li key={attr}>{attr}: {value}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {character.companion.mechanics && (
+                                    <div>
+                                        <h6>Mecânicas:</h6>
+                                        <p><strong>Ataque Natural:</strong> {character.companion.mechanics.naturalAttack}</p>
+                                        <p><strong>Armadura Natural:</strong> {character.companion.mechanics.naturalArmor}</p>
+                                        {character.companion.mechanics.sixthSense && <p>Senso de Perigo</p>}
+                                        {character.companion.mechanics.socialPenalty && <p>Penalidade Social</p>}
+                                        {character.companion.mechanics.intimidationBonus && <p>Bônus de Intimidação</p>}
+                                        {character.companion.mechanics.cannotUseTools && <p>Não pode usar ferramentas</p>}
+                                        {character.companion.mechanics.stealthAdvantage && <p>Vantagem em Furtividade</p>}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

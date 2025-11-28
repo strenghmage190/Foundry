@@ -534,7 +534,72 @@ export const CharacterSheetPage = () => {
           id: data.id,
           isPrivate: !!data.is_private,
         };
-        setAgent(formattedAgent);
+        // Normalize certain stored pathway names (compatibility fix for Éon/Aeon variants)
+        const stripAccents = (s?: string) =>
+          (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+
+        let normalizedAgent = { ...formattedAgent } as any;
+        let changed = false;
+
+        const normalizePath = (p?: string) => {
+          if (!p) return p;
+          const key = stripAccents(p);
+          // If it looks like any AEON/EON variant, normalize to canonical pathway
+          if (key.includes("AEON") || key.includes("EON")) {
+            changed = true;
+            return "CAMINHO DO ÉON ETERNO";
+          }
+          // Handle an old exact typo key
+          if (key === "CAMINHO DO AEON ETERNO") {
+            changed = true;
+            return "CAMINHO DO ÉON ETERNO";
+          }
+          return p;
+        };
+
+        // New structure: pathways.primary / pathways.secondary
+        if (normalizedAgent.character?.pathways) {
+          const p = normalizedAgent.character.pathways.primary;
+          const fixedPrimary = normalizePath(p);
+          if (fixedPrimary !== p) normalizedAgent.character.pathways.primary = fixedPrimary;
+          if (Array.isArray(normalizedAgent.character.pathways.secondary)) {
+            normalizedAgent.character.pathways.secondary = normalizedAgent.character.pathways.secondary.map((s: string) => normalizePath(s));
+          }
+        }
+
+        // Legacy single pathway field
+        if (normalizedAgent.character?.pathway) {
+          if (Array.isArray(normalizedAgent.character.pathway)) {
+            normalizedAgent.character.pathway = normalizedAgent.character.pathway.map((s: string) => normalizePath(s));
+          } else {
+            normalizedAgent.character.pathway = normalizePath(normalizedAgent.character.pathway);
+          }
+        }
+
+        // If we changed anything, persist normalized data back to DB
+        if (changed) {
+          try {
+            const toSave = { ...(normalizedAgent as any) } as any;
+            // remove DB-only fields
+            delete toSave.id;
+            delete toSave.isPrivate;
+            const jsonString = JSON.stringify(toSave, beyondersReplacer);
+            const dataToSaveProcessed = JSON.parse(jsonString);
+            const { error: updateErr } = await supabase
+              .from('agents')
+              .update({ data: dataToSaveProcessed })
+              .eq('id', data.id);
+            if (updateErr) {
+              console.warn('Falha ao persistir normalização de caminho (AEON):', updateErr);
+            } else {
+              console.log('Normalização de caminho aplicada e salva para agente', data.id);
+            }
+          } catch (e) {
+            console.warn('Erro ao tentar normalizar caminhos do agente:', e);
+          }
+        }
+
+        setAgent(normalizedAgent);
       }
       setIsLoading(false);
     }
