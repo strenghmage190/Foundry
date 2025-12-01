@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Attack } from '../../types.ts';
+import { Attack } from '../../types';
 import { initialHabilidadesState } from '../../constants';
 
 // Constants for dropdowns

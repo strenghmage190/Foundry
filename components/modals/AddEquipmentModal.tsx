@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { InventoryItem } from '../../types.ts';
+import { InventoryItem } from '../../types';
 import {
   ARMAS_UMA_MAO,
   ARMAS_HASTE,

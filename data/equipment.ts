@@ -18,7 +18,7 @@ export interface Equipment {
 export interface Weapon extends Equipment {
   category: 'Arma Simples' | 'Arma de Haste' | 'Lâmina Pesada' | 'Esmagadora' | 'Arma Exótica' | 'Arma de Disparo (1 Mão)' | 'Arma de Disparo (2 Mãos)';
   dano: string; // ex: "1d6", "2d6", "1d8+2"
-  tipo: 'Corte' | 'Perfuração' | 'Impacto' | 'C/P' | 'C/I' | 'Bala' | 'Cart.' | 'Virote' | 'Perf.';
+  tipo: 'Corte' | 'Perfuração' | 'Impacto' | 'C/P' | 'P/C' | 'C/I' | 'Bala' | 'Cart.' | 'Virote' | 'Perf.';
   critico: string; // ex: "x2", "19/x2", "18-20"
   alcance?: string; // Para armas de disparo
   municao?: number; // Capacidade de munição

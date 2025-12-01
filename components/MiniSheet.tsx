@@ -9,16 +9,16 @@ import '../styles/components/_mini-sheet.css';
 
 interface MiniSheetProps {
   agentData: AgentData;
-  campaignId: string;
+  // campaignId may be undefined when rendering outside of a campaign context
+  campaignId?: string;
 }
 
 const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
   const navigate = useNavigate();
   if (!agentData?.character) return null;
 
-  console.log('🎨 MiniSheet NOVA VERSAO renderizando:', character.name);
-
   const { character, attributes, protections } = agentData;
+  console.log('🎨 MiniSheet NOVA VERSAO renderizando:', character?.name);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const avatarPath = character.avatarUrl;
@@ -106,15 +106,8 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
 
   // 👇👇👇 ESTA É A LINHA QUE PRECISA SER CORRIGIDA 👇👇👇
   const handleOpenSheet = () => {
-    // Verificação de segurança: campaignId deve existir
-    if (!campaignId) {
-      console.error("MiniSheet: campaignId está undefined! Não é possível navegar para a ficha dentro de uma campanha.");
-      alert("Erro: ID da campanha não encontrado. Certifique-se de acessar a ficha a partir do Escudo do Mestre.");
-      return;
-    }
-
-    // Constrói a URL completa com o campaignId
-    const targetUrl = `/campaign/${campaignId}/agent/${agentData.id}`;
+    // If campaignId is present we navigate to nested campaign URL, otherwise to the generic agent page
+    const targetUrl = campaignId ? `/campaign/${campaignId}/agent/${agentData.id}` : `/agent/${agentData.id}`;
 
     // Log para confirmar que a URL está correta antes de navegar
     console.log("MiniSheet: campaignId recebido ->", campaignId);
@@ -165,7 +158,7 @@ const MiniSheet: React.FC<MiniSheetProps> = ({ agentData, campaignId }) => {
       {/* Afixos (Fraquezas e Resistências) */}
       {/* Assimilação e Âncoras (linha compacta) */}
       <div className="msc-assimilation-anchors">
-        <div className="msc-assimilation">DADOS DE ASSIMILAÇÃO: {Array.from({ length: Math.max(0, character.assimilationDice || 0) }).map((_, i) => (<span key={i} className="assim-icon">🎲</span>))}</div>
+        <div className="msc-assimilation">DADOS DE ASSIMILAÇÃO: {character.assimilationDice === Number.POSITIVE_INFINITY || character.assimilationDice === Infinity ? '∞' : Array.from({ length: Math.max(0, Math.min(50, character.assimilationDice || 0)) }).map((_, i) => (<span key={i} className="assim-icon">🎲</span>))}</div>
         <div className="msc-anchors">ANCORAS: { (character.anchors || []).map((a, i) => (<span key={i} className={`anchor-icon ${a ? 'filled' : 'empty'}`}>{a?.symbol || '◯'}</span>)) }</div>
       </div>
 

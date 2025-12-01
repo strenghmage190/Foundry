@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { magicData } from '../../data/magic-data.tsx';
-import { LearnedParticle } from '../../types.ts';
+import { LearnedParticle } from '../../types';
 import { getParticleType } from '../../data/magic-particles';
 
 interface MagicGrimoireModalProps {

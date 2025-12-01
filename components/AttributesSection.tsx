@@ -1,5 +1,5 @@
 import React from 'react';
-import { Attributes } from '../types.ts';
+import { Attributes } from '../types';
 
 interface AttributesSectionProps {
     attributes?: Attributes;

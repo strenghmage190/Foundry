@@ -1,4 +1,4 @@
-import { Enemy } from '../types.ts';
+import { Enemy } from '../types';
 
 export const lobisomemExample: Enemy = {
     id: 'wraith-werewolf-01',

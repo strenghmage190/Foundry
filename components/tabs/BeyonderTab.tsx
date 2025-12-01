@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { BeyonderAbility, PathwayData, Character, InfernalAspect } from '../../types.ts';
+import { BeyonderAbility, PathwayData, Character, InfernalAspect } from '../../types';
 import { hasArcaneMastery } from '../../utils/calculations';
 import { resolvePathKey } from '../../utils/resolvePathKey';
 

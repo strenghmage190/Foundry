@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AgentData, CustomizationSettings } from '../../types.ts';
+import { AgentData, CustomizationSettings } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { initialAgentData } from '../../constants';
 import { ImageCropModal } from './ImageCropModal';

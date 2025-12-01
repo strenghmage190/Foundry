@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AgentData } from '../types.ts';
+import { AgentData } from '../types';
 import { SettingsIcon } from './icons.tsx';
 import CharacterCard from './CharacterCard';
 import { supabase } from '../supabaseClient';

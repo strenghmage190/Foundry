@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Enemy } from '../types.ts';
+import { Enemy } from '../types';
 import { supabase } from '../supabaseClient.ts';
 import { EnemySheet } from './EnemySheet.tsx';
 import { EditCreatureModal } from './modals/EditCreatureModal.tsx';

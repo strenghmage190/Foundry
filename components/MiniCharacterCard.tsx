@@ -1,12 +1,12 @@
 import React from 'react';
-import type { AgentData, Attributes } from '../types';
+import type { AgentData, Attributes, Character } from '../types';
 
 interface Props {
   agent: Partial<AgentData> & { id?: number | string };
   onOpen?: () => void;
   className?: string;
   combatSummary?: string;
-  onUpdateAgent?: (agentId: string | number, updatedCharacter: any) => Promise<void> | void;
+  onUpdateAgent?: (agentId: string | number, updatedCharacter: Partial<Character>) => Promise<void> | void;
 }
 
 const abbrevMap: { [K in keyof Attributes]?: string } = {
@@ -24,8 +24,8 @@ const barColors = {
 };
 
 const MiniCharacterCard: React.FC<Props> = ({ agent, onOpen, className, combatSummary, onUpdateAgent }) => {
-  const character = (agent as any).data?.character || {};
-  const attributes: Partial<Attributes> = (agent as any).data?.attributes || {};
+  const character = (agent as any).data?.character || (agent as any).character || {};
+  const attributes: Partial<Attributes> = (agent as any).data?.attributes || (agent as any).attributes || {};
 
   const avatar = character?.avatarUrl || character?.player || 'https://placehold.co/72x72?text=Avatar';
   const name = character?.name || 'Sem Nome';

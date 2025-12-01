@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Ritual, LearnedParticle, AgentData, ToastData } from '../../types.ts';
+import { Ritual, LearnedParticle, AgentData, ToastData } from '../../types';
 
 // --- Modal Component Definition ---
 interface ArcaneDeconstructionModalProps {

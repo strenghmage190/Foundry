@@ -1,4 +1,4 @@
-import { AgentData, Character, Attributes, Habilidades, Attack, BeyonderAbility, Ritual, InventoryItem, Artifact, Money, Antecedente, Afiliacao, LearnedParticle, CustomizationSettings, InfernalAspect, ProtectionItem } from './types.ts';
+import { AgentData, Character, Attributes, Habilidades, Attack, BeyonderAbility, Ritual, InventoryItem, Artifact, Money, Antecedente, Afiliacao, LearnedParticle, CustomizationSettings, InfernalAspect, ProtectionItem } from './types';
 
 // --- CONFIGURAÇÕES GLOBAIS DO JOGO ---
 export const paRequirementsBySequence: { [key: number]: number } = {

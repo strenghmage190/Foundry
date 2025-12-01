@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AgentData, Attack, Attributes, LearnedParticle } from '../../types.ts';
+import { AgentData, Attack, Attributes, LearnedParticle } from '../../types';
 import { magicData } from '../../data/magic-data.tsx';
 import { FUNCOES, OBJETOS, CARACTERISTICAS, COMPLEMENTOS, CRIADORES, MagicParticle, getParticleType } from '../../data/magic-particles';
 
@@ -138,8 +138,8 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
 
         if (isDemigod) {
             // Tecelagem Arcana
-            newAttack = {
-                id: Date.now(),
+                newAttack = {
+                id: String(Date.now()),
                 name: name,
                 damageFormula: `Espiritualidade + ${getDamageDie()}`,
                 quality: 'Comum',
@@ -155,8 +155,8 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
             };
         } else {
             // Inscrição Arcana
-            newAttack = {
-                id: Date.now(),
+                newAttack = {
+                id: String(Date.now()),
                 name: name,
                 damageFormula: `Inteligência + ${getDamageDie()}`,
                 quality: 'Comum',

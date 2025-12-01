@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { InventoryItem, Artifact, Money, Attack } from '../../types.ts';
+import { InventoryItem, Artifact, Money, Attack } from '../../types';
 import { AddEquipmentModal } from '../modals/AddEquipmentModal';
 import { Weapon } from '../../data/equipment.ts';
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Enemy } from '../types.ts';
+import { Enemy } from '../types';
 
 interface EnemySheetProps {
     enemy: Enemy;

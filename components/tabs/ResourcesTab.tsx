@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Character } from '../../types.ts';
+import { Character } from '../../types';
 import './ResourcesTab.css';
 
 interface ResourcesTabProps {

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import '../styles/components/_character-status-card.css';
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
 
+import { Attributes } from '../types';
+
 type Stats = {
   defense?: number;
   absorption?: number;
@@ -26,13 +28,7 @@ interface CharacterStatusCardProps {
   maxSpirituality?: number;
   compact?: boolean;
   className?: string;
-  attributes?: {
-    agi?: number;
-    for?: number;
-    int?: number;
-    pre?: number;
-    vig?: number;
-  };
+  attributes?: Attributes;
   nex?: string | number | null;
   role?: string | null;
 }
@@ -124,13 +120,13 @@ const CharacterStatusCard: React.FC<CharacterStatusCardProps> = ({
       </header>
 
         {/* Attributes row: AGI FOR INT PRE VIG */}
-        {(attributes || {}).agi !== undefined || (attributes || {}).for !== undefined ? (
+        {(attributes || {}).destreza !== undefined || (attributes || {}).forca !== undefined ? (
           <section className="char-attributes">
-            <div className="attr-item"><div className="attr-value">{attributes?.agi ?? '-'}</div><div className="attr-label">AGI</div></div>
-            <div className="attr-item"><div className="attr-value">{attributes?.for ?? '-'}</div><div className="attr-label">FOR</div></div>
-            <div className="attr-item"><div className="attr-value">{attributes?.int ?? '-'}</div><div className="attr-label">INT</div></div>
-            <div className="attr-item"><div className="attr-value">{attributes?.pre ?? '-'}</div><div className="attr-label">PRE</div></div>
-            <div className="attr-item"><div className="attr-value">{attributes?.vig ?? '-'}</div><div className="attr-label">VIG</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.destreza ?? '-'}</div><div className="attr-label">AGI</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.forca ?? '-'}</div><div className="attr-label">FOR</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.inteligencia ?? '-'}</div><div className="attr-label">INT</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.percepcao ?? '-'}</div><div className="attr-label">PRE</div></div>
+            <div className="attr-item"><div className="attr-value">{attributes?.vigor ?? '-'}</div><div className="attr-label">VIG</div></div>
           </section>
         ) : null}
 

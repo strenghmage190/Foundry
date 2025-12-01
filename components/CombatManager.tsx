@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import '../styles/components/_combat-manager.css';
-import { AgentData, Attack, Enemy, Attributes } from '../types';
+import { AgentData, Attack, Enemy, Attributes, Habilidade } from '../types';
 import { rollInitiative, resolveAttack, ResolveAttackOptions } from '../utils/combatLogic';
 import { getAbsorptionPool, getDefense } from '../utils/calculations';
 import { rollDice } from '../utils/diceRoller';
@@ -42,8 +42,14 @@ export const CombatManager: React.FC<CombatManagerProps> = ({ agents }) => {
       skill: 'Armas Brancas', // padrão
       damageFormula: ea.damage,
       bonusAttack: ea.dicePool || 0,
-      qualities: ea.qualities || '',
-      notes: ea.notes || '',
+      quality: 'Comum',
+      specialQualities: ea.qualities || '',
+      enhancements: '',
+      range: (ea as any).range || '—',
+      ammo: (ea as any).ammo || 0,
+      maxAmmo: (ea as any).maxAmmo || 0,
+      // preserve text note in fallback field (not part of Attack) by using specialQualities or enhancements
+      // notes/presentation can be added to UI by reading meta fields on Attack if required
     }));
 
     // Converter creature skills em Habilidades com estrutura similar aos players
@@ -55,17 +61,46 @@ export const CombatManager: React.FC<CombatManagerProps> = ({ agents }) => {
       { name: 'Raciocínio', attr: 'Inteligência', points: creature.creatureSkills?.find(s => s.name === 'Raciocínio')?.points ?? creature.skills?.raciocinio ?? 2 },
     ];
 
-    return {
-      id: creature.id,
+    // Build a minimal AgentData object that satisfies the application types (defaults for optional/unused fields)
+    const agentData: AgentData = {
+      agent_id: creature.id.toString(),
+      id: Date.now(),
+      lastModified: new Date().toISOString(),
       character: {
         name: creature.name,
-        vitality: creature.healthPoints,
-        maxVitality: creature.healthPoints,
-        sanity: 0,
-        maxSanity: 0,
+        sequence: parseInt(creature.recommendedSequence || '9') || 9,
+        player: 'NPC',
+        avatarUrl: '',
+        anotacoes: creature.notes || '',
+        aparencia: '',
+        personalidade: '',
+        historico: '',
+        objetivo: '',
+        ancoras: '',
+        nomeHonorifico: '',
+        pathwayColor: '#888',
+        dtRituais: 0,
+        vitality: creature.healthPoints || 0,
+        maxVitality: creature.healthPoints || 0,
         spirituality: creature.espiritualidade || 0,
         maxSpirituality: creature.espiritualidade || 0,
-        sequence: parseInt(creature.recommendedSequence || '9'),
+        willpower: 0,
+        maxWillpower: 0,
+        sanity: 0,
+        maxSanity: 0,
+        pa: 0,
+        maxPa: 0,
+        paDisponivel: 0,
+        paTotalGasto: 0,
+        purifiedDiceThisSequence: 0,
+        assimilationDice: Number.POSITIVE_INFINITY,
+        maxAssimilationDice: Number.POSITIVE_INFINITY,
+        soulDice: 0,
+        defense: creature.defense || 0,
+        absorption: creature.absorption || 0,
+        initiative: creature.initiative || 0,
+        anchors: [],
+        tempHpBonus: 0,
       },
       attributes: {
         forca: attributes.forca || 2,
@@ -78,25 +113,21 @@ export const CombatManager: React.FC<CombatManagerProps> = ({ agents }) => {
         inteligencia: attributes.inteligencia || 2,
         raciocinio: attributes.raciocinio || 2,
         espiritualidade: attributes.espiritualidade || 2,
-      } as any,
+      },
       habilidades: { gerais: creatureSkillsList, investigativas: [] },
       habilidadesBeyonder: [],
       attacks,
       protections: [],
-      data: { 
-        creatureName: creature.name, 
-        threatLevel: creature.threatLevel, 
-        description: creature.description,
-        creatureAbilities: creature.abilities || [],
-        skills: creature.skills || {
-          vontade: 3,
-          vigor: 3,
-          percepcao: 3,
-          inteligencia: 2,
-          raciocinio: 2
-        },
-      },
-    } as any;
+      rituais: [],
+      inventory: [],
+      artifacts: [],
+      money: { libras: 0, soli: 0, pennies: 0 },
+      antecedentes: [],
+      afiliacoes: [],
+      learnedParticles: [],
+      customization: { useOpenDyslexicFont: false, avatarHealthy: '', avatarHurt: '', avatarDisturbed: '', avatarInsane: '' },
+    };
+    return agentData;
   };
 
   const initialCombatants: CombatantState[] = agents.map((a, idx) => ({
@@ -173,23 +204,59 @@ export const CombatManager: React.FC<CombatManagerProps> = ({ agents }) => {
     e.preventDefault();
     if (!monsterForm.name.trim()) return;
     const fakeAgent: AgentData = {
+      agent_id: `fake_${Date.now()}`,
       id: Date.now(),
+      lastModified: new Date().toISOString(),
       character: {
         name: monsterForm.name,
+        sequence: 9,
+        player: 'NPC',
+        avatarUrl: '',
+        anotacoes: '',
+        aparencia: '',
+        personalidade: '',
+        historico: '',
+        objetivo: '',
+        ancoras: '',
+        nomeHonorifico: '',
+        pathwayColor: '#888',
+        dtRituais: 0,
         vitality: parseInt(monsterForm.hp,10),
         maxVitality: parseInt(monsterForm.hp,10),
-        sanity: 0,
-        maxSanity: 0,
         spirituality: 0,
         maxSpirituality: 0,
-        sequence: 9,
+        willpower: 0,
+        maxWillpower: 0,
+        sanity: 0,
+        maxSanity: 0,
+        pa: 0,
+        maxPa: 0,
+        paDisponivel: 0,
+        paTotalGasto: 0,
+        purifiedDiceThisSequence: 0,
+        assimilationDice: Number.POSITIVE_INFINITY,
+        maxAssimilationDice: Number.POSITIVE_INFINITY,
+        soulDice: 0,
+        defense: 0,
+        absorption: 0,
+        initiative: 0,
+        anchors: [],
+        tempHpBonus: 0,
       },
-      attributes: { forca: 3, percepcao: 2, raciocinio: 2, vigor: 2 },
+      attributes: { forca: 3, destreza: 3, vigor: 2, carisma: 2, manipulacao: 2, autocontrole: 2, percepcao: 2, inteligencia: 2, raciocinio: 2, espiritualidade: 0 },
       habilidades: { gerais: [{ name: 'Armas Brancas', points: 2 }, { name: 'Prontidão', points: 2 }, { name: 'Esquiva', points: 1 }], investigativas: [] },
       attacks: [],
       protections: [],
-      data: {},
-    } as any;
+      habilidadesBeyonder: [],
+      rituais: [],
+      inventory: [],
+      artifacts: [],
+      money: { libras: 0, soli: 0, pennies: 0 },
+      antecedentes: [],
+      afiliacoes: [],
+      learnedParticles: [],
+      customization: { useOpenDyslexicFont: false, avatarHealthy: '', avatarHurt: '', avatarDisturbed: '', avatarInsane: '' },
+    };
     const newCombatant: CombatantState = {
       agent: fakeAgent,
       internalId: `enemy_${fakeAgent.id}`,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Enemy, Attributes } from '../types.ts';
+import { Enemy, Attributes } from '../types';
 
 // Função para gerar UUID
 const generateUUID = () => {

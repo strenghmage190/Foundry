@@ -1,12 +1,13 @@
 import React from 'react';
+import { AgentData, Campaign } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { getDefense, getAbsorptionPool, getInitiativePool } from '../utils/calculations';
 import '../styles/components/_character-overview.css';
 
 interface Props {
-  agentData: any | null;
-  participant: any;
-  campaign?: any | null;
+  agentData: AgentData | null;
+  participant: any; // keep as any for now since Participant shapes vary across usages
+  campaign?: Campaign | null;
   onClose: () => void;
 }
 
@@ -15,7 +16,7 @@ const CharacterOverviewModal: React.FC<Props> = ({ agentData, participant, campa
 
   if (!participant) return null;
 
-  const character = agentData?.character || {};
+  const character = agentData?.character || ({} as any);
   const avatar = (character && character.avatarUrl) ? character.avatarUrl : (participant.user_profiles?.signedAvatarUrl ?? null);
   const pathName = character.pathways?.primary ?? (Array.isArray(character.pathway) ? character.pathway?.[0] : character.pathway) ?? '';
   const hasPathway = pathName && pathName.trim() !== '' && pathName !== 'Nenhum caminho selecionado.';
@@ -28,7 +29,7 @@ const CharacterOverviewModal: React.FC<Props> = ({ agentData, participant, campa
 
   const agentRowId = participant.agent_id ?? (participant.agents && (participant.agents.id || (participant.agents[0] && participant.agents[0].id))) ?? null;
 
-  const getSkillPoints = (agent: any, skillName: string) => {
+  const getSkillPoints = (agent: AgentData | null | undefined, skillName: string) => {
     const h = agent?.habilidades || { gerais: [], investigativas: [] };
     const all = [ ...(h.gerais || []), ...(h.investigativas || []) ];
     const found = all.find((s: any) => (s.name || '').toLowerCase() === (skillName || '').toLowerCase());
@@ -88,7 +89,8 @@ const CharacterOverviewModal: React.FC<Props> = ({ agentData, participant, campa
               <div className="empty">Nenhum ataque cadastrado.</div>
             ) : (
               (agentData.attacks || []).map((atk: any) => {
-                const attrVal = agentData.attributes ? (agentData.attributes as any)[(atk.attribute || '').toLowerCase()] || 0 : 0;
+                const attrKey = (atk.attribute || '').toLowerCase();
+                const attrVal = agentData && agentData.attributes ? (agentData.attributes as any)[attrKey] || 0 : 0;
                 const skillPts = getSkillPoints(agentData, atk.skill || '');
                 const diceCount = attrVal + skillPts;
                 return (
