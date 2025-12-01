@@ -1,0 +1,273 @@
+/* Beyonders System Styles */
+/* Core system styling for Foundry VTT integration */
+
+:root {
+  --beyonders-primary: #8b5cf6;
+  --beyonders-secondary: #6366f1;
+  --beyonders-accent: #f59e0b;
+  --beyonders-dark: #1f2937;
+  --beyonders-light: #f9fafb;
+}
+
+/* System-specific styling */
+.beyonders-style {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.beyonders-style .window-header {
+  background: linear-gradient(135deg, var(--beyonders-primary), var(--beyonders-secondary));
+  color: white;
+}
+
+.beyonders-style .window-content {
+  background: var(--beyonders-light);
+}
+
+/* Actor sheet styling */
+.actor-sheet .sheet-header {
+  background: var(--beyonders-dark);
+  color: white;
+  padding: 10px;
+  border-radius: 5px 5px 0 0;
+}
+
+.actor-sheet .attributes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.attribute {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 10px;
+  text-align: center;
+}
+
+.attribute label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: var(--beyonders-primary);
+}
+
+.attribute input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+}
+
+/* Item sheet styling */
+.item-sheet .item-header {
+  background: var(--beyonders-secondary);
+  color: white;
+  padding: 10px;
+  border-radius: 5px 5px 0 0;
+}
+
+.item-sheet .item-description {
+  margin: 10px 0;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 5px;
+  border-left: 4px solid var(--beyonders-accent);
+}
+
+/* Combat tracker styling */
+#combat-tracker .combatant {
+  border-left: 4px solid var(--beyonders-primary);
+}
+
+#combat-tracker .combatant.active {
+  background: rgba(139, 92, 246, 0.1);
+  border-left-color: var(--beyonders-accent);
+}
+
+/* Token HUD styling */
+.token-hud .attribute {
+  background: var(--beyonders-dark);
+  color: white;
+}
+
+.token-hud .bar {
+  background: var(--beyonders-primary);
+}
+
+/* Chat message styling */
+.chat-message .message-header {
+  background: var(--beyonders-light);
+  border-bottom: 1px solid var(--beyonders-primary);
+}
+
+/* Application window styling */
+.app.window-app.beyonders-app {
+  background: var(--beyonders-light);
+  border: 2px solid var(--beyonders-primary);
+}
+
+.app.window-app.beyonders-app .window-header {
+  background: linear-gradient(135deg, var(--beyonders-primary), var(--beyonders-secondary));
+  color: white;
+}
+
+/* Form styling */
+.form-group {
+  margin-bottom: 10px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: var(--beyonders-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--beyonders-primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Button styling */
+button,
+.btn {
+  background: var(--beyonders-primary);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+button:hover,
+.btn:hover {
+  background: var(--beyonders-secondary);
+}
+
+button:disabled,
+.btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Tab styling */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-weight: bold;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  color: var(--beyonders-primary);
+  border-bottom-color: var(--beyonders-primary);
+}
+
+.tab:hover {
+  color: var(--beyonders-secondary);
+}
+
+/* Grid styling */
+.grid {
+  display: grid;
+  gap: 10px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.p-10 {
+  padding: 10px;
+}
+
+.p-20 {
+  padding: 20px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab {
+    border-bottom: none;
+    border-left: 2px solid transparent;
+  }
+
+  .tab.active {
+    border-left-color: var(--beyonders-primary);
+    border-bottom-color: transparent;
+  }
+}

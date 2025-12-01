@@ -309,18 +309,52 @@ export async function logDiceRoll(payload: {
   roll_data?: any;
 }) {
   console.log("4. API: Função logDiceRoll recebida com payload:", payload); // LOG 4
-
+  // Verifica se há um usuário autenticado. Se não houver, RLS pode bloquear inserts.
   try {
-    const { error } = await supabase.from('dice_rolls').insert(payload);
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData || !userData.user) {
+      console.warn('logDiceRoll: usuário não autenticado — RLS pode impedir INSERTs.');
+      return { success: false, error: 'not_authenticated' };
+    }
+  } catch (authErr) {
+    console.warn('logDiceRoll: falha ao verificar usuário autenticado', authErr);
+    // continuar e tentar o insert — será negado se não autenticado
+  }
+  try {
+    // Sanitize payload: only include columns that exist on the `dice_rolls` table.
+    const insertPayload: any = {
+      campaign_id: payload.campaign_id,
+      character_name: payload.character_name,
+      roll_name: payload.roll_name,
+      result: payload.result,
+      details: payload.details,
+    };
+
+    // Conditionally include optional fields if provided. If these columns do not exist in the
+    // database they will simply not be present and avoid causing a 400 from PostgREST.
+    if (typeof payload.roll_data !== 'undefined') insertPayload.roll_data = payload.roll_data;
+    if (typeof (payload as any).damage !== 'undefined') insertPayload.damage = (payload as any).damage;
+
+    const { data, error } = await supabase.from('dice_rolls').insert(insertPayload).select();
 
     if (error) {
-      // Se houver um erro do Supabase, ele será mostrado aqui
-      console.error("ERRO DETALHADO DENTRO DA API:", error); // LOG DE ERRO
-    } else {
-      console.log("5. API: Rolagem inserida no banco com sucesso!"); // LOG DE SUCESSO
+      try {
+        console.error("ERRO DETALHADO DENTRO DA API (logDiceRoll):", JSON.stringify(error, null, 2));
+      } catch (e) {
+        console.error("ERRO DETALHADO DENTRO DA API (logDiceRoll) (non-serializable):", error);
+      }
+      return { success: false, error, errorMessage: error?.message || JSON.stringify(error) };
     }
+
+    console.log("5. API: Rolagem inserida no banco com sucesso!", data);
+    return { success: true, data };
   } catch (e) {
-    console.error("ERRO INESPERADO NA API:", e);
+    try {
+      console.error("ERRO INESPERADO NA API (logDiceRoll):", JSON.stringify(e, null, 2));
+    } catch (se) {
+      console.error("ERRO INESPERADO NA API (logDiceRoll) (non-serializable):", e);
+    }
+    return { success: false, error: e, errorMessage: (e as any)?.message || String(e) };
   }
 }
 

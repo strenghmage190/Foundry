@@ -1,0 +1,9 @@
+{
+  "beyonders": {
+    "title": "Beyonders",
+    "autoOpen": "Abrir Beyonders automaticamente para GMs",
+    "actor": {
+      "sheetTitle": "Ficha Beyonders"
+    }
+  }
+}

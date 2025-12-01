@@ -1,0 +1,7 @@
+{
+  "BEYONDERS": {
+    "NAME": "Beyonders Dream",
+    "AUTOOPEN_NAME": "Auto open Beyonders",
+    "AUTOOPEN_HINT": "Automatically open the Beyonders window for GM users on world load."
+  }
+}

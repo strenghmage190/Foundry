@@ -218,6 +218,11 @@ export const CombatTab: React.FC<CombatTabProps> = ({ agent, onUpdate, addLiveTo
                                     <button className="edit-btn" onClick={(e) => { e.stopPropagation(); onOpenAddWeaponModal(attack); }} title="Editar ataque" aria-label="Editar ataque">
                                         <EditIcon />
                                     </button>
+                                    {attack.palavra && (
+                                        <div className="attack-pronunciation" title={`Pronúncia: ${attack.palavra}`} style={{marginLeft: '0.5rem', color: '#d0d0d0', fontSize: '0.9rem'}}>
+                                            {attack.palavra}
+                                        </div>
+                                    )}
                                     <span className={`chev ${isOpen ? 'open' : ''}`}></span>
                                 </div>
                             </div>

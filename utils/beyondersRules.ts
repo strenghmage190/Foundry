@@ -106,7 +106,9 @@ export const rollGeneralAction = (
     // Calcular sucessos totais ANTES da intrusão
     let totalSuccesses = soulSuccesses + assimilationSuccesses;
 
-    // Aplicar intrusão de loucura: cada '1' em preto cancela o maior sucesso
+    // Aplicar intrusão de loucura: cada '1' em preto cancela 1 sucesso
+    // (aplicado ao maior(s) sucesso(s) primeiro). Esta lógica subtrai
+    // 1 sucesso por intrusão, em vez de zerar o dado inteiro.
     let cancelledSuccesses = 0;
     if (madnessTriggers > 0 && totalSuccesses > 0) {
         // Montar lista de sucessos com seus valores para encontrar os maiores
@@ -115,15 +117,22 @@ export const rollGeneralAction = (
             ...assimilationRolls.map(r => ({ type: 'assimilation' as const, value: calculateDiceSuccess(r, 'assimilation', difficulty) })),
         ];
 
-        // Ordenar por valor decrescente para cancelar os maiores primeiro
-        allSuccesses.sort((a, b) => b.value - a.value);
-
-        // Cancelar o maior sucesso para cada intrusão
-        for (let i = 0; i < Math.min(madnessTriggers, allSuccesses.length); i++) {
-            if (allSuccesses[i].value > 0) {
-                cancelledSuccesses += allSuccesses[i].value;
-                allSuccesses[i].value = 0;
+        // Para cada intrusão, remover 1 sucesso do maior dado que ainda tenha sucessos
+        for (let m = 0; m < madnessTriggers; m++) {
+            // Encontrar índice do maior valor atual
+            let maxIndex = -1;
+            let maxValue = 0;
+            for (let i = 0; i < allSuccesses.length; i++) {
+                if (allSuccesses[i].value > maxValue) {
+                    maxValue = allSuccesses[i].value;
+                    maxIndex = i;
+                }
             }
+            if (maxIndex === -1 || maxValue <= 0) break; // nada mais para cancelar
+
+            // Cancelar apenas 1 sucesso desse dado
+            allSuccesses[maxIndex].value -= 1;
+            cancelledSuccesses += 1;
         }
 
         totalSuccesses = Math.max(0, totalSuccesses - cancelledSuccesses);

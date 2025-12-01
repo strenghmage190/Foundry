@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { isFoundry, createActor, saveAgentData } from '../src/foundryAdapter';
 import { initialAgentData } from '../constants';
 import { getUserProfile } from '../api/users';
 import { getSignedAvatarUrl } from '../utils/avatarUtils';
@@ -1120,7 +1121,29 @@ export const CharacterCreationWizard: React.FC = () => {
                 habilidadesBeyonder: newAgentData.character.habilidadesBeyonder
             });
             
-            // Insert into database
+            // If running inside Foundry, create an Actor and store the agent data as a flag
+            if (isFoundry()) {
+                try {
+                    const actorPayload: any = {
+                        name: characterName || 'Novo Agente',
+                        img: defaultAvatar || '',
+                        type: 'hero'
+                    };
+                    const createdActor = await createActor(actorPayload);
+                    // Persist the full agent data to the actor's flags
+                    await saveAgentData(createdActor.id, newAgentData);
+                    // Navigate to the actor-based route
+                    navigate(`/agent/${createdActor.id}`);
+                    return;
+                } catch (e) {
+                    console.error('Erro ao criar ator no Foundry:', e);
+                    alert('Erro ao criar personagem no Foundry. Veja o console para mais detalhes.');
+                    setIsCreating(false);
+                    return;
+                }
+            }
+
+            // Insert into database (fallback when not running in Foundry)
             const { data: insertedData, error } = await supabase
                 .from("agents")
                 .insert({
@@ -1129,7 +1152,7 @@ export const CharacterCreationWizard: React.FC = () => {
                 })
                 .select("data, id")
                 .single();
-            
+
             if (error) {
                 console.error("Erro ao criar personagem:", error.message);
                 alert("Erro ao criar personagem. Tente novamente.");

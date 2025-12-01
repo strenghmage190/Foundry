@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { initialAgentData } from '../../constants';
 import { ImageCropModal } from './ImageCropModal';
 import { uploadAgentAvatar, updateAgentCustomization } from '../../api/agents';
+import { isFoundry } from '../../src/foundryAdapter';
 import { generateSmartButtonColor, getContrastColor } from '../../utils/colorUtils';
 
 interface CustomizationModalProps {
@@ -168,12 +169,19 @@ export const CustomizationModal: React.FC<CustomizationModalProps> = ({
 
                 console.log(`[CustomizationModal] Uploading ${currentCropField}`);
 
-                // Upload to storage
-                const filePath = await uploadAgentAvatar(
+                let filePath: string;
+                if (isFoundry()) {
+                  // Use Foundry's FilePicker to upload to world assets
+                  const { uploadAvatarToFoundry } = await import('../../src/foundryAdapter');
+                  filePath = await uploadAvatarToFoundry(croppedFile, agent.id, currentCropField);
+                } else {
+                  // Use Supabase storage
+                  filePath = await uploadAgentAvatar(
                     agent.id,
                     currentCropField,
                     croppedFile
-                );
+                  );
+                }
 
                 console.log(`[CustomizationModal] Upload successful: ${filePath}`);
 

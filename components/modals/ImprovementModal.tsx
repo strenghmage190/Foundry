@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AgentData, Attributes, BeyonderAbility, Antecedente, SequenceAbility, ToastData, Habilidade, PathwayData } from '../../types';
 import { caminhosData } from '../../data/beyonders-data';
 import { initialAgentData } from '../../constants';
+import { beyondersReplacer, beyondersReviver } from '../../utils/serializationUtils';
 import { getPaRequirement, getSanityLossOnAdvance } from '../../utils/calculations';
 
 interface ImprovementModalProps {
@@ -43,7 +44,14 @@ export const ImprovementModal: React.FC<ImprovementModalProps> = ({
     allPathwaysData
 }) => {
     // Local state and safe accessors
-    const [currentAgent, setCurrentAgent] = useState<AgentData>(() => JSON.parse(JSON.stringify(agent || initialAgentData)));
+    const [currentAgent, setCurrentAgent] = useState<AgentData>(() => {
+        try {
+            const json = JSON.stringify(agent || initialAgentData, beyondersReplacer);
+            return JSON.parse(json, beyondersReviver) as AgentData;
+        } catch (e) {
+            return (agent || initialAgentData) as AgentData;
+        }
+    });
     const [paSpent, setPaSpent] = useState<number>(0);
     const [activeTab, setActiveTab] = useState<ImprovementTab>('Atributos');
     const [selectedFreeAbilityName, setSelectedFreeAbilityName] = useState<string | null>(null);

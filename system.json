@@ -1,0 +1,51 @@
+{
+  "id": "beyonders",
+  "title": "Beyonders Dream (System)",
+  "description": "Foundry VTT system integration for the Beyonders React app — mounts the web UI and provides Actor helpers to store in-world Agent data.",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "strenghmage190",
+      "url": "https://github.com/strenghmage190"
+    }
+  ],
+  "compatibility": { "minimum": 11, "verified": 13 },
+  "background": "assets/thumbnail.png",
+  "esmodules": [ "beyonders-system.mjs", "beyonders.bundle.es.js" ],
+  "scripts": [ "scripts/main.js" ],
+  "styles": [ "styles/beyonders.css" ],
+  "packs": [
+    { "name": "beyonder-actors", "label": "Beyonders Actors", "type": "Actor" },
+    { "name": "beyonder-items", "label": "Beyonders Items", "type": "Item" }
+  ],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" },
+    { "lang": "pt-BR", "name": "Português (Brasil)", "path": "lang/pt-BR.json" }
+  ],
+  "socket": true,
+  "initiative": "1d10",
+  "grid": { "distance": 5, "units": "m" },
+  "primaryTokenAttribute": "system.resources.health",
+  "secondaryTokenAttribute": "system.resources.power",
+  "manifest": "https://raw.githubusercontent.com/strenghmage190/BeyondersSite/main/system.json",
+  "download": "https://github.com/strenghmage190/BeyondersSite/archive/main.zip",
+  "url": "https://github.com/strenghmage190/BeyondersSite",
+  "license": "LICENSE.txt",
+  "readme": "README.md",
+  "changelog": "CHANGELOG.md",
+  "documentTypes": {
+    "Actor": {
+      "hero": {
+        "htmlFields": ["background.biography"]
+      },
+      "villain": {
+        "htmlFields": ["background.biography"]
+      },
+      "pawn": {}
+    },
+    "Item": {
+      "weapon": {},
+      "spell": {}
+    }
+  }
+}

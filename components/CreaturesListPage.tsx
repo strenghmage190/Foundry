@@ -7,7 +7,8 @@ import { EditCreatureModal } from './modals/EditCreatureModal.tsx';
 
 export const CreaturesListPage: React.FC = () => {
     const navigate = useNavigate();
-    const [creatures, setCreatures] = useState<Enemy[]>([]);
+    // cada criatura inclui agora a propriedade interna `__rowId` (id da linha no Supabase)
+    const [creatures, setCreatures] = useState<Array<Enemy & { __rowId?: string }>>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCreature, setSelectedCreature] = useState<Enemy | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -25,14 +26,14 @@ export const CreaturesListPage: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('creatures')
-                .select('data')
+                .select('id, data')
                 .eq('owner_id', userId)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             
-            // Extrair os dados das criaturas do JSONB
-            const creaturesList = (data || []).map(row => row.data as Enemy);
+            // Extrair os dados das criaturas do JSONB e preservar o id da linha
+            const creaturesList = (data || []).map((row: any) => ({ ...(row.data as Enemy), __rowId: row.id }));
             setCreatures(creaturesList);
         } catch (error) {
             console.error('Erro ao buscar criaturas:', error);
@@ -50,16 +51,19 @@ export const CreaturesListPage: React.FC = () => {
             const userId = await getCurrentUserId();
             if (!userId) return;
 
-            const { error } = await supabase
+            const { data: inserted, error } = await supabase
                 .from('creatures')
                 .insert([{ 
                     owner_id: userId,
                     data: creature
-                }]);
+                }])
+                .select('id, data')
+                .single();
 
             if (error) throw error;
 
-            setCreatures([creature, ...creatures]);
+            const created = inserted ? { ...(inserted.data as Enemy), __rowId: inserted.id } : { ...creature };
+            setCreatures([created, ...creatures]);
             setShowEditModal(false);
             setEditingCreature(null);
         } catch (error) {
@@ -72,23 +76,26 @@ export const CreaturesListPage: React.FC = () => {
             const userId = await getCurrentUserId();
             if (!userId) return;
 
-            // Encontrar o índice da criatura para atualizar
-            const oldCreature = creatures.find(c => c.id === creature.id);
-            if (!oldCreature) return;
+            // Encontrar a criatura pela row id
+            const rowId = (creature as any).__rowId || creatures.find(c => c.id === creature.id)?.__rowId;
+            if (!rowId) {
+                console.warn('Row id da criatura não encontrado; abortando update.');
+                return;
+            }
 
-            // Atualizar no banco
+            // Atualizar no banco usando o id da linha para evitar colisões em data->>id
             const { error } = await supabase
                 .from('creatures')
                 .update({ data: creature })
                 .eq('owner_id', userId)
-                .eq('data->>id', creature.id);
+                .eq('id', rowId);
 
             if (error) throw error;
 
             // Atualizar localmente
-            const updatedCreatures = creatures.map(c => c.id === creature.id ? creature : c);
+            const updatedCreatures = creatures.map(c => (c.__rowId === rowId ? { ...(creature as Enemy), __rowId: rowId } : c));
             setCreatures(updatedCreatures);
-            setSelectedCreature(creature);
+            setSelectedCreature({ ...(creature as Enemy), __rowId: rowId });
             setShowEditModal(false);
             setEditingCreature(null);
         } catch (error) {
@@ -106,7 +113,7 @@ export const CreaturesListPage: React.FC = () => {
         }
     };
 
-    const handleDeleteCreature = async (id: string) => {
+    const handleDeleteCreature = async (rowId: string) => {
         if (!window.confirm('Tem certeza que deseja deletar esta criatura?')) return;
 
         try {
@@ -117,10 +124,10 @@ export const CreaturesListPage: React.FC = () => {
                 .from('creatures')
                 .delete()
                 .eq('owner_id', userId)
-                .eq('data->>id', id);
+                .eq('id', rowId);
 
             if (error) throw error;
-            setCreatures(creatures.filter(c => c.id !== id));
+            setCreatures(creatures.filter(c => c.__rowId !== rowId));
             setSelectedCreature(null);
         } catch (error) {
             console.error('Erro ao deletar criatura:', error);
@@ -182,12 +189,12 @@ export const CreaturesListPage: React.FC = () => {
                         ) : (
                             creatures.map(creature => (
                                 <div
-                                    key={creature.id}
+                                    key={creature.__rowId || creature.id}
                                     onClick={() => setSelectedCreature(creature)}
                                     style={{
                                         padding: '1rem',
-                                        background: selectedCreature?.id === creature.id ? 'rgba(169, 120, 248, 0.3)' : 'rgba(42, 42, 46, 0.8)',
-                                        border: selectedCreature?.id === creature.id ? '1px solid #a978f8' : '1px solid #444',
+                                        background: selectedCreature?.__rowId === creature.__rowId ? 'rgba(169, 120, 248, 0.3)' : 'rgba(42, 42, 46, 0.8)',
+                                        border: selectedCreature?.__rowId === creature.__rowId ? '1px solid #a978f8' : '1px solid #444',
                                         borderRadius: '4px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease'
@@ -235,7 +242,7 @@ export const CreaturesListPage: React.FC = () => {
                                     ✏️ Editar
                                 </button>
                                 <button
-                                    onClick={() => handleDeleteCreature(selectedCreature.id)}
+                                    onClick={() => handleDeleteCreature(selectedCreature.__rowId || selectedCreature.id)}
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: '#f44336',
