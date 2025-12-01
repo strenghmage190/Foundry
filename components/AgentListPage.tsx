@@ -4,7 +4,6 @@ import { AgentData } from '../types.ts';
 import { SettingsIcon } from './icons.tsx';
 import CharacterCard from './CharacterCard';
 import { supabase } from '../supabaseClient';
-import { isFoundry } from '../src/foundryAdapter';
 import { useMyContext } from '../MyContext';
 import { reviveInfinityInObject } from '../utils/serializationUtils';
 
@@ -12,29 +11,13 @@ export const AgentListPage: React.FC = () => {
     const navigate = useNavigate();
     const { addLiveToast } = useMyContext();
     const [agents, setAgents] = useState<AgentData[]>([]);
-    const [deletingAgentId, setDeletingAgentId] = useState<number | string | null>(null);
+    const [deletingAgentId, setDeletingAgentId] = useState<number | null>(null);
 
     useEffect(() => {
         async function fetchAgents() {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (isFoundry()) {
-                try {
-                    // Use Foundry's game.actors collection and prefer SystemActor.getAgentData()
-                    const collection = (window as any).game?.actors?.contents || [];
-                    const lista = collection.map((actor: any) => {
-                        const agent = typeof actor.getAgentData === 'function' ? actor.getAgentData() : actor.getFlag?.('beyonders-system', 'agentData') || null;
-                        return agent ? { ...reviveInfinityInObject(agent), id: actor.id } : { id: actor.id, character: { name: actor.name, avatarUrl: actor.img } };
-                    });
-                    setAgents(lista);
-                } catch (e) {
-                    console.error('Erro ao buscar atores do Foundry:', e);
-                    setAgents([]);
-                }
-                return;
-            }
-
             if (!user) {
                 console.log("Usuário não encontrado, não buscando agentes.");
                 setAgents([]); // Limpa os agentes se o usuário deslogar
@@ -66,42 +49,6 @@ export const AgentListPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-            if (isFoundry()) {
-            const onCreate = (actor: any) => {
-                const agent = actor.getFlag ? actor.getFlag('beyonders-system', 'agentData') : null;
-                const newAgent = agent ? { ...reviveInfinityInObject(agent), id: actor.id } : { id: actor.id, character: { name: actor.name, avatarUrl: actor.img } };
-                setAgents((prev) => {
-                    if (prev.some((a) => a.id === newAgent.id)) return prev;
-                    return [...prev, newAgent];
-                });
-            };
-
-            const onUpdate = (actor: any) => {
-                const agent = actor.getFlag ? actor.getFlag('beyonders-system', 'agentData') : null;
-                const updatedAgent = agent ? { ...reviveInfinityInObject(agent), id: actor.id } : { id: actor.id, character: { name: actor.name, avatarUrl: actor.img } };
-                setAgents((prev) => prev.map((a) => (a.id === updatedAgent.id ? updatedAgent : a)));
-            };
-
-            const onDelete = (actor: any) => {
-                setAgents((prev) => prev.filter((a) => a.id !== actor.id));
-            };
-
-            (window as any).Hooks.on('createActor', onCreate);
-            (window as any).Hooks.on('updateActor', onUpdate);
-            (window as any).Hooks.on('deleteActor', onDelete);
-
-            return () => {
-                try {
-                    (window as any).Hooks.off('createActor', onCreate);
-                    (window as any).Hooks.off('updateActor', onUpdate);
-                    (window as any).Hooks.off('deleteActor', onDelete);
-                } catch (e) {
-                    // ignore
-                }
-            };
-        }
-
-        // Fallback: Supabase realtime subscription
         const channel = supabase
             .channel("agents-channel")
             .on(
@@ -144,24 +91,12 @@ export const AgentListPage: React.FC = () => {
         };
     }, []);
 
-    const handleDeleteAgent = useCallback(async (id: number | string) => {
+    const handleDeleteAgent = useCallback(async (id: number) => {
         if (
             window.confirm(
                 "Tem certeza que deseja apagar este agente? Esta ação não pode ser desfeita."
             )
         ) {
-            if (isFoundry()) {
-                try {
-                    const actor = (window as any).game?.actors?.get?.(String(id));
-                    if (actor) await actor.delete();
-                    setAgents((prev) => prev.filter((agent) => agent.id !== id));
-                } catch (e) {
-                    console.error('Erro ao apagar ator no Foundry:', e);
-                    addLiveToast({ type: 'failure', title: 'Erro', message: 'Não foi possível apagar o ator no Foundry.' });
-                }
-                return;
-            }
-
             const { error } = await supabase.from("agents").delete().eq("id", id);
             if (error) {
                 console.error(`Erro ao apagar agente ${id}:`, error);
@@ -174,7 +109,18 @@ export const AgentListPage: React.FC = () => {
                 setAgents((prev) => prev.filter((agent) => agent.id !== id));
             }
         }
-    }, []);
+    }, [addLiveToast]);
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'Data desconhecida';
+        return new Date(dateString).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
     
     return (
         <div className="agent-list-page">

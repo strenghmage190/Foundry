@@ -141,7 +141,6 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
             newAttack = {
                 id: Date.now(),
                 name: name,
-                palavra: `${selectedFuncao.palavra || selectedFuncao.name} ${selectedObjeto.palavra || selectedObjeto.name}`,
                 damageFormula: `Espiritualidade + ${getDamageDie()}`,
                 quality: 'Comum',
                 specialQualities: `Mágico, Tecelagem Arcana, ${selectedCaracteristica?.name || 'Arcano'}`,
@@ -159,7 +158,6 @@ export const CreateMagicAttackModal: React.FC<CreateMagicAttackModalProps> = ({ 
             newAttack = {
                 id: Date.now(),
                 name: name,
-                palavra: `${selectedFuncao.palavra || selectedFuncao.name} ${selectedObjeto.palavra || selectedObjeto.name}`,
                 damageFormula: `Inteligência + ${getDamageDie()}`,
                 quality: 'Comum',
                 specialQualities: `Mágico, Inscrição (Ritual), ${selectedCaracteristica?.name || 'Arcano'}`,

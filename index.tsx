@@ -144,25 +144,5 @@ const App = () => {
     );
 };
 
-// Expose a mount function so Foundry can inject our app into a window
-export const mount = (element: HTMLElement) => {
-    const root = createRoot(element);
-    root.render(
-        <div className="beyonders-wrapper">
-            <App />
-        </div>
-    );
-
-    return {
-        unmount: () => root.unmount()
-    };
-};
-
-// Expose to Foundry via a global
-(window as any).BeyondersRender = mount;
-
-// Backwards-compatibility: if the normal `#root` exists (standalone site), mount there
-const rootElement = document.getElementById('root') as HTMLElement | null;
-if (rootElement) {
-    mount(rootElement);
-}
+const root = createRoot(document.getElementById('root') as HTMLElement);
+root.render(<App />);

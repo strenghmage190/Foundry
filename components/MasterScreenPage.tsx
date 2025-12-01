@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient';
 import { getCampaignById, getPlayersByCampaignId, getCampaignsByMasterId } from '../api/campaigns';
 import { getCombatSessionsByCampaignId, createCombatSession, updateCombatSession, deleteCombatSession } from '../api/combatSessions';
 import { getAvatarUrlOrFallback } from '../utils/avatarUtils';
-import { beyondersReplacer, reviveInfinityInObject, beyondersReviver } from '../utils/serializationUtils';
+import { beyondersReplacer, reviveInfinityInObject } from '../utils/serializationUtils';
 import type { Campaign, Character, CombatSession, AgentData } from '../types';
 import CharacterStatusCard from './CharacterStatusCard';
 import CombatManager from './CombatManager';
@@ -155,15 +155,9 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
 
   const updateAgentCharacter = async (agentId: string, updates: Partial<Character>) => {
     // 1. ATUALIZAÇÃO OTIMISTA DA UI
-        setCharacters(prev => prev.map(p => {
+    setCharacters(prev => prev.map(p => {
       if (p.agent_id === agentId) {
-        const newParticipant = (() => {
-          try {
-            return JSON.parse(JSON.stringify(p, beyondersReplacer), beyondersReviver);
-          } catch (e) {
-            return JSON.parse(JSON.stringify(p));
-          }
-        })(); // Cópia segura
+        const newParticipant = JSON.parse(JSON.stringify(p)); // Cópia segura
         // Mescla o objeto 'character' antigo apenas com as novas 'updates'
         newParticipant.agents.data.character = {
           ...newParticipant.agents.data.character,
@@ -207,15 +201,9 @@ const MasterScreenPage = ({ campaignId }: MasterScreenPageProps) => {
     } catch (e) {
       console.error('Falha ao persistir a atualização do agente:', e);
       // Revert UI state on failure
-          setCharacters(prev => prev.map(p => {
+      setCharacters(prev => prev.map(p => {
         if (p.agent_id === agentId) {
-          const revertedParticipant = (() => {
-            try {
-              return JSON.parse(JSON.stringify(p, beyondersReplacer), beyondersReviver);
-            } catch (e) {
-              return JSON.parse(JSON.stringify(p));
-            }
-          })();
+          const revertedParticipant = JSON.parse(JSON.stringify(p));
           // Remove the updates from the character object
           revertedParticipant.agents.data.character = {
             ...revertedParticipant.agents.data.character,

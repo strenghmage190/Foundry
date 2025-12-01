@@ -152,7 +152,6 @@ export interface Character {
 export interface Attack {
     id: string;
     name: string;
-    palavra?: string; // pronúncia / palavra curta (ex: 'Al Ivi')
     damageFormula: string;
     quality: 'Comum' | 'Superior' | 'Obra-Prima';
     specialQualities: string;

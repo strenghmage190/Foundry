@@ -5,11 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "vitest",
     "build": "vite build",
-    "build:foundry": "vite build && node scripts/postbuild.cjs",
-    "deploy:foundry": "node scripts/deploy.js",
-    "deploy:foundry:system": "node scripts/deploy-system.cjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -25,10 +21,7 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "postcss-prefix-selector": "^2.1.1",
-    "rollup-plugin-copy": "^3.4.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "vitest": "^4.0.14"
+    "vite": "^6.2.0"
   }
 }

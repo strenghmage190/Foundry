@@ -19,10 +19,8 @@ import {
   FormaMitica,
 } from "../types.ts";
 import { supabase } from "../supabaseClient";
-// import { isFoundry } from '../src/foundryAdapter';
 import { uploadAgentAvatar } from "../api/agents";
 import { logDiceRoll } from "../api/campaigns";
-import { isFoundry } from '../src/foundryAdapter';
 import { useDebounce } from "../src/hooks/useDebounce";
 import { usePermissions } from "../src/hooks/usePermissions";
 import { useMyContext } from "../MyContext";
@@ -515,31 +513,6 @@ export const CharacterSheetPage = () => {
 
     async function fetchAgent() {
       setIsLoading(true);
-      if (isFoundry()) {
-        try {
-          const actor = (window as any).game?.actors?.get?.(agentId as string);
-          if (!actor) {
-            addLiveToast({ type: 'failure', title: 'Erro', message: 'Agente não encontrado no Foundry.' });
-            setAgent(null);
-          } else {
-            const fetched = typeof actor.getAgentData === 'function' ? await actor.getAgentData() : actor.getFlag?.('beyonders-system', 'agentData');
-            if (!fetched) {
-              addLiveToast({ type: 'failure', title: 'Erro', message: 'Agente sem dados no Foundry.' });
-              setAgent(null);
-            } else {
-              const revivedData = reviveInfinityInObject(fetched);
-              setAgent(revivedData as AgentData);
-            }
-          }
-        } catch (e) {
-          console.error('Erro ao buscar agente no Foundry:', e);
-          addLiveToast({ type: 'failure', title: 'Erro', message: 'Agente não encontrado.' });
-          setAgent(null);
-        }
-        setIsLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase
         .from("agents")
         .select("id, data, is_private")
@@ -710,34 +683,19 @@ export const CharacterSheetPage = () => {
       return;
     }
 
-        const saveChanges = async () => {
+    const saveChanges = async () => {
       setSaveStatus("salvando");
-      const { id, isPrivate, ...dataToSave } = debouncedAgent as any; // Separa o ID e campos fora de data
-
+      const { id, isPrivate, ...dataToSave } = debouncedAgent; // Separa o ID e campos fora de data
+      
       // Handle Infinity serialization
       const jsonString = JSON.stringify(dataToSave, beyondersReplacer);
       const dataToSaveProcessed = JSON.parse(jsonString);
-
-        try {
-        if (isFoundry() && id) {
-          const actor = (window as any).game?.actors?.get?.(String(id));
-          if (actor && typeof actor.setAgentData === 'function') {
-            await actor.setAgentData(dataToSaveProcessed);
-          } else if (actor) {
-            // Fallback to flags
-            await actor.setFlag('beyonders-system', 'agentData', dataToSaveProcessed);
-          } else {
-            throw new Error('Actor not found in Foundry');
-          }
-        } else {
-          const { error } = await supabase
-            .from("agents")
-            .update({ data: dataToSaveProcessed })
-            .eq("id", id); // Salva apenas o objeto 'data'
-          if (error) throw error;
-        }
-        setSaveStatus("salvo");
-      } catch (error) {
+      
+      const { error } = await supabase
+        .from("agents")
+        .update({ data: dataToSaveProcessed })
+        .eq("id", id); // Salva apenas o objeto 'data'
+      if (error) {
         setSaveStatus("não salvo");
         console.error("Auto-save failed:", error);
         addLiveToast({
@@ -745,6 +703,8 @@ export const CharacterSheetPage = () => {
           title: "Erro ao Salvar",
           message: "Não foi possível salvar as alterações automaticamente.",
         });
+      } else {
+        setSaveStatus("salvo");
       }
     };
     saveChanges();
@@ -1783,32 +1743,7 @@ export const CharacterSheetPage = () => {
               damage: totalDamageForPayload,
             };
             console.log("3. Payload a ser enviado para a API:", payload);
-            try {
-              let logRes;
-              if (isFoundry()) {
-                const { logDiceRollToFoundry } = await import('../src/foundryAdapter');
-                logRes = await logDiceRollToFoundry(payload);
-                logRes = { success: !!logRes, data: logRes };
-              } else {
-                logRes = await logDiceRoll(payload);
-              }
-              if (!logRes || !logRes.success) {
-                try {
-                  console.error('Falha ao registrar rolagem:', JSON.stringify(logRes?.error || logRes?.errorMessage || logRes, null, 2));
-                } catch (e) {
-                  console.error('Falha ao registrar rolagem (non-serializable):', logRes);
-                }
-                const errMsg = logRes?.error?.message || logRes?.errorMessage || JSON.stringify(logRes?.error) || 'Não foi possível registrar a rolagem.';
-                addLiveToast({ type: 'warning', title: 'Rolagem Não Logada', message: errMsg });
-              }
-            } catch (err) {
-              try {
-                console.error('Erro ao chamar logDiceRoll:', JSON.stringify(err, null, 2));
-              } catch (e) {
-                console.error('Erro ao chamar logDiceRoll (non-serializable):', err);
-              }
-              addLiveToast({ type: 'warning', title: 'Rolagem Não Logada', message: 'Erro ao enviar rolagem.' });
-            }
+            logDiceRoll(payload);
           } else {
             console.log("Rolagem realizada, mas não logada na campanha (sem campaignId).");
           }
@@ -1859,32 +1794,7 @@ export const CharacterSheetPage = () => {
           };
 
           console.log("3. Payload a ser enviado para a API:", payload);
-          try {
-            let logRes;
-            if (isFoundry()) {
-              const { logDiceRollToFoundry } = await import('../src/foundryAdapter');
-              logRes = await logDiceRollToFoundry(payload);
-              logRes = { success: !!logRes, data: logRes };
-            } else {
-              logRes = await logDiceRoll(payload);
-            }
-            if (!logRes || !logRes.success) {
-              try {
-                console.error('Falha ao registrar rolagem no Supabase (absorption):', JSON.stringify(logRes?.error || logRes?.errorMessage || logRes, null, 2));
-              } catch (e) {
-                console.error('Falha ao registrar rolagem no Supabase (absorption) (non-serializable):', logRes);
-              }
-              const errMsg = logRes?.error?.message || logRes?.errorMessage || JSON.stringify(logRes?.error) || 'Não foi possível registrar a rolagem no servidor.';
-              addLiveToast({ type: 'warning', title: 'Rolagem Não Logada', message: errMsg });
-            }
-          } catch (err) {
-            try {
-              console.error('Erro ao chamar logDiceRoll (absorption):', JSON.stringify(err, null, 2));
-            } catch (e) {
-              console.error('Erro ao chamar logDiceRoll (absorption) (non-serializable):', err);
-            }
-            addLiveToast({ type: 'warning', title: 'Rolagem Não Logada', message: 'Erro ao enviar rolagem ao servidor.' });
-          }
+          logDiceRoll(payload);
         } else {
           console.warn("LOG DE ROLAGEM BLOQUEADO: Condições não atendidas.");
         }
